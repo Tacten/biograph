@@ -116,6 +116,7 @@
    "no_copy": 1,
    "options": "\nScheduled\nOpen\nConfirmed\nChecked In\nChecked Out\nClosed\nCancelled\nNo Show\nNeeds Rescheduling\nUnavailable",
    "read_only": 1,
+   "no_copy": 1,
    "search_index": 1
   },
   {
