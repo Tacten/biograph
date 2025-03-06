@@ -499,7 +499,7 @@
    "fieldname": "patient_diagnosis",
    "fieldtype": "Table MultiSelect",
    "label": "Medical History",
-   "options": "Diagnosis Item"
+   "options": "Patient Encounter Diagnosis"
   },
   {
    "fieldname": "patient_medication",
@@ -517,7 +517,7 @@
    "fieldname": "family_medical_history",
    "fieldtype": "Table MultiSelect",
    "label": "Family History",
-   "options": "Diagnosis Item"
+   "options": "Patient Encounter Diagnosis"
   }
  ],
  "icon": "fa fa-user",
