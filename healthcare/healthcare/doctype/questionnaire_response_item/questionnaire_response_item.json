@@ -1,0 +1,163 @@
+{
+ "actions": [],
+ "creation": "2023-07-01 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "question",
+  "linkId",
+  "text",
+  "type",
+  "section_break_5",
+  "answer_boolean",
+  "answer_decimal",
+  "answer_integer",
+  "answer_date",
+  "answer_datetime",
+  "answer_string",
+  "answer_text",
+  "answer_url",
+  "answer_choice",
+  "answer_attachment"
+ ],
+ "fields": [
+  {
+   "fieldname": "question",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Question",
+   "options": "Questionnaire Item",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "question.linkId",
+   "fieldname": "linkId",
+   "fieldtype": "Data",
+   "label": "Link ID",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "question.text",
+   "fieldname": "text",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Question Text",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "question.type",
+   "fieldname": "type",
+   "fieldtype": "Data",
+   "label": "Response Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_5",
+   "fieldtype": "Section Break",
+   "label": "Answer"
+  },
+  {
+   "depends_on": "eval:doc.type == 'boolean'",
+   "fieldname": "answer_boolean",
+   "fieldtype": "Check",
+   "label": "Boolean Answer"
+  },
+  {
+   "depends_on": "eval:doc.type == 'decimal'",
+   "fieldname": "answer_decimal",
+   "fieldtype": "Float",
+   "label": "Decimal Answer"
+  },
+  {
+   "depends_on": "eval:doc.type == 'integer'",
+   "fieldname": "answer_integer",
+   "fieldtype": "Int",
+   "label": "Integer Answer"
+  },
+  {
+   "depends_on": "eval:doc.type == 'date'",
+   "fieldname": "answer_date",
+   "fieldtype": "Date",
+   "label": "Date Answer"
+  },
+  {
+   "depends_on": "eval:doc.type == 'dateTime'",
+   "fieldname": "answer_datetime",
+   "fieldtype": "Datetime",
+   "label": "DateTime Answer"
+  },
+  {
+   "depends_on": "eval:doc.type == 'string'",
+   "fieldname": "answer_string",
+   "fieldtype": "Data",
+   "label": "String Answer"
+  },
+  {
+   "depends_on": "eval:doc.type == 'text'",
+   "fieldname": "answer_text",
+   "fieldtype": "Text",
+   "label": "Text Answer"
+  },
+  {
+   "depends_on": "eval:doc.type == 'url'",
+   "fieldname": "answer_url",
+   "fieldtype": "Data",
+   "label": "URL Answer"
+  },
+  {
+   "depends_on": "eval:['choice', 'open-choice'].includes(doc.type)",
+   "fieldname": "answer_choice",
+   "fieldtype": "Data",
+   "label": "Choice Answer"
+  },
+  {
+   "depends_on": "eval:doc.type == 'attachment'",
+   "fieldname": "answer_attachment",
+   "fieldtype": "Attach",
+   "label": "Attachment Answer"
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2023-07-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Healthcare",
+ "name": "Questionnaire Response Item",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Healthcare Administrator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Physician",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+} 

@@ -1,0 +1,159 @@
+{
+ "actions": [],
+ "creation": "2023-07-01 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "linkId",
+  "text",
+  "type",
+  "required",
+  "repeats",
+  "help_text",
+  "section_break_7",
+  "fieldtype",
+  "field_options",
+  "condition_section",
+  "has_condition",
+  "condition_question",
+  "column_break_13",
+  "condition_operator",
+  "condition_value"
+ ],
+ "fields": [
+  {
+   "fieldname": "linkId",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Link ID",
+   "reqd": 1
+  },
+  {
+   "fieldname": "text",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Question Text",
+   "reqd": 1
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Question Type",
+   "options": "group\ndisplay\nboolean\ndecimal\ninteger\ndate\ndateTime\ntime\nstring\ntext\nurl\nchoice\nopen-choice\nattachment\nreference\nquantity",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "required",
+   "fieldtype": "Check",
+   "label": "Required"
+  },
+  {
+   "default": "0",
+   "fieldname": "repeats",
+   "fieldtype": "Check",
+   "label": "Allows Multiple"
+  },
+  {
+   "fieldname": "help_text",
+   "fieldtype": "Text",
+   "label": "Help Text"
+  },
+  {
+   "fieldname": "section_break_7",
+   "fieldtype": "Section Break",
+   "label": "Field Configuration"
+  },
+  {
+   "fieldname": "fieldtype",
+   "fieldtype": "Select",
+   "label": "Frappe Field Type",
+   "options": "Data\nText\nText Editor\nSelect\nLink\nCheck\nDate\nDatetime\nFloat\nCurrency\nPercent\nAttach\nAttach Image\nTable\nSmall Text",
+   "depends_on": "eval:doc.type != 'group' && doc.type != 'display'"
+  },
+  {
+   "fieldname": "field_options",
+   "fieldtype": "Text",
+   "label": "Options",
+   "depends_on": "eval:['select', 'choice', 'open-choice'].includes(doc.type)"
+  },
+  {
+   "fieldname": "condition_section",
+   "fieldtype": "Section Break",
+   "label": "Conditional Display"
+  },
+  {
+   "default": "0",
+   "fieldname": "has_condition",
+   "fieldtype": "Check",
+   "label": "Has Display Condition"
+  },
+  {
+   "fieldname": "condition_question",
+   "fieldtype": "Data",
+   "label": "Depends on Question (linkId)",
+   "depends_on": "eval:doc.has_condition==1"
+  },
+  {
+   "fieldname": "column_break_13",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "condition_operator",
+   "fieldtype": "Select",
+   "label": "Condition Operator",
+   "options": "equals\nnot-equals\ngreater-than\nless-than\nexists",
+   "depends_on": "eval:doc.has_condition==1"
+  },
+  {
+   "fieldname": "condition_value",
+   "fieldtype": "Data",
+   "label": "Condition Value",
+   "depends_on": "eval:doc.has_condition==1"
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2023-07-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Healthcare",
+ "name": "Questionnaire Item",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Healthcare Administrator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Physician",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+} 
