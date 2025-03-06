@@ -56,11 +56,16 @@
   "column_break_25",
   "marital_status",
   "allergy_medical_and_surgical_history",
+  "legacy_section",
   "allergies",
   "medication",
-  "column_break_20",
   "medical_history",
   "surgical_history",
+  "structured_medical_history_section",
+  "patient_diagnosis",
+  "patient_medication",
+  "patient_surgery",
+  "family_medical_history",
   "risk_factors",
   "tobacco_past_use",
   "tobacco_current_use",
@@ -236,36 +241,42 @@
    "label": "Allergies, Medical and Surgical History"
   },
   {
+   "fieldname": "legacy_section",
+   "fieldtype": "Column Break",
+   "label": "Legacy Medical History"
+  },
+  {
    "fieldname": "allergies",
    "fieldtype": "Small Text",
    "ignore_xss_filter": 1,
-   "label": "Allergies",
+   "label": "Allergies (Legacy)",
    "no_copy": 1
   },
   {
    "fieldname": "medication",
    "fieldtype": "Small Text",
    "ignore_xss_filter": 1,
-   "label": "Medication",
+   "label": "Medication (Legacy)",
    "no_copy": 1
-  },
-  {
-   "fieldname": "column_break_20",
-   "fieldtype": "Column Break"
   },
   {
    "fieldname": "medical_history",
    "fieldtype": "Small Text",
    "ignore_xss_filter": 1,
-   "label": "Medical History",
+   "label": "Medical History (Legacy)",
    "no_copy": 1
   },
   {
    "fieldname": "surgical_history",
    "fieldtype": "Small Text",
    "ignore_xss_filter": 1,
-   "label": "Surgical History",
+   "label": "Surgical History (Legacy)",
    "no_copy": 1
+  },
+  {
+   "fieldname": "structured_medical_history_section",
+   "fieldtype": "Column Break",
+   "label": "Structured Medical History"
   },
   {
    "fieldname": "personal_and_social_history",
@@ -483,6 +494,30 @@
    "fieldname": "medical_history_tab",
    "fieldtype": "Tab Break",
    "label": "Medical History"
+  },
+  {
+   "fieldname": "patient_diagnosis",
+   "fieldtype": "Table MultiSelect",
+   "label": "Medical History",
+   "options": "Diagnosis Item"
+  },
+  {
+   "fieldname": "patient_medication",
+   "fieldtype": "Table MultiSelect",
+   "label": "Medication",
+   "options": "Medication History Item"
+  },
+  {
+   "fieldname": "patient_surgery",
+   "fieldtype": "Table MultiSelect",
+   "label": "Surgical History",
+   "options": "Surgery History Item"
+  },
+  {
+   "fieldname": "family_medical_history",
+   "fieldtype": "Table MultiSelect",
+   "label": "Family History",
+   "options": "Diagnosis Item"
   }
  ],
  "icon": "fa fa-user",
