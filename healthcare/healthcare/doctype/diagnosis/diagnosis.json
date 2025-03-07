@@ -11,6 +11,8 @@
  "engine": "InnoDB",
  "field_order": [
   "diagnosis",
+  "default_medical_code_system",
+  "code_value",
   "column_break_2",
   "estimated_duration",
   "codification",
@@ -25,6 +27,17 @@
    "label": "Diagnosis",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "default_medical_code_system",
+   "fieldtype": "Link",
+   "label": "Default Medical Code System",
+   "options": "Code System"
+  },
+  {
+   "fieldname": "code_value",
+   "fieldtype": "Data",
+   "label": "Code Value"
   },
   {
    "allow_in_quick_entry": 1,
