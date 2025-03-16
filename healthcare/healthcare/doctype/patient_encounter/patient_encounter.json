@@ -30,13 +30,6 @@
   "google_meet_link",
   "invoiced",
   "submit_orders_on_save",
-  "section_patient_history",
-  "custom_comorbidities",
-  "custom_medication_history",
-  "column_break_history",
-  "custom_allergies",
-  "custom_surgery_history",
-  "custom_family_history",
   "sb_symptoms",
   "symptoms",
   "symptoms_in_print",
@@ -394,44 +387,6 @@
    "fieldname": "order_history_html",
    "fieldtype": "HTML",
    "label": "Order History"
-  },
-  {
-   "fieldname": "section_patient_history",
-   "fieldtype": "Section Break",
-   "label": "Patient History"
-  },
-  {
-   "fieldname": "custom_comorbidities",
-   "fieldtype": "Table MultiSelect",
-   "label": "Comorbidities / Medical History",
-   "options": "Patient Encounter Diagnosis"
-  },
-  {
-   "fieldname": "custom_medication_history",
-   "fieldtype": "Table MultiSelect",
-   "label": "Medication History",
-   "options": "Medication History Item"
-  },
-  {
-   "fieldname": "column_break_history",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "custom_allergies",
-   "fieldtype": "Small Text",
-   "label": "Allergies"
-  },
-  {
-   "fieldname": "custom_surgery_history",
-   "fieldtype": "Table MultiSelect",
-   "label": "Surgical History",
-   "options": "Surgery History Item"
-  },
-  {
-   "fieldname": "custom_family_history",
-   "fieldtype": "Table MultiSelect",
-   "label": "Family Medical History",
-   "options": "Patient Encounter Diagnosis"
   }
  ],
  "is_submittable": 1,

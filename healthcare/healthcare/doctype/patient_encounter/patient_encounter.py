@@ -4,7 +4,6 @@
 
 
 import json
-import copy
 
 import frappe
 from frappe import _
@@ -21,24 +20,15 @@ class PatientEncounter(Document):
 		self.validate_medications()
 		self.validate_therapies()
 		self.validate_observations()
-		
-		# Ensure no duplicate rows in child tables
-		self._deduplicate_child_tables()
-		
 		set_codification_table_from_diagnosis(self)
 		if not self.is_new() and self.submit_orders_on_save:
 			self.make_service_request()
 			self.make_medication_request()
 			self.status = "Ordered"
 
-	def before_insert(self):
-		# Load patient history data when creating a new encounter
-		self.load_history_from_patient()
-
 	def on_update(self):
 		if self.appointment:
 			frappe.db.set_value("Patient Appointment", self.appointment, "status", "Closed")
-		# We don't sync to patient here - only during submit
 
 	def on_submit(self):
 		if self.therapies:
@@ -48,9 +38,6 @@ class PatientEncounter(Document):
 		# to save service_request name in prescription
 		self.save("Update")
 		self.db_set("status", "Completed")
-		
-		# Now sync the history back to patient when submitting
-		self.update_patient_history()
 
 	def before_cancel(self):
 		orders = frappe.get_all("Service Request", {"order_group": self.name})
@@ -361,244 +348,6 @@ class PatientEncounter(Document):
 		)
 
 		return medication_requests, service_requests, clinical_notes
-
-	def _copy_child_table_row(self, source_row):
-		"""Helper method to safely copy child table rows without ID conflicts"""
-		new_row = {}
-		for field in source_row.as_dict():
-			if field not in ["name", "owner", "creation", "modified", "modified_by", 
-							"parent", "parentfield", "parenttype", "idx", "docstatus"]:
-				new_row[field] = source_row.get(field)
-		return new_row
-
-	def load_history_from_patient(self):
-		"""
-		Fetch history data from Patient DocType and populate in the encounter
-		Only loads data from Patient -> Encounter, not the other way around
-		"""
-		if not self.patient:
-			return
-			
-		# Safety check - don't proceed if we already have data and this isn't forced
-		if (self.get("custom_comorbidities") or self.get("custom_medication_history") or 
-			self.get("custom_surgery_history") or self.get("custom_family_history")):
-			return
-			
-		try:
-			# Get patient doc
-			patient = frappe.get_doc("Patient", self.patient)
-			
-			# Copy allergies text field
-			if patient.allergies:
-				self.custom_allergies = patient.allergies
-			
-			# Clear existing tables before loading to avoid duplicates
-			self.set("custom_comorbidities", [])
-			self.set("custom_medication_history", [])
-			self.set("custom_surgery_history", [])
-			self.set("custom_family_history", [])
-			
-			# Safely add comorbidities
-			if patient.get("patient_diagnosis"):
-				for diag in patient.patient_diagnosis:
-					if diag.get("diagnosis"):
-						self.append("custom_comorbidities", {
-							"diagnosis": diag.diagnosis
-						})
-			
-			# Safely add medication history
-			if patient.get("patient_medication"):
-				for med in patient.patient_medication:
-					if med.get("medication"):
-						med_data = {
-							"medication": med.medication
-						}
-						
-						# Copy optional fields if they exist
-						optional_fields = ["dosage", "period", "status", "prescribed_by", "notes"]
-						for field in optional_fields:
-							if hasattr(med, field) and med.get(field):
-								med_data[field] = med.get(field)
-						
-						self.append("custom_medication_history", med_data)
-			
-			# Safely add surgical history
-			if patient.get("patient_surgery"):
-				for surgery in patient.patient_surgery:
-					if surgery.get("procedure_template"):
-						surgery_data = {
-							"procedure_template": surgery.procedure_template
-						}
-						
-						# Copy optional fields if they exist
-						optional_fields = ["procedure_date", "description", "status", 
-										"practitioner", "medical_department", "notes"]
-						for field in optional_fields:
-							if hasattr(surgery, field) and surgery.get(field):
-								surgery_data[field] = surgery.get(field)
-						
-						self.append("custom_surgery_history", surgery_data)
-			
-			# Safely add family history
-			if patient.get("family_medical_history"):
-				for diag in patient.family_medical_history:
-					if diag.get("diagnosis"):
-						self.append("custom_family_history", {
-							"diagnosis": diag.diagnosis
-						})
-			
-			# Ensure validation sees the changes
-			self._deduplicate_child_tables()
-			
-		except Exception as e:
-			frappe.log_error(f"Error loading history from patient: {str(e)}")
-			frappe.msgprint(_("Could not load patient history: {0}").format(str(e)), alert=True)
-
-	def update_patient_history(self):
-		"""
-		Update Patient DocType with history data from the encounter
-		This is only called during submit to ensure clean data
-		"""
-		if not self.patient:
-			return
-			
-		try:
-			# Get patient doc
-			patient = frappe.get_doc("Patient", self.patient)
-			
-			# Update allergies text field
-			if self.custom_allergies:
-				patient.allergies = self.custom_allergies
-			
-			# Update medical history / comorbidities (Patient Encounter Diagnosis)
-			if self.custom_comorbidities:
-				# Clear existing comorbidities
-				patient.patient_diagnosis = []
-				
-				# Add new records
-				for diag in self.custom_comorbidities:
-					if diag.diagnosis:
-						patient.append("patient_diagnosis", {
-							"diagnosis": diag.diagnosis
-						})
-			
-			# Update medication history (Medication History Item)
-			if self.custom_medication_history:
-				# Clear existing medication history
-				patient.patient_medication = []
-				
-				# Add new records
-				for med in self.custom_medication_history:
-					if med.medication:
-						med_data = {
-							"medication": med.medication
-						}
-						
-						# Copy optional fields if they exist
-						optional_fields = ["dosage", "period", "status", "prescribed_by", "notes"]
-						for field in optional_fields:
-							if hasattr(med, field) and getattr(med, field):
-								med_data[field] = getattr(med, field)
-						
-						patient.append("patient_medication", med_data)
-			
-			# Update surgical history (Surgery History Item)
-			if self.custom_surgery_history:
-				# Clear existing surgical history
-				patient.patient_surgery = []
-				
-				# Add new records
-				for surgery in self.custom_surgery_history:
-					if surgery.procedure_template:
-						surgery_data = {
-							"procedure_template": surgery.procedure_template
-						}
-						
-						# Copy optional fields if they exist
-						optional_fields = ["procedure_date", "description", "status", 
-										"practitioner", "medical_department", "notes"]
-						for field in optional_fields:
-							if hasattr(surgery, field) and getattr(surgery, field):
-								surgery_data[field] = getattr(surgery, field)
-						
-						patient.append("patient_surgery", surgery_data)
-			
-			# Update family history (Patient Encounter Diagnosis)
-			if self.custom_family_history:
-				# Clear existing family history
-				patient.family_medical_history = []
-				
-				# Add new records
-				for diag in self.custom_family_history:
-					if diag.diagnosis:
-						patient.append("family_medical_history", {
-							"diagnosis": diag.diagnosis
-						})
-			
-			# Save patient document with ignore_permissions
-			patient.save(ignore_permissions=True)
-			
-			frappe.msgprint(_("Patient history has been updated."), alert=True)
-			
-		except Exception as e:
-			frappe.log_error(f"Error updating patient history: {str(e)}")
-			frappe.msgprint(_("Error updating patient history: {0}").format(str(e)), alert=True)
-	
-	@frappe.whitelist()
-	def load_patient_history(self):
-		"""
-		Manual method to reload patient history into the encounter
-		"""
-		# Clear existing values using frappe's proper method
-		self.set("custom_comorbidities", [])
-		self.set("custom_medication_history", [])
-		self.set("custom_surgery_history", [])
-		self.set("custom_family_history", [])
-		
-		# Force a clear by committing these changes
-		self.db_update()
-		
-		# Now load fresh data
-		self.load_history_from_patient()
-		return True
-
-	def _deduplicate_child_tables(self):
-		"""Remove duplicate entries from child tables to prevent validation errors"""
-		for field in ["custom_comorbidities", "custom_medication_history", 
-					 "custom_surgery_history", "custom_family_history"]:
-			if not self.get(field):
-				continue
-				
-			# Create a set to track unique values
-			unique_tracker = set()
-			items_to_remove = []
-			
-			# For each table, identify what makes a row unique and track duplicates
-			for i, item in enumerate(self.get(field)):
-				if field == "custom_comorbidities" or field == "custom_family_history":
-					# For diagnosis tables, the diagnosis field is what makes it unique
-					unique_key = item.diagnosis if item.diagnosis else ""
-				elif field == "custom_medication_history":
-					# For medication history, the medication makes it unique
-					unique_key = item.medication if item.medication else ""
-				elif field == "custom_surgery_history":
-					# For surgery history, the procedure template makes it unique
-					unique_key = item.procedure_template if item.procedure_template else ""
-				else:
-					continue
-					
-				if not unique_key:
-					continue
-					
-				if unique_key in unique_tracker:
-					# This is a duplicate, mark for removal
-					items_to_remove.append(i)
-				else:
-					unique_tracker.add(unique_key)
-			
-			# Remove duplicates (in reverse order to not mess up indices)
-			for idx in reversed(items_to_remove):
-				self.get(field).pop(idx)
 
 
 @frappe.whitelist()

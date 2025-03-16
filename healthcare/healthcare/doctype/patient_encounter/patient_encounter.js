@@ -26,37 +26,6 @@ frappe.ui.form.on('Patient Encounter', {
 		show_orders(frm);
 	},
 
-	patient: function(frm) {
-		// Original functionality
-		frm.events.set_patient_info(frm);
-		
-		// New history sync functionality
-		if (frm.doc.patient && frm.doc.__islocal) {
-			// Auto-load patient history when patient is selected for new documents
-			setTimeout(() => {
-				frappe.call({
-					method: 'load_patient_history',
-					doc: frm.doc,
-					callback: function(r) {
-						if (r.message) {
-							frm.refresh_fields([
-								'custom_comorbidities', 
-								'custom_medication_history', 
-								'custom_allergies', 
-								'custom_surgery_history', 
-								'custom_family_history'
-							]);
-							frappe.show_alert({
-								message: __('Patient history loaded automatically'),
-								indicator: 'green'
-							}, 3);
-						}
-					}
-				});
-			}, 1000); // Slight delay to allow other onchange events to complete
-		}
-	},
-
 	setup: function(frm) {
 		frm.get_field('therapies').grid.editable_fields = [
 			{fieldname: 'therapy_type', columns: 8},
@@ -79,10 +48,6 @@ frappe.ui.form.on('Patient Encounter', {
 		refresh_field('drug_prescription');
 		refresh_field('lab_test_prescription');
 
-		// Setup patient history fields when the form is refreshed
-		// This ensures all fields are fully rendered
-		setup_patient_history_fields(frm);
-
 		if (!frm.doc.__islocal) {
 			if (frm.doc.docstatus === 1) {
 				if(!['Discharge Scheduled', 'Admission Scheduled', 'Admitted'].includes(frm.doc.inpatient_status)) {
@@ -101,19 +66,6 @@ frappe.ui.form.on('Patient Encounter', {
 				}
 			},__('View'));
 
-			// Add button to load patient history only for unsaved encounters
-			if (frm.doc.docstatus === 0) {
-				frm.add_custom_button(__('Reload Patient History'), function() {
-					load_patient_history(frm);
-				}, __('Actions'));
-				
-				// Add an info message about history sync
-				if (frm.doc.patient) {
-					frm.dashboard.add_comment(__('Note: Patient history will be updated when this encounter is submitted.'), 'blue');
-				}
-			}
-
-			// Add standard action buttons
 			if (frm.doc.docstatus == 1 && frm.doc.drug_prescription && frm.doc.drug_prescription.length>0) {
 				frm.add_custom_button(__('Medication Request'), function() {
 					create_medication_request(frm);
@@ -152,8 +104,9 @@ frappe.ui.form.on('Patient Encounter', {
 				frappe.new_doc("Clinical Note");
 			},__('Create'));
 
+
 			if (frm.doc.drug_prescription && frm.doc.inpatient_record && frm.doc.inpatient_status === "Admitted") {
-				frm.add_custom_button(__('IP Medication Order'), function() {
+				frm.add_custom_button(__('Inpatient Medication Order'), function() {
 					frappe.model.open_mapped_doc({
 						method: 'healthcare.healthcare.doctype.patient_encounter.patient_encounter.make_ip_medication_order',
 						frm: frm
@@ -161,7 +114,7 @@ frappe.ui.form.on('Patient Encounter', {
 				},__('Create'));
 			}
 
-			frm.add_custom_button(__('Nursing Task'), function() {
+			frm.add_custom_button(__('Nursing Tasks'), function() {
 				create_nursing_tasks(frm);
 			},__('Create'));
 		}
@@ -245,6 +198,10 @@ frappe.ui.form.on('Patient Encounter', {
 
 	appointment: function(frm) {
 		frm.events.set_appointment_fields(frm);
+	},
+
+	patient: function(frm) {
+		frm.events.set_patient_info(frm);
 	},
 
 	practitioner: function(frm) {
@@ -745,98 +702,4 @@ var show_orders = async function(frm) {
 		});
 		orders.refresh();
 	}
-}
-
-// Add patient history functionality
-let setup_patient_history_fields = function(frm) {
-	// We need to make sure the fields exist and are fully initialized
-	// before trying to modify their properties
-	
-	// Defer this until after render to ensure fields are available
-	setTimeout(() => {
-		try {
-			// Only attempt to customize table labels when the form is fully rendered
-			if (frm.is_dirty() || !frm.doc.__islocal) {
-				// Check each field exists before accessing its properties
-				if (frm.fields_dict.custom_comorbidities && 
-					frm.fields_dict.custom_comorbidities.grid && 
-					frm.fields_dict.custom_comorbidities.grid.wrapper) {
-					frm.fields_dict.custom_comorbidities.grid.wrapper.find('.grid-add-row').text('Add Comorbidity');
-				}
-				
-				if (frm.fields_dict.custom_medication_history && 
-					frm.fields_dict.custom_medication_history.grid && 
-					frm.fields_dict.custom_medication_history.grid.wrapper) {
-					frm.fields_dict.custom_medication_history.grid.wrapper.find('.grid-add-row').text('Add Medication');
-				}
-				
-				if (frm.fields_dict.custom_surgery_history && 
-					frm.fields_dict.custom_surgery_history.grid && 
-					frm.fields_dict.custom_surgery_history.grid.wrapper) {
-					frm.fields_dict.custom_surgery_history.grid.wrapper.find('.grid-add-row').text('Add Surgery');
-				}
-				
-				if (frm.fields_dict.custom_family_history && 
-					frm.fields_dict.custom_family_history.grid && 
-					frm.fields_dict.custom_family_history.grid.wrapper) {
-					frm.fields_dict.custom_family_history.grid.wrapper.find('.grid-add-row').text('Add Family History');
-				}
-			}
-		} catch (e) {
-			console.log("Error setting up patient history fields:", e);
-		}
-	}, 1000); // Give fields time to render
-}
-
-let load_patient_history = function(frm) {
-	if (!frm.doc.patient) {
-		frappe.msgprint(__('Please select a patient first'));
-		return;
-	}
-
-	frappe.confirm(
-		__('This will reload patient history from the Patient record. Any unsaved changes to history fields will be lost. Continue?'),
-		function() {
-			// On Yes
-			frappe.ui.form.save_or_cancel = () => {}; // Temporarily disable save prompt
-			
-			frappe.call({
-				method: 'load_patient_history',
-				doc: frm.doc,
-				freeze: true,
-				freeze_message: __('Loading patient history...'),
-				callback: function(r) {
-					if (r.message) {
-						try {
-							// Force a complete reload of the form
-							frm.refresh();
-							
-							// Completely reload the form from server to ensure we have fresh data
-							setTimeout(() => {
-								frm.reload_doc();
-								
-								// Show success message
-								frappe.show_alert({
-									message: __('Patient history loaded successfully'),
-									indicator: 'green'
-								}, 5);
-							}, 500);
-						} catch (e) {
-							console.error("Error refreshing form:", e);
-							frappe.show_alert({
-								message: __('Patient history loaded but there was an error displaying it. Please refresh the page.'),
-								indicator: 'orange'
-							}, 7);
-						}
-					}
-				},
-				error: function(r) {
-					frappe.show_alert({
-						message: __('Failed to load patient history'),
-						indicator: 'red'
-					}, 5);
-				}
-			});
-		}
-	);
 }
