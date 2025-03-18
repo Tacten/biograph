@@ -1,6 +1,6 @@
 {
  "actions": [],
- "beta": 0,
+ "autoname": "hash",
  "creation": "2020-02-26 16:48:16.835105",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -18,16 +18,19 @@
    "reqd": 1
   }
  ],
+ "grid_page_length": 50,
  "istable": 1,
  "links": [],
- "modified": "2020-02-26 16:58:16.480583",
+ "modified": "2025-03-18 22:53:10.071608",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Patient Encounter Diagnosis",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [],
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

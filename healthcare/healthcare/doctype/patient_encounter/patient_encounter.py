@@ -555,12 +555,9 @@ class PatientEncounter(Document):
 		self.set("custom_surgery_history", [])
 		self.set("custom_family_history", [])
 		
-		# Force a clear by committing these changes
-		self.db_update()
-		
 		# Now load fresh data
 		self.load_history_from_patient()
-		return True
+		return self
 
 	def _deduplicate_child_tables(self):
 		"""Remove duplicate entries from child tables to prevent validation errors"""
