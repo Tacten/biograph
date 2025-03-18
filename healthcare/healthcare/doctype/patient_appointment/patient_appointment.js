@@ -74,11 +74,33 @@ frappe.ui.form.on('Patient Appointment', {
 			frm.page.set_primary_action(__('Save'), () => frm.save());
 		}
 
+		// Handle Unavailable appointment
+		if (frm.doc.appointment_type === "Unavailable" && frm.doc.status !== "Cancelled") {
+			frm.add_custom_button(__('Cancel Unavailability'), function() {
+				update_status(frm, 'Cancelled');
+			}).addClass("btn-danger");
+			
+			return; // Return early to not add other buttons for this status
+		}
+
 		if (frm.doc.patient) {
 			frm.add_custom_button(__('Patient History'), function() {
 				frappe.route_options = { 'patient': frm.doc.patient };
 				frappe.set_route('patient_history');
 			}, __('View'));
+		}
+
+		// Handle appointments with "Needs Rescheduling" status
+		if (frm.doc.status === "Needs Rescheduling") {
+			frm.add_custom_button(__('Reschedule'), function() {
+				reschedule_appointment(frm);
+			}).addClass("btn-primary");
+			
+			frm.add_custom_button(__('Cancel'), function() {
+				update_status(frm, 'Cancelled');
+			});
+			
+			return; // Return early to not add other buttons for this status
 		}
 
 		if (["Open", "Checked In", "Confirmed"].includes(frm.doc.status) || (frm.doc.status == "Scheduled" && !frm.doc.__islocal)) {
@@ -421,10 +443,25 @@ let check_and_set_availability = function(frm) {
 				frm.set_value('practitioner', d.get_value('practitioner'));
 				frm.set_value('department', d.get_value('department'));
 				frm.set_value('appointment_date', d.get_value('appointment_date'));
-				frm.set_value('appointment_based_on_check_in', appointment_based_on_check_in)
+				
+				// Ensure appointment_based_on_check_in is set to false when not checked
+				// We need to explicitly set it to 0 to avoid null values
+				frm.set_value('appointment_based_on_check_in', appointment_based_on_check_in ? 1 : 0);
 
 				if (service_unit) {
 					frm.set_value('service_unit', service_unit);
+				}
+				
+				// If the appointment was previously marked as Needs Rescheduling, update the status
+				if (frm.doc.status === 'Needs Rescheduling') {
+					let appointment_date = moment(d.get_value('appointment_date'));
+					let today = moment().startOf('day');
+					
+					if (appointment_date.isAfter(today)) {
+						frm.set_value('status', 'Scheduled');
+					} else if (appointment_date.isSame(today)) {
+						frm.set_value('status', 'Open');
+					}
 				}
 
 				d.hide();
@@ -631,6 +668,16 @@ let check_and_set_availability = function(frm) {
 							slot_info.appointments.forEach((booked) => {
 								booked_moment = moment(booked.appointment_time, 'HH:mm:ss');
 								let end_time = booked_moment.clone().add(booked.duration, 'minutes');
+
+								// Special handling for unavailable appointments - always disable the slot
+								if (booked.status === "Unavailable" && booked.appointment_type === "Unavailable") {
+									// Check if the unavailable appointment overlaps with this slot
+									if (slot_start_time.isBefore(end_time) && slot_end_time.isAfter(booked_moment)) {
+										disabled = true;
+										tool_tip = __("Practitioner unavailable at this time");
+										return false;  // Exit the forEach loop early
+									}
+								}
 
 								// to get apointment count for all day appointments
 								if (slot.maximum_appointments) {
@@ -848,7 +895,13 @@ let create_vital_signs = function(frm) {
 
 let update_status = function(frm, status) {
 	let doc = frm.doc;
-	frappe.confirm(__('Are you sure you want to cancel this appointment?'),
+	let msg = status === 'Cancelled' ? 
+		(doc.appointment_type === 'Unavailable' ? 
+			__('Are you sure you want to cancel this unavailability record?') : 
+			__('Are you sure you want to cancel this appointment?')) : 
+		__('Set Status to') + " " + status;
+	
+	frappe.confirm(msg,
 		function() {
 			frappe.call({
 				method: 'healthcare.healthcare.doctype.patient_appointment.patient_appointment.update_status',
@@ -1080,4 +1133,43 @@ let show_message = function(d, message, field) {
 	field.df.description = `<div style="color:red;
 		padding:5px 5px 5px 5px">${message}</div>`
 	field.refresh();
+};
+
+let reschedule_appointment = function(frm) {
+	// For appointments with "Needs Rescheduling" status, we'll use the standard
+	// check_and_set_availability function but add special handling for updating the status
+	
+	// Store the original status to restore if user cancels
+	let original_status = frm.doc.status;
+	
+	// Use the standard availability checking function
+	check_and_set_availability(frm);
+	
+	// After the standard function completes and user selects a slot,
+	// we need to update the status from "Needs Rescheduling" to "Scheduled"
+	
+	// Hook into the form's "after_save" event temporarily
+	let after_save_handler = function() {
+		// If the appointment date or time was changed, update the status
+		if (frm.doc.status === "Needs Rescheduling") {
+			// Set status to Scheduled or Open based on the appointment date
+			let today = frappe.datetime.get_today();
+			let status = today === frm.doc.appointment_date ? "Open" : "Scheduled";
+			
+			frappe.db.set_value("Patient Appointment", frm.doc.name, "status", status)
+				.then(() => {
+					frappe.show_alert({
+						message: __("Appointment {0} has been rescheduled", [frm.doc.name]),
+						indicator: "green"
+					});
+					frm.reload_doc();
+				});
+		}
+		
+		// Remove the handler after it runs once
+		frm.off("after_save", after_save_handler);
+	};
+	
+	// Add the temporary handler
+	frm.on("after_save", after_save_handler);
 };

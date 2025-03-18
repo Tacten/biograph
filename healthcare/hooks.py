@@ -15,7 +15,7 @@ required_apps = ["erpnext"]
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/healthcare/css/healthcare.css"
-app_include_js = "healthcare.bundle.js"
+app_include_js = ["healthcare.bundle.js", "/assets/healthcare/js/mark_unavailable.js"]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/healthcare/css/healthcare.css"
@@ -30,12 +30,22 @@ app_include_js = "healthcare.bundle.js"
 
 # include js in page
 # page_js = {"page" : "public/js/file.js"}
+page_js = {
+    "appointment-calendar": "/assets/healthcare/js/mark_unavailable.js"
+}
 
 # include js in doctype views
-doctype_js = {"Sales Invoice": "public/js/sales_invoice.js"}
-# doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
+doctype_js = {
+    "Sales Invoice": "public/js/sales_invoice.js",
+    "Patient Appointment": "public/js/patient_appointment.js"
+}
+doctype_list_js = {
+    "Patient Appointment": "healthcare/doctype/patient_appointment/patient_appointment_list.js"
+}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
-# doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
+doctype_calendar_js = {
+    "Patient Appointment": "healthcare/doctype/patient_appointment/patient_appointment_calendar.js"
+}
 
 # Home Pages
 # ----------
