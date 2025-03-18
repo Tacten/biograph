@@ -128,18 +128,21 @@
    "fieldname": "mobile_phone",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Mobile"
+   "label": "Mobile",
+   "options": "Phone"
   },
   {
    "fieldname": "residence_phone",
    "fieldtype": "Data",
-   "label": "Phone (R)"
+   "label": "Phone (R)",
+   "options": "Phone"
   },
   {
    "fieldname": "office_phone",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Phone (Office)"
+   "label": "Phone (Office)",
+   "options": "Phone"
   },
   {
    "collapsible": 1,

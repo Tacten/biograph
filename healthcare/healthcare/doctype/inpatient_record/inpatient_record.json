@@ -120,6 +120,7 @@
    "fieldname": "mobile",
    "fieldtype": "Data",
    "label": "Mobile",
+   "options": "Phone",
    "read_only": 1
   },
   {
@@ -135,6 +136,7 @@
    "fieldname": "phone",
    "fieldtype": "Data",
    "label": "Phone",
+   "options": "Phone",
    "read_only": 1
   },
   {
