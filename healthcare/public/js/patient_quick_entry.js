@@ -20,6 +20,20 @@ frappe.ui.form.PatientQuickEntryForm = class PatientQuickEntryForm extends frapp
 		this.mandatory.splice(3, 0, ...custom_fields);
 
 		super.render_dialog();
+
+		this.dialog.fields_dict.phone.$wrapper.find('input').on('input', (event) => {
+            let inputVal = event.target.value;
+            if (/[a-zA-Z]/.test(inputVal)) {
+                frappe.throw(__('Only numbers are allowed in the Phone No field.'));
+            }
+        });
+		this.dialog.fields_dict.mobile.$wrapper.find('input').on('input', (event) => {
+            let inputVal = event.target.value;
+            if (/[a-zA-Z]/.test(inputVal)) {
+                frappe.throw(__('Only numbers are allowed in the Mobile No field.'));
+                this.dialog.fields_dict.mobile.set_value('');
+            }
+        });
 	}
 
 	get_standard_fields() {
