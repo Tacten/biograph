@@ -39,6 +39,7 @@ frappe.ui.form.on('Patient Encounter', {
 					doc: frm.doc,
 					callback: function(r) {
 						if (r.message) {
+							frm.set_value(r.message)
 							frm.refresh_fields([
 								'custom_comorbidities', 
 								'custom_medication_history', 
