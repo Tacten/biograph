@@ -161,6 +161,7 @@
    "fieldtype": "Data",
    "hidden": 1,
    "label": "Email",
+   "options": "Email",
    "print_hide": 1,
    "read_only": 1,
    "report_hide": 1
@@ -171,6 +172,7 @@
    "fieldtype": "Data",
    "hidden": 1,
    "label": "Mobile",
+   "options": "Phone",
    "print_hide": 1,
    "read_only": 1,
    "report_hide": 1,
