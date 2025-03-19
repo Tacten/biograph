@@ -35,6 +35,26 @@ class Patient(Document):
 		self.set_full_name()
 		self.flags.is_new_doc = self.is_new()
 		self.flags.existing_customer = self.is_new() and bool(self.customer)
+		
+		# Check for duplicates
+		if self.is_new() and frappe.db.get_single_value("Healthcare Settings", "enable_patient_duplicate_check"):
+			from healthcare.healthcare.utils import PatientDuplicateChecker
+			
+			checker = PatientDuplicateChecker(self)
+			result = checker.check_duplicates()
+			
+			if result["status"] == "disallow":
+				frappe.throw(
+					_(result["message"] or "Duplicate patient record(s) found"),
+					title=_("Duplicate Patient"),
+					is_minimizable=True,
+					wide=True,
+				)
+			elif result["status"] == "warn":
+				self.flags.duplicate_check_warning = {
+					"message": result["message"] or "Possible duplicate patient record(s) found",
+					"matches": result["matches"]
+				}
 
 	def before_insert(self):
 		self.set_missing_customer_details()

@@ -1302,3 +1302,88 @@ def add_node():
 		args.parent_healthcare_service_unit = None
 
 	frappe.get_doc(args).insert()
+
+
+class PatientDuplicateChecker:
+	def __init__(self, patient_doc):
+		self.patient = patient_doc
+		self.settings = frappe.get_doc("Healthcare Settings")
+		self.duplicate_check_enabled = self.settings.get("enable_patient_duplicate_check", 0)
+		
+	def check_duplicates(self):
+		"""Check for duplicate patients based on configured rules"""
+		if not self.duplicate_check_enabled:
+			return {"status": "allow", "matches": []}
+			
+		# Get the configuration
+		rule_links = self.settings.get("patient_duplicate_check_rules", [])
+		
+		if not rule_links:
+			return {"status": "allow", "matches": []}
+			
+		# Get all rules and sort by priority
+		rules = []
+		for rule_link in rule_links:
+			if rule_link.rule_configuration:
+				rule_doc = frappe.get_doc("Patient Duplicate Check Rule Configuration", rule_link.rule_configuration)
+				rules.append(rule_doc)
+		
+		if not rules:
+			return {"status": "allow", "matches": []}
+			
+		# Sort rules by priority
+		sorted_rules = sorted(rules, key=lambda x: x.priority)
+		
+		# Check each rule
+		for rule in sorted_rules:
+			result = self._check_rule(rule)
+			if result["status"] != "allow":
+				return result
+				
+		return {"status": "allow", "matches": []}
+	
+	def _check_rule(self, rule):
+		"""Check a specific rule against existing patients"""
+		if not hasattr(rule, 'duplicate_fields') or not rule.duplicate_fields:
+			return {"status": "allow", "matches": []}
+		
+		filters = {}
+		
+		# Build filters based on rule fields
+		for field_config in rule.duplicate_fields:
+			field_name = field_config.field_name
+			if hasattr(self.patient, field_name) and self.patient.get(field_name):
+				filters[field_name] = self.patient.get(field_name)
+		
+		if not filters:
+			return {"status": "allow", "matches": []}
+			
+		# Add filter to exclude current patient if it exists
+		if self.patient.name and not self.patient.flags.is_new_doc:
+			filters["name"] = ["!=", self.patient.name]
+			
+		# Query for matching patients
+		matches = frappe.get_all(
+			"Patient", 
+			filters=filters, 
+			fields=["name", "patient_name", "sex", "dob", "mobile", "email"]
+		)
+		
+		if matches:
+			return {
+				"status": rule.action.lower(),
+				"message": rule.message or _("Duplicate patient record(s) found"),
+				"matches": matches
+			}
+			
+		return {"status": "allow", "matches": []}
+
+@frappe.whitelist()
+def check_patient_duplicates(patient):
+	"""Utility function to check for patient duplicates from frontend"""
+	if isinstance(patient, str):
+		patient = frappe.parse_json(patient)
+		
+	doc = frappe.get_doc(dict(patient))
+	checker = PatientDuplicateChecker(doc)
+	return checker.check_duplicates()

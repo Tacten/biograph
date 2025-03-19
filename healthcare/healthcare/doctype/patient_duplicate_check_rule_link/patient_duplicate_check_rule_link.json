@@ -1,0 +1,60 @@
+{
+ "actions": [],
+ "autoname": "autoincrement",
+ "creation": "2023-07-26 16:20:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "rule_configuration",
+  "rule_name_display",
+  "action_display",
+  "priority_display"
+ ],
+ "fields": [
+  {
+   "fieldname": "rule_configuration",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Rule Configuration",
+   "options": "Patient Duplicate Check Rule Configuration",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "rule_configuration.rule_name",
+   "fieldname": "rule_name_display",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Rule Name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "rule_configuration.action",
+   "fieldname": "action_display",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Action",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "rule_configuration.priority",
+   "fieldname": "priority_display",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Priority",
+   "read_only": 1
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2023-07-26 16:20:00.000000",
+ "modified_by": "Administrator",
+ "module": "Healthcare",
+ "name": "Patient Duplicate Check Rule Link",
+ "naming_rule": "Autoincrement",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+} 

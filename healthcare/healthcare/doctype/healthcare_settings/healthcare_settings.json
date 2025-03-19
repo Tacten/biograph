@@ -46,6 +46,11 @@
   "receivable_account",
   "order_details_section",
   "process_service_request_only_if_paid",
+  "patient_duplicate_check_tab",
+  "duplicate_check_section",
+  "enable_patient_duplicate_check",
+  "duplicate_check_rules_section",
+  "patient_duplicate_check_rules",
   "alerts_tab",
   "out_patient_sms_alerts",
   "send_registration_msg",
@@ -401,6 +406,36 @@
    "fieldname": "orders_tab",
    "fieldtype": "Tab Break",
    "label": "Orders"
+  },
+  {
+   "fieldname": "patient_duplicate_check_tab",
+   "fieldtype": "Tab Break",
+   "label": "Patient Duplicate Check"
+  },
+  {
+   "fieldname": "duplicate_check_section",
+   "fieldtype": "Section Break",
+   "label": "Settings"
+  },
+  {
+   "default": "0",
+   "description": "Enable checking for duplicate patient records when creating new patients",
+   "fieldname": "enable_patient_duplicate_check",
+   "fieldtype": "Check",
+   "label": "Enable Patient Duplicate Check"
+  },
+  {
+   "fieldname": "duplicate_check_rules_section",
+   "fieldtype": "Section Break",
+   "label": "Rules",
+   "depends_on": "eval:doc.enable_patient_duplicate_check"
+  },
+  {
+   "depends_on": "eval:doc.enable_patient_duplicate_check",
+   "fieldname": "patient_duplicate_check_rules",
+   "fieldtype": "Table",
+   "label": "Patient Duplicate Check Rules",
+   "options": "Patient Duplicate Check Rule Link"
   }
  ],
  "issingle": 1,
