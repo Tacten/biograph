@@ -55,13 +55,18 @@ frappe.listview_settings["Patient Appointment"] = {
 		}, null, "secondary", "cancel-unavailability").addClass("btn-warning").css({"margin-right": "10px"});
 	},
 	
-	// Custom formatter to highlight unavailability appointments
+	// Custom formatter to display unavailability appointments
 	formatters: {
+		name: function(value, df, doc) {
+			if (doc.appointment_type === "Unavailable") {
+				return doc.patient_name || value;
+			}
+			return value;
+		},
 		patient: function(value, df, doc) {
-			if (doc.appointment_type === "Unavailable" && doc.patient === "UNAVAILABLE-BLOCK") {
+			if (doc.appointment_type === "Unavailable") {
 				return `<span class="indicator-pill red">
-					${__('Unavailable')}${doc.practitioner_name ? ': ' + doc.practitioner_name : ''}
-					${doc.service_unit ? ': ' + doc.service_unit : ''}
+					${doc.patient_name || __('Unavailable')}
 				</span>`;
 			}
 			return value;

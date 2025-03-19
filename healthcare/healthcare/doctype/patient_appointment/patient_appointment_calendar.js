@@ -33,7 +33,7 @@ frappe.views.calendar["Patient Appointment"] = {
 					window.show_unavailability_dialog();
 				});
 			}
-		}, null, "primary", "mark-unavailable").addClass("btn-danger").css({"margin-right": "10px", "font-weight": "bold"});
+		}, null, "primary").addClass("btn-danger").css({"margin-right": "10px", "font-weight": "bold"});
 		
 		// Add "Cancel Unavailability" button
 		cal.page.add_inner_button(__("Cancel Unavailability"), function() {
@@ -48,7 +48,7 @@ frappe.views.calendar["Patient Appointment"] = {
 					healthcare.appointment.cancel_unavailability();
 				});
 			}
-		}, null, "secondary", "cancel-unavailability").addClass("btn-warning").css({"margin-right": "10px"});
+		}, null, "secondary").addClass("btn-warning").css({"margin-right": "10px"});
 		
 		// Backup method to add button to the FullCalendar header
 		setTimeout(function() {

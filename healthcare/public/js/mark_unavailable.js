@@ -3,6 +3,11 @@ console.log("mark_unavailable.js loaded!");
 
 frappe.provide("healthcare.appointment");
 
+// Global function to expose for direct access from calendar view
+window.show_unavailability_dialog = function() {
+    healthcare.appointment.show_unavailability_dialog();
+};
+
 // Function to show the unavailability dialog
 healthcare.appointment.show_unavailability_dialog = function() {
     // Create the unavailability dialog
@@ -37,7 +42,6 @@ healthcare.appointment.show_unavailability_dialog = function() {
                 reqd: 0,
                 hidden: 1,
                 onchange: function() {
-                    // If practitioner is selected, check for service units related to the practitioner
                     if (this.value) {
                         frappe.call({
                             method: "frappe.client.get",
@@ -47,7 +51,6 @@ healthcare.appointment.show_unavailability_dialog = function() {
                             },
                             callback: function(r) {
                                 if (r.message && r.message.practitioner_schedules) {
-                                    // Show a message if the practitioner has service units
                                     let service_units = [];
                                     r.message.practitioner_schedules.forEach(function(schedule) {
                                         if (schedule.service_unit) {
@@ -98,11 +101,6 @@ healthcare.appointment.show_unavailability_dialog = function() {
                 default: frappe.datetime.get_today()
             },
             {
-                fieldname: "time_section",
-                label: __("Time Range"),
-                fieldtype: "Section Break"
-            },
-            {
                 fieldname: "from_time",
                 label: __("From Time"),
                 fieldtype: "Time",
@@ -117,11 +115,6 @@ healthcare.appointment.show_unavailability_dialog = function() {
                 default: "17:00:00"
             },
             {
-                fieldname: "reason_section",
-                label: __("Additional Information"),
-                fieldtype: "Section Break"
-            },
-            {
                 fieldname: "reason",
                 label: __("Reason for Unavailability"),
                 fieldtype: "Small Text"
@@ -129,18 +122,15 @@ healthcare.appointment.show_unavailability_dialog = function() {
         ],
         primary_action_label: __("Check Conflicts"),
         primary_action: function() {
-            // Get values from dialog
             let values = d.get_values();
             
             if (!values) return;
             
-            // Validate time range
             if (values.from_time >= values.to_time) {
                 frappe.throw(__("From Time must be before To Time"));
                 return;
             }
             
-            // Ensure times have proper format with seconds
             if (values.from_time && typeof values.from_time === 'string') {
                 if (!values.from_time.includes(':')) {
                     values.from_time = values.from_time + ":00";
@@ -159,33 +149,23 @@ healthcare.appointment.show_unavailability_dialog = function() {
                 }
             }
             
-            // Calculate and log the duration for debugging
             try {
                 let from_datetime = frappe.datetime.str_to_obj(values.date + " " + values.from_time);
                 let to_datetime = frappe.datetime.str_to_obj(values.date + " " + values.to_time);
                 let duration_minutes = (to_datetime - from_datetime) / (1000 * 60);
-                console.log(`Duration calculated in dialog: ${duration_minutes} minutes`);
-                console.log(`From time: ${values.from_time}, To time: ${values.to_time}`);
-                
-                // Store the duration in the values object
                 values.duration = duration_minutes;
             } catch (e) {
-                console.error("Error calculating duration in dialog:", e);
+                console.error("Error calculating duration:", e);
             }
             
-            // Show processing dialog
             frappe.show_alert({
                 message: __("Checking for conflicts..."),
                 indicator: "blue"
             });
             
-            console.log("Final values being passed:", values);
-            
-            // Store values for later use and close this dialog 
             let formValues = {...values};
             d.hide();
             
-            // Check for conflicts
             frappe.call({
                 method: "healthcare.healthcare.doctype.patient_appointment.patient_appointment.check_unavailability_conflicts",
                 args: {
@@ -193,44 +173,50 @@ healthcare.appointment.show_unavailability_dialog = function() {
                 },
                 callback: function(r) {
                     if (r.message && Array.isArray(r.message) && r.message.length > 0) {
-                        console.log("Conflicts found:", r.message);
-                        // Show conflicts dialog - no option to proceed if conflicts exist
                         healthcare.appointment.show_conflict_dialog(formValues, r.message);
                     } else {
-                        console.log("No conflicts found");
-                        // No conflicts found, show confirmation dialog
                         frappe.confirm(
                             __("Are you sure you want to mark this time as unavailable?"),
                             function() {
-                                // Yes - create the unavailability
                                 healthcare.appointment.create_unavailability(formValues);
                             }
                         );
                     }
-                },
-                error: function(err) {
-                    console.error("Error checking conflicts:", err);
-                    frappe.msgprint({
-                        title: __("Error"),
-                        indicator: "red",
-                        message: __("An error occurred while checking for conflicts. Please try again.")
-                    });
                 }
             });
         }
     });
     
     // Add custom styling to match the design
-    d.$wrapper.find('.modal-dialog').css('max-width', '500px');
-    d.$wrapper.find('.form-section').css({
-        'border-top': '1px solid var(--border-color)',
-        'padding-top': '15px',
-        'margin-top': '15px'
+    d.$wrapper.find('.modal-dialog').css({
+        'max-width': '600px',
+        'margin': '1.75rem auto'
     });
-    d.$wrapper.find('.form-section .section-head').css({
-        'font-weight': '600',
-        'font-size': '14px',
-        'padding': '10px 0'
+    
+    d.$wrapper.find('.modal-content').css({
+        'border-radius': '8px'
+    });
+    
+    d.$wrapper.find('.modal-body').css({
+        'padding': '20px'
+    });
+    
+    d.$wrapper.find('.frappe-control').css({
+        'margin-bottom': '15px'
+    });
+    
+    d.$wrapper.find('input, select, textarea').css({
+        'background-color': '#f8f9fa',
+        'border': '1px solid #dee2e6',
+        'border-radius': '4px',
+        'padding': '8px 12px'
+    });
+    
+    d.$wrapper.find('.btn-primary').css({
+        'background-color': '#000',
+        'border-color': '#000',
+        'border-radius': '4px',
+        'padding': '8px 20px'
     });
     
     d.show();
@@ -532,7 +518,4 @@ healthcare.appointment.cancel_unavailability = function(date) {
         
         d.show();
     }
-};
-
-// Make the function globally available for easier access
-window.show_unavailability_dialog = healthcare.appointment.show_unavailability_dialog; 
+}; 
