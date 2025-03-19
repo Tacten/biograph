@@ -163,3 +163,129 @@ This rule will warn users when they try to create a patient whose first name, la
 ---
 
 By following this documentation, healthcare administrators can efficiently configure patient duplicate checking, and front desk staff can understand the system's behavior when creating new patients. This helps maintain clean patient data while providing flexibility for legitimate patient record creation.
+
+
+## Extra Details
+
+
+# Understanding the "Is Required" Field in Patient Duplicate Check
+
+In the Patient Duplicate Check system, the "Is Required" field is part of the rule configuration but might be confusing. Let me explain how it works:
+
+## What "Is Required" Actually Does
+
+The "Is Required" checkbox in the Fields to Check child table serves as a **documentation/visual indicator** rather than a functional filter. Here's what you should know:
+
+1. **It Does Not Filter Rules**: The system will check for duplicates based on all fields added to a rule, regardless of whether "Is Required" is checked or not.
+
+2. **Matching Logic**: When checking for duplicates, ALL fields in a rule must match for the rule to be triggered. The "Is Required" flag doesn't change this behavior.
+
+3. **Display Purpose**: The checkbox is primarily meant to help administrators visually identify which fields they consider essential for a particular rule.
+
+## Common Misunderstandings
+
+You might think "Is Required" means:
+- Only required fields are used in matching (not true - all fields are used)
+- The rule only applies if required fields have values (not true - the rule checks all fields that have values)
+
+## How Duplicate Checking Actually Works
+
+1. For each rule, the system looks at all fields added to that rule (first_name, last_name, gender, etc.)
+2. It builds a filter where ALL these fields must match exactly
+3. If a field in the rule has no value in the new patient record being created, that field is skipped in the filter
+4. If any existing patient matches ALL the non-empty fields in the filter, the rule triggers
+
+## Example for Clarity
+
+If you have a rule with these fields:
+- First Name (Is Required: Yes)
+- Last Name (Is Required: Yes)
+- Mobile (Is Required: No)
+
+And a user creates a new patient with:
+- First Name: "John"
+- Last Name: "Doe"
+- Mobile: "1234567890"
+
+The system will check for existing patients where:
+- First Name = "John" AND
+- Last Name = "Doe" AND
+- Mobile = "1234567890"
+
+If the user didn't enter a mobile number, the system would only check for:
+- First Name = "John" AND
+- Last Name = "Doe"
+
+The "Is Required" flags don't change this behavior. They're simply visual indicators for administrators.
+
+## Recommendation
+
+When configuring rules:
+1. Use "Is Required" as a visual reminder of which fields you consider most important
+2. Remember that ALL fields in a rule must match for the rule to trigger (if they have values)
+3. Focus more on the rule's priority and action to control the duplicate checking behavior
+
+
+
+## What "Is Required" Does
+
+The "Is Required" flag determines whether a field must have a value for that field to be included in the duplicate check filter. Here's how it works in the actual code implementation:
+
+1. For each field in a rule's configuration, the system checks if the patient being created has a value for that field
+2. **If the patient has a value** for the field, it adds that field to the filter criteria
+3. **If the patient doesn't have a value** for the field, it's not added to the filter
+
+**Important:** Currently, the "Is Required" flag is stored in the configuration but isn't actively used in the filter logic. This is because the system automatically only includes fields that have values in the new patient record.
+
+## How Filters Are Built and Used
+
+
+### Example to Illustrate:
+
+1. Let's say you have a rule checking First Name, Last Name, and Mobile
+2. A new patient is being created with:
+   - First Name: "John"
+   - Last Name: "Smith"  
+   - Mobile: (empty)
+
+3. The system builds a filter like:
+   ```
+   {
+     "first_name": "John",
+     "last_name": "Smith"
+   }
+   ```
+
+4. It then searches for existing patients with BOTH first_name="John" AND last_name="Smith"
+5. If matches are found, the rule's action (Warn/Disallow) applies
+
+## Key Points About Filtering Logic:
+
+1. **All filters are combined with AND logic** - all conditions must match for a record to be considered a duplicate
+2. Only fields with values in the new patient record are included in the filter
+3. A rule with multiple fields will only find matches where ALL those fields match (with values)
+4. Empty/null values in the new record are not used for matching
+
+## How "Is Required" Could Be Enhanced
+
+In a future enhancement, the "Is Required" flag could be used to:
+
+1. Determine if the rule should even be evaluated when a required field is empty
+2. Change the validation behavior to require certain fields before creating a patient
+3. Create more sophisticated matching logic (for example, at least 3 of 5 fields must match)
+
+## Practical Example:
+
+**Rule configuration:**
+- Fields: First Name (required), Last Name (required), Mobile (not required)
+- Action: Warn
+- Priority: 10
+
+**Current behavior:**
+- If a patient has all three fields filled, all three are used for matching
+- If a patient has only First Name and Last Name filled, only those two are used
+- The rule will only match if the specified fields with values all match
+
+This means that the "Is Required" flag currently serves as documentation of which fields you consider essential for that rule, but in practice, the system includes all fields that have values in the filtering process.
+
+
