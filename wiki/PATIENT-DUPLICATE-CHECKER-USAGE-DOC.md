@@ -16,6 +16,9 @@ The Patient Duplicate Check functionality helps prevent the creation of duplicat
 - Warn about potential duplicates but allow creation
 - Disallow creation when exact matches are found
 
+### Demo Video
+[![Patient Duplicate Check Demo](https://drive.google.com/file/d/1uXZK8XKKaNfxo5PeikR6nXy2fFxFsNPS/view?usp=drive_link)](https://drive.google.com/file/d/18_jexnpFnVOBQxqs58k0EVm_uCQZV-yR/view?usp=drive_link)
+
 ## 2. Configuration
 
 ### 2.1 Enabling Patient Duplicate Check
