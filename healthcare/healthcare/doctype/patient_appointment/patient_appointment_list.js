@@ -29,30 +29,15 @@ frappe.listview_settings["Patient Appointment"] = {
 			if (typeof window.show_unavailability_dialog === 'function') {
 				window.show_unavailability_dialog();
 			} else {
-				// Fallback in case script is not loaded
-				frappe.msgprint(__("Unable to load unavailability dialog. Please refresh the page."));
-				
 				// Try to load the script
 				frappe.require("/assets/healthcare/js/mark_unavailable.js", function() {
 					window.show_unavailability_dialog();
 				});
 			}
-		}, null, "primary", "mark-unavailable").addClass("btn-danger").css({"margin-right": "10px", "font-weight": "bold"});
-		
-		// Add "Cancel Unavailability" button
-		listview.page.add_inner_button(__("Cancel Unavailability"), function() {
-			if (typeof healthcare !== 'undefined' && healthcare.appointment && healthcare.appointment.cancel_unavailability) {
-				healthcare.appointment.cancel_unavailability();
-			} else {
-				// Fallback in case script is not loaded
-				frappe.msgprint(__("Unable to load cancel unavailability dialog. Please refresh the page."));
-				
-				// Try to load the script
-				frappe.require("/assets/healthcare/js/mark_unavailable.js", function() {
-					healthcare.appointment.cancel_unavailability();
-				});
-			}
-		}, null, "secondary", "cancel-unavailability").addClass("btn-warning").css({"margin-right": "10px"});
+		}, null, "secondary").css({
+			"margin-right": "10px",
+			"font-weight": "normal"
+		});
 	},
 	
 	// Custom formatter to display unavailability appointments
