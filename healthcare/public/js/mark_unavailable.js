@@ -20,6 +20,8 @@ healthcare.appointment.show_unavailability_dialog = function() {
                 fieldtype: "Select",
                 options: ["Practitioner", "Service Unit"],
                 reqd: 1,
+                hidden: 1,
+                default: "Practitioner",
                 onchange: function() {
                     if (this.value === "Practitioner") {
                         d.set_df_property("practitioner", "hidden", 0);
