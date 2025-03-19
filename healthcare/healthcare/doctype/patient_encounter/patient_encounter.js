@@ -26,6 +26,38 @@ frappe.ui.form.on('Patient Encounter', {
 		show_orders(frm);
 	},
 
+	patient: function(frm) {
+		// Original functionality
+		frm.events.set_patient_info(frm);
+		
+		// New history sync functionality
+		if (frm.doc.patient && frm.doc.__islocal) {
+			// Auto-load patient history when patient is selected for new documents
+			setTimeout(() => {
+				frappe.call({
+					method: 'load_patient_history',
+					doc: frm.doc,
+					callback: function(r) {
+						if (r.message) {
+							frm.set_value(r.message)
+							frm.refresh_fields([
+								'custom_comorbidities', 
+								'custom_medication_history', 
+								'custom_allergies', 
+								'custom_surgery_history', 
+								'custom_family_history'
+							]);
+							frappe.show_alert({
+								message: __('Patient history loaded automatically'),
+								indicator: 'green'
+							}, 3);
+						}
+					}
+				});
+			}, 1000); // Slight delay to allow other onchange events to complete
+		}
+	},
+
 	setup: function(frm) {
 		frm.get_field('therapies').grid.editable_fields = [
 			{fieldname: 'therapy_type', columns: 8},

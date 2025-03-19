@@ -61,6 +61,18 @@ frappe.ui.form.on('Patient', {
 		} else {
 			$(frm.fields_dict['age_html'].wrapper).html('');
 		}
+	},
+	mobile : function (frm) {
+		let field_value = frm.doc.mobile;
+        if (field_value && /[a-zA-Z]/.test(field_value)) {
+            frappe.throw(__('Only numbers are allowed in the Mobile No field.'));
+        }
+	},
+	phone : function (frm) {
+		let field_value = frm.doc.phone;
+        if (field_value && /[a-zA-Z]/.test(field_value)) {
+            frappe.throw(__('Only numbers are allowed in the Phone No field.'));
+        }
 	}
 });
 

@@ -107,4 +107,4 @@ healthcare.appointment.show_unavailability_dialog = function() {
             // ... existing code continues ...
         }
     });
-}; 
+} 
