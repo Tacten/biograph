@@ -13,6 +13,8 @@ frappe.ui.form.on('Therapy Plan', {
 	refresh: function(frm) {
 		if (!frm.doc.__islocal) {
 			frm.trigger('show_progress_for_therapies');
+			frm.trigger('show_progress_for_invoice_billing');
+			
 			if (frm.doc.status != 'Completed') {
 				let therapy_types = (frm.doc.therapy_plan_details || []).map(function(d){ return d.therapy_type; });
 				const fields = [{
@@ -50,11 +52,11 @@ frappe.ui.form.on('Therapy Plan', {
 				}, __('Create'));
 			}
 
-			if (frm.doc.therapy_plan_template && !frm.doc.invoiced) {
-				frm.add_custom_button(__('Sales Invoice'), function() {
-					frm.trigger('make_sales_invoice');
-				}, __('Create'));
-			}
+			
+			frm.add_custom_button(__('Sales Invoice'), function() {
+				frm.trigger('make_sales_invoice');
+			}, __('Create'));
+			
 		}
 
 		if (frm.doc.therapy_plan_template) {
@@ -68,19 +70,72 @@ frappe.ui.form.on('Therapy Plan', {
 	},
 
 	make_sales_invoice: function(frm) {
-		frappe.call({
-			args: {
-				'reference_name': frm.doc.name,
-				'patient': frm.doc.patient,
-				'company': frm.doc.company,
-				'therapy_plan_template': frm.doc.therapy_plan_template
+		let fields_ = [
+			{
+				"fieldname" : "therapy_type",
+				"label" : "Therapy Type",
+				"fieldtype" : "Link",
+				"options" : "Therapy Type",
+				"read_only" : 1,
+				"in_list_view" :1
 			},
-			method: 'healthcare.healthcare.doctype.therapy_plan.therapy_plan.make_sales_invoice',
-			callback: function(r) {
-				var doclist = frappe.model.sync(r.message);
-				frappe.set_route('Form', doclist[0].doctype, doclist[0].name);
+			{
+				"fieldname" : "sessions",
+				"label" : "Sessions",
+				"fieldtype" : "Int",
+				"in_list_view" :1
 			}
-		});
+		]
+		
+		frappe.call({
+			method : "healthcare.healthcare.doctype.therapy_plan.therapy_plan.get_services_details",
+			args : {
+				'self' : frm.doc
+			},
+			callback:(r)=>{
+				let data = r.message
+				console.log(data)
+				let dialog = new frappe.ui.Dialog({
+					title: __("Update Items"),
+					size: "extra-large",
+					fields: [
+						{
+							fieldname: "item",
+							fieldtype: "Table",
+							label: "Billing For",
+							cannot_add_rows: true,
+							in_place_edit: false,
+							data: data,
+							get_data: () => {
+								return data;
+							},
+							fields: fields_,
+						},
+					],
+					primary_action: function () {
+						frappe.call({
+							args: {
+								'reference_name': frm.doc.name,
+								'patient': frm.doc.patient,
+								'company': frm.doc.company,
+								'items' : dialog.get_value("item"),
+								'therapy_plan_template': frm.doc.therapy_plan_template,
+
+							},
+							method: 'healthcare.healthcare.doctype.therapy_plan.therapy_plan.make_sales_invoice',
+							callback: function(r) {
+								var doclist = frappe.model.sync(r.message);
+								frappe.set_route('Form', doclist[0].doctype, doclist[0].name);
+							}
+						});
+					},
+					primary_action_label: __("Create"),
+				})
+				dialog.show();
+			}
+		})
+		
+		
 	},
 
 	therapy_plan_template: function(frm) {
@@ -119,6 +174,38 @@ frappe.ui.form.on('Therapy Plan', {
 		message = title;
 		frm.dashboard.add_progress(__('Status'), bars, message);
 	},
+	show_progress_for_invoice_billing: function(frm) {
+		let bars = [];
+		let message = '';
+
+		// completed sessions
+		let title = __('{0} amount billed out of {1} amount', [frm.doc.paid_amount, frm.doc.total_amount]);
+		if(frm.doc.total_amount == frm.doc.paid_amount){
+			title = __('100% billed', [frm.doc.paid_amount, frm.doc.total_amount]);
+		}
+		
+		bars.push({
+			'title': title,
+			'width': (frm.doc.total_amount / frm.doc.paid_amount * 100) + '%',
+			'progress_class': 'progress-bar-success'
+		});
+		if (bars[0].width == '0%') {
+			bars[0].width = '0.5%';
+		}
+		message = title;
+		frm.dashboard.add_progress(__('Status'), bars, message);
+	},
+	get_billed_invoiced_data : function (frm) {
+		frappe.call({
+			method: "healthcare.healthcare.doctype.therapy_plan.therapy_plan.get_invoiced_details",
+			args : {
+				self : frm.doc
+			},
+			callback : (r) =>{
+				frm.refresh_field("invoice_json")
+			}
+		})
+	}
 });
 
 frappe.ui.form.on('Therapy Plan Detail', {
@@ -131,3 +218,7 @@ frappe.ui.form.on('Therapy Plan Detail', {
 		refresh_field('total_sessions');
 	}
 });
+
+function callback(r){
+	return r.message
+}
