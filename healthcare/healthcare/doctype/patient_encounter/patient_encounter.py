@@ -35,6 +35,7 @@ class PatientEncounter(Document):
 			create_therapy_plan(self)
 		self.make_service_request()
 		self.make_medication_request()
+		self.update_patient_history()
 		# to save service_request name in prescription
 		self.save("Update")
 		self.db_set("status", "Completed")
@@ -367,8 +368,8 @@ class PatientEncounter(Document):
 			return
 			
 		# Safety check - don't proceed if we already have data and this isn't forced
-		if (self.get("custom_comorbidities") or self.get("custom_medication_history") or 
-			self.get("custom_surgery_history") or self.get("custom_family_history")):
+		if (self.get("patient_madical_history") or self.get("patient_medication_history") or 
+			self.get("patient_surgery_history") or self.get("patient_surgery_history")) or self.get("social_history"):
 			return
 			
 		try:
@@ -377,25 +378,42 @@ class PatientEncounter(Document):
 			
 			# Copy allergies text field
 			if patient.allergies:
-				self.custom_allergies = patient.allergies
+				self.allergies = patient.allergies
+			
+			if patient.social_history:
+				self.social_history = patient.social_history
+
+			
+			if patient.surgical_history:
+				self.surgical_history = patient.surgical_history
+			
+			if patient.family_history:
+				self.family_history = patient.family_history
+
+			if patient.medication:
+				self.medication = patient.medication
+			
+			if patient.medical_history:
+				self.medical_history = patient.medical_history
+			
 			
 			# Clear existing tables before loading to avoid duplicates
-			self.set("custom_comorbidities", [])
-			self.set("custom_medication_history", [])
-			self.set("custom_surgery_history", [])
-			self.set("custom_family_history", [])
+			self.set("patient_madical_history", [])
+			self.set("patient_medication_history", [])
+			self.set("patient_surgery_history", [])
+			self.set("patient_surgery_history", [])
 			
 			# Safely add comorbidities
-			if patient.get("patient_diagnosis"):
-				for diag in patient.patient_diagnosis:
+			if patient.get("patient_madical_history"):
+				for diag in patient.patient_madical_history:
 					if diag.get("diagnosis"):
-						self.append("custom_comorbidities", {
+						self.append("patient_madical_history", {
 							"diagnosis": diag.diagnosis
 						})
 			
 			# Safely add medication history
-			if patient.get("patient_medication"):
-				for med in patient.patient_medication:
+			if patient.get("patient_medication_history"):
+				for med in patient.patient_medication_history:
 					if med.get("medication"):
 						med_data = {
 							"medication": med.medication
@@ -407,11 +425,11 @@ class PatientEncounter(Document):
 							if hasattr(med, field) and med.get(field):
 								med_data[field] = med.get(field)
 						
-						self.append("custom_medication_history", med_data)
+						self.append("patient_medication_history", med_data)
 			
 			# Safely add surgical history
-			if patient.get("patient_surgery"):
-				for surgery in patient.patient_surgery:
+			if patient.get("patient_surgery_history"):
+				for surgery in patient.patient_surgery_history:
 					if surgery.get("procedure_template"):
 						surgery_data = {
 							"procedure_template": surgery.procedure_template
@@ -424,13 +442,13 @@ class PatientEncounter(Document):
 							if hasattr(surgery, field) and surgery.get(field):
 								surgery_data[field] = surgery.get(field)
 						
-						self.append("custom_surgery_history", surgery_data)
+						self.append("patient_surgery_history", surgery_data)
 			
 			# Safely add family history
 			if patient.get("family_medical_history"):
 				for diag in patient.family_medical_history:
 					if diag.get("diagnosis"):
-						self.append("custom_family_history", {
+						self.append("family_medical_history", {
 							"diagnosis": diag.diagnosis
 						})
 			
@@ -454,28 +472,43 @@ class PatientEncounter(Document):
 			patient = frappe.get_doc("Patient", self.patient)
 			
 			# Update allergies text field
-			if self.custom_allergies:
-				patient.allergies = self.custom_allergies
+			if self.allergies:
+				patient.allergies = self.allergies
+
+			if self.social_history:
+				patient.social_history = self.social_history
+			
+			if self.surgical_history:
+				patient.surgical_history = self.surgical_history
+			
+			if self.family_history:
+				patient.family_history = self.family_history
+
+			if self.medication:
+				patient.medication = self.medication
+			
+			if self.medical_history:
+				patient.medical_history = self.medical_history
 			
 			# Update medical history / comorbidities (Patient Encounter Diagnosis)
-			if self.custom_comorbidities:
+			if self.patient_madical_history:
 				# Clear existing comorbidities
-				patient.patient_diagnosis = []
+				patient.patient_madical_history = []
 				
 				# Add new records
-				for diag in self.custom_comorbidities:
+				for diag in self.patient_madical_history:
 					if diag.diagnosis:
-						patient.append("patient_diagnosis", {
+						patient.append("patient_madical_history", {
 							"diagnosis": diag.diagnosis
 						})
 			
 			# Update medication history (Medication History Item)
-			if self.custom_medication_history:
+			if self.patient_medication_history:
 				# Clear existing medication history
-				patient.patient_medication = []
+				patient.patient_medication_history = []
 				
 				# Add new records
-				for med in self.custom_medication_history:
+				for med in self.patient_medication_history:
 					if med.medication:
 						med_data = {
 							"medication": med.medication
@@ -487,15 +520,15 @@ class PatientEncounter(Document):
 							if hasattr(med, field) and getattr(med, field):
 								med_data[field] = getattr(med, field)
 						
-						patient.append("patient_medication", med_data)
+						patient.append("patient_medication_history", med_data)
 			
 			# Update surgical history (Surgery History Item)
-			if self.custom_surgery_history:
+			if self.patient_surgery_history:
 				# Clear existing surgical history
-				patient.patient_surgery = []
+				patient.patient_surgery_history = []
 				
 				# Add new records
-				for surgery in self.custom_surgery_history:
+				for surgery in self.patient_surgery_history:
 					if surgery.procedure_template:
 						surgery_data = {
 							"procedure_template": surgery.procedure_template
@@ -508,15 +541,15 @@ class PatientEncounter(Document):
 							if hasattr(surgery, field) and getattr(surgery, field):
 								surgery_data[field] = getattr(surgery, field)
 						
-						patient.append("patient_surgery", surgery_data)
+						patient.append("patient_surgery_history", surgery_data)
 			
 			# Update family history (Patient Encounter Diagnosis)
-			if self.custom_family_history:
+			if self.family_medical_history:
 				# Clear existing family history
 				patient.family_medical_history = []
 				
 				# Add new records
-				for diag in self.custom_family_history:
+				for diag in self.family_medical_history:
 					if diag.diagnosis:
 						patient.append("family_medical_history", {
 							"diagnosis": diag.diagnosis
@@ -537,10 +570,10 @@ class PatientEncounter(Document):
 		Manual method to reload patient history into the encounter
 		"""
 		# Clear existing values using frappe's proper method
-		self.set("custom_comorbidities", [])
-		self.set("custom_medication_history", [])
-		self.set("custom_surgery_history", [])
-		self.set("custom_family_history", [])
+		self.set("patient_madical_history", [])
+		self.set("patient_medication_history", [])
+		self.set("patient_surgery_history", [])
+		self.set("family_medical_history", [])
 		
 		# Now load fresh data
 		self.load_history_from_patient()
@@ -548,8 +581,8 @@ class PatientEncounter(Document):
 
 	def _deduplicate_child_tables(self):
 		"""Remove duplicate entries from child tables to prevent validation errors"""
-		for field in ["custom_comorbidities", "custom_medication_history", 
-					 "custom_surgery_history", "custom_family_history"]:
+		for field in ["patient_madical_history", "patient_medication_history", 
+					 "patient_surgery_history", "family_medical_history"]:
 			if not self.get(field):
 				continue
 				
@@ -559,13 +592,13 @@ class PatientEncounter(Document):
 			
 			# For each table, identify what makes a row unique and track duplicates
 			for i, item in enumerate(self.get(field)):
-				if field == "custom_comorbidities" or field == "custom_family_history":
+				if field == "patient_madical_history" or field == "family_medical_history":
 					# For diagnosis tables, the diagnosis field is what makes it unique
 					unique_key = item.diagnosis if item.diagnosis else ""
-				elif field == "custom_medication_history":
+				elif field == "patient_medication_history":
 					# For medication history, the medication makes it unique
 					unique_key = item.medication if item.medication else ""
-				elif field == "custom_surgery_history":
+				elif field == "patient_surgery_history":
 					# For surgery history, the procedure template makes it unique
 					unique_key = item.procedure_template if item.procedure_template else ""
 				else:
