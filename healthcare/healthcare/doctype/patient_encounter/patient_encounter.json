@@ -43,15 +43,9 @@
   "patient_medication_history",
   "family_medical_history",
   "patient_surgery_history",
-  "medication",
-  "surgical_history",
   "column_break_patient_history",
   "social_history",
   "allergies",
-  "comorbidities",
-  "social_history",
-  "medical_history",
-  "family_history",
   "codification",
   "codification_table",
   "sb_drug_prescription",
@@ -411,7 +405,7 @@
   {
    "fieldname": "patient_madical_history",
    "fieldtype": "Table MultiSelect",
-   "label": "Medical History",
+   "label": "Comorbidities / Medical History",
    "options": "Patient Encounter Diagnosis"
   },
   {
@@ -449,12 +443,6 @@
    "label": "Allergies"
   },
   {
-   "fieldname": "comorbidities",
-   "fieldtype": "Table MultiSelect",
-   "label": "Comorbidities",
-   "options": "Patient Encounter Diagnosis"
-  },
-  {
    "fieldname": "social_history",
    "fieldtype": "Long Text",
    "label": "Social History"
@@ -468,7 +456,7 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2025-03-20 13:28:40.700541",
+ "modified": "2025-03-20 17:58:49.845092",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Patient Encounter",
