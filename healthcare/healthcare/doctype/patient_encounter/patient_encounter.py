@@ -384,17 +384,7 @@ class PatientEncounter(Document):
 				self.social_history = patient.social_history
 
 			
-			if patient.surgical_history:
-				self.surgical_history = patient.surgical_history
 			
-			if patient.family_history:
-				self.family_history = patient.family_history
-
-			if patient.medication:
-				self.medication = patient.medication
-			
-			if patient.medical_history:
-				self.medical_history = patient.medical_history
 			
 			
 			# Clear existing tables before loading to avoid duplicates
@@ -478,17 +468,6 @@ class PatientEncounter(Document):
 			if self.social_history:
 				patient.social_history = self.social_history
 			
-			if self.surgical_history:
-				patient.surgical_history = self.surgical_history
-			
-			if self.family_history:
-				patient.family_history = self.family_history
-
-			if self.medication:
-				patient.medication = self.medication
-			
-			if self.medical_history:
-				patient.medical_history = self.medical_history
 			
 			# Update medical history / comorbidities (Patient Encounter Diagnosis)
 			if self.patient_madical_history:
