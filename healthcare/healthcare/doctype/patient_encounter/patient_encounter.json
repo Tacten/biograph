@@ -48,6 +48,7 @@
   "column_break_patient_history",
   "social_history",
   "allergies",
+  "comorbidities",
   "medical_history",
   "family_history",
   "codification",
@@ -431,11 +432,6 @@
    "options": "Patient Encounter Diagnosis"
   },
   {
-   "fieldname": "social_history",
-   "fieldtype": "Long Text",
-   "label": "Social History"
-  },
-  {
    "description": "History of previous injuries related to the patient complaints",
    "fieldname": "previous_injuries",
    "fieldtype": "Select",
@@ -452,24 +448,10 @@
    "label": "Allergies"
   },
   {
-   "fieldname": "medication",
-   "fieldtype": "Small Text",
-   "label": "Medication (Legacy)"
-  },
-  {
-   "fieldname": "medical_history",
-   "fieldtype": "Small Text",
-   "label": "Medical History (Legacy)"
-  },
-  {
-   "fieldname": "surgical_history",
-   "fieldtype": "Small Text",
-   "label": "Surgical History (Legacy)"
-  },
-  {
-   "fieldname": "family_history",
-   "fieldtype": "Small Text",
-   "label": "Family History (Legacy)"
+   "fieldname": "comorbidities",
+   "fieldtype": "Table MultiSelect",
+   "label": "Comorbidities",
+   "options": "Patient Encounter Diagnosis"
   }
  ],
  "grid_page_length": 50,
