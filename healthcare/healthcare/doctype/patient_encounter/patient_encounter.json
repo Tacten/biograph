@@ -49,6 +49,7 @@
   "social_history",
   "allergies",
   "comorbidities",
+  "social_history",
   "medical_history",
   "family_history",
   "codification",
@@ -452,6 +453,11 @@
    "fieldtype": "Table MultiSelect",
    "label": "Comorbidities",
    "options": "Patient Encounter Diagnosis"
+  },
+  {
+   "fieldname": "social_history",
+   "fieldtype": "Long Text",
+   "label": "Social History"
   }
  ],
  "grid_page_length": 50,
