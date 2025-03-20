@@ -39,13 +39,15 @@ frappe.ui.form.on('Patient Encounter', {
 					doc: frm.doc,
 					callback: function(r) {
 						if (r.message) {
+							console.log(r.message)
+
 							frm.set_value(r.message)
 							frm.refresh_fields([
-								'custom_comorbidities', 
-								'custom_medication_history', 
-								'custom_allergies', 
-								'custom_surgery_history', 
-								'custom_family_history'
+								'patient_madical_history', 
+								'patient_medication_history', 
+								'allergies', 
+								'patient_surgery_history', 
+								'family_medical_history'
 							]);
 							frappe.show_alert({
 								message: __('Patient history loaded automatically'),
@@ -232,9 +234,6 @@ frappe.ui.form.on('Patient Encounter', {
 		frm.events.set_appointment_fields(frm);
 	},
 
-	patient: function(frm) {
-		frm.events.set_patient_info(frm);
-	},
 
 	practitioner: function(frm) {
 		if (!frm.doc.practitioner) {

@@ -61,11 +61,13 @@
   "medication",
   "medical_history",
   "surgical_history",
+  "family_history",
   "structured_medical_history_section",
-  "patient_diagnosis",
-  "patient_medication",
-  "patient_surgery",
+  "patient_madical_history",
+  "patient_medication_history",
+  "patient_surgery_history",
   "family_medical_history",
+  "social_history",
   "risk_factors",
   "tobacco_past_use",
   "tobacco_current_use",
@@ -249,15 +251,13 @@
    "fieldname": "allergies",
    "fieldtype": "Small Text",
    "ignore_xss_filter": 1,
-   "label": "Allergies (Legacy)",
-   "no_copy": 1
+   "label": "Allergies (Legacy)"
   },
   {
    "fieldname": "medication",
    "fieldtype": "Small Text",
    "ignore_xss_filter": 1,
-   "label": "Medication (Legacy)",
-   "no_copy": 1
+   "label": "Medication (Legacy)"
   },
   {
    "fieldname": "medical_history",
@@ -496,38 +496,50 @@
    "label": "Medical History"
   },
   {
-   "fieldname": "patient_diagnosis",
+   "fieldname": "family_medical_history",
+   "fieldtype": "Table MultiSelect",
+   "label": "Family History",
+   "options": "Patient Encounter Diagnosis"
+  },
+  {
+   "fieldname": "patient_madical_history",
    "fieldtype": "Table MultiSelect",
    "label": "Medical History",
    "options": "Patient Encounter Diagnosis"
   },
   {
-   "fieldname": "patient_medication",
+   "fieldname": "patient_medication_history",
    "fieldtype": "Table MultiSelect",
    "label": "Medication",
    "options": "Medication History Item"
   },
   {
-   "fieldname": "patient_surgery",
+   "fieldname": "patient_surgery_history",
    "fieldtype": "Table MultiSelect",
    "label": "Surgical History",
    "options": "Surgery History Item"
   },
   {
-   "fieldname": "family_medical_history",
-   "fieldtype": "Table MultiSelect",
-   "label": "Family History",
-   "options": "Patient Encounter Diagnosis"
+   "fieldname": "social_history",
+   "fieldtype": "Long Text",
+   "label": "Social History"
+  },
+  {
+   "fieldname": "family_history",
+   "fieldtype": "Small Text",
+   "label": "Family History (Legacy)"
   }
  ],
+ "grid_page_length": 50,
  "icon": "fa fa-user",
  "image_field": "image",
  "links": [],
  "max_attachments": 50,
- "modified": "2023-01-13 17:48:59.069268",
+ "modified": "2025-03-20 13:15:19.144301",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Patient",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
