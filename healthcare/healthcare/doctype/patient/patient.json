@@ -21,6 +21,7 @@
   "dob",
   "age_html",
   "image",
+  "external_id",
   "column_break_14",
   "status",
   "uid",
@@ -528,6 +529,12 @@
    "fieldname": "family_history",
    "fieldtype": "Small Text",
    "label": "Family History (Legacy)"
+  },
+  {
+   "fieldname": "external_id",
+   "fieldtype": "Data",
+   "label": "External ID",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
@@ -535,7 +542,7 @@
  "image_field": "image",
  "links": [],
  "max_attachments": 50,
- "modified": "2025-03-20 13:15:19.144301",
+ "modified": "2025-03-20 22:33:58.807307",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Patient",

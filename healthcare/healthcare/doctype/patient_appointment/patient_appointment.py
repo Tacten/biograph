@@ -67,6 +67,9 @@ class PatientAppointment(Document):
 		self.update_event()
 		self.set_postition_in_queue()
 
+		if not self.external_id:
+			self.external_id = self.name
+
 	def before_save(self):
 		# Always ensure duration is set
 		self.ensure_duration_is_set()

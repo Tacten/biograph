@@ -12,6 +12,7 @@
   "status",
   "appointment_type",
   "appointment_for",
+  "external_id",
   "column_break_1",
   "company",
   "practitioner",
@@ -422,10 +423,16 @@
    "options": "Service Request",
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "external_id",
+   "fieldtype": "Data",
+   "label": "External ID",
+   "read_only": 1
   }
  ],
  "links": [],
- "modified": "2024-11-20 08:21:29.729408",
+ "modified": "2025-03-20 22:35:01.117803",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Patient Appointment",
