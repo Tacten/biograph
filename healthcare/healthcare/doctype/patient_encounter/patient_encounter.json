@@ -35,19 +35,23 @@
   "symptoms_in_print",
   "get_applicable_treatment_plans",
   "physical_examination",
-  "diagnosis",
   "diagnosis_in_print",
   "section_patient_history",
   "previous_injuries",
   "patient_madical_history",
+  "medication",
   "patient_medication_history",
   "family_medical_history",
   "patient_surgery_history",
   "column_break_patient_history",
   "social_history",
   "allergies",
+  "surgical_history",
   "codification",
   "codification_table",
+  "section_break_yhhn",
+  "diagnosis",
+  "diagnosis_column_break",
   "sb_drug_prescription",
   "drug_prescription",
   "sb_test_prescription",
@@ -411,12 +415,14 @@
   {
    "fieldname": "patient_medication_history",
    "fieldtype": "Table MultiSelect",
+   "hidden": 1,
    "label": "Medication History",
    "options": "Medication History Item"
   },
   {
    "fieldname": "patient_surgery_history",
    "fieldtype": "Table MultiSelect",
+   "hidden": 1,
    "label": "Surgical History",
    "options": "Surgery History Item"
   },
@@ -445,7 +451,26 @@
   {
    "fieldname": "social_history",
    "fieldtype": "Long Text",
+   "hidden": 1,
    "label": "Social History"
+  },
+  {
+   "fieldname": "section_break_yhhn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "diagnosis_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "medication",
+   "fieldtype": "Small Text",
+   "label": "Medication (Legacy)"
+  },
+  {
+   "fieldname": "surgical_history",
+   "fieldtype": "Small Text",
+   "label": "Surgical (Legacy)"
   }
  ],
  "grid_page_length": 50,
@@ -456,7 +481,7 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2025-03-20 17:58:49.845092",
+ "modified": "2025-03-20 20:35:18.760696",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Patient Encounter",

@@ -380,12 +380,11 @@ class PatientEncounter(Document):
 			if patient.allergies:
 				self.allergies = patient.allergies
 			
-			if patient.social_history:
-				self.social_history = patient.social_history
+			if patient.surgical_history:
+				self.surgical_history = patient.surgical_history
 
-			
-			
-			
+			if patient.medication:
+				self.medication = patient.medication
 			
 			# Clear existing tables before loading to avoid duplicates
 			self.set("patient_madical_history", [])
@@ -402,37 +401,33 @@ class PatientEncounter(Document):
 						})
 			
 			# Safely add medication history
-			if patient.get("patient_medication_history"):
-				for med in patient.patient_medication_history:
-					if med.get("medication"):
-						med_data = {
-							"medication": med.medication
-						}
-						
-						# Copy optional fields if they exist
-						optional_fields = ["dosage", "period", "status", "prescribed_by", "notes"]
-						for field in optional_fields:
-							if hasattr(med, field) and med.get(field):
-								med_data[field] = med.get(field)
-						
-						self.append("patient_medication_history", med_data)
+			# if patient.get("patient_medication_history"):
+			# 	for med in patient.patient_medication_history:
+			# 		if med.get("medication"):
+			# 			med_data = {
+			# 				"medication": med.medication
+			# 			}			
+			# 			# Copy optional fields if they exist
+			# 			optional_fields = ["dosage", "period", "status", "prescribed_by", "notes"]
+			# 			for field in optional_fields:
+			# 				if hasattr(med, field) and med.get(field):
+			# 					med_data[field] = med.get(field)
+			# 			self.append("patient_medication_history", med_data)
 			
 			# Safely add surgical history
-			if patient.get("patient_surgery_history"):
-				for surgery in patient.patient_surgery_history:
-					if surgery.get("procedure_template"):
-						surgery_data = {
-							"procedure_template": surgery.procedure_template
-						}
-						
-						# Copy optional fields if they exist
-						optional_fields = ["procedure_date", "description", "status", 
-										"practitioner", "medical_department", "notes"]
-						for field in optional_fields:
-							if hasattr(surgery, field) and surgery.get(field):
-								surgery_data[field] = surgery.get(field)
-						
-						self.append("patient_surgery_history", surgery_data)
+			# if patient.get("patient_surgery_history"):
+			# 	for surgery in patient.patient_surgery_history:
+			# 		if surgery.get("procedure_template"):
+			# 			surgery_data = {
+			# 				"procedure_template": surgery.procedure_template
+			# 			}
+			# 			# Copy optional fields if they exist
+			# 			optional_fields = ["procedure_date", "description", "status", 
+			# 							"practitioner", "medical_department", "notes"]
+			# 			for field in optional_fields:
+			# 				if hasattr(surgery, field) and surgery.get(field):
+			# 					surgery_data[field] = surgery.get(field)
+			# 			self.append("patient_surgery_history", surgery_data)
 			
 			# Safely add family history
 			if patient.get("family_medical_history"):
@@ -465,9 +460,11 @@ class PatientEncounter(Document):
 			if self.allergies:
 				patient.allergies = self.allergies
 
-			if self.social_history:
-				patient.social_history = self.social_history
+			if self.surgical_history:
+				patient.surgical_history = self.surgical_history
 			
+			if self.medication:
+				patient.medication = self.medication
 			
 			# Update medical history / comorbidities (Patient Encounter Diagnosis)
 			if self.patient_madical_history:
@@ -480,48 +477,46 @@ class PatientEncounter(Document):
 						patient.append("patient_madical_history", {
 							"diagnosis": diag.diagnosis
 						})
-			
+
+			###
 			# Update medication history (Medication History Item)
-			if self.patient_medication_history:
-				# Clear existing medication history
-				patient.patient_medication_history = []
-				
-				# Add new records
-				for med in self.patient_medication_history:
-					if med.medication:
-						med_data = {
-							"medication": med.medication
-						}
-						
-						# Copy optional fields if they exist
-						optional_fields = ["dosage", "period", "status", "prescribed_by", "notes"]
-						for field in optional_fields:
-							if hasattr(med, field) and getattr(med, field):
-								med_data[field] = getattr(med, field)
-						
-						patient.append("patient_medication_history", med_data)
-			
+			# if self.patient_medication_history:
+			# 	# Clear existing medication history
+			# 	patient.patient_medication_history = []
+			# 	# Add new records
+			# 	for med in self.patient_medication_history:
+			# 		if med.medication:
+			# 			med_data = {
+			# 				"medication": med.medication
+			# 			}
+			# 			# Copy optional fields if they exist
+			# 			optional_fields = ["dosage", "period", "status", "prescribed_by", "notes"]
+			# 			for field in optional_fields:
+			# 				if hasattr(med, field) and getattr(med, field):
+			# 					med_data[field] = getattr(med, field)			
+			# 			patient.append("patient_medication_history", med_data)
+			###
+
+			###
 			# Update surgical history (Surgery History Item)
-			if self.patient_surgery_history:
-				# Clear existing surgical history
-				patient.patient_surgery_history = []
-				
-				# Add new records
-				for surgery in self.patient_surgery_history:
-					if surgery.procedure_template:
-						surgery_data = {
-							"procedure_template": surgery.procedure_template
-						}
-						
-						# Copy optional fields if they exist
-						optional_fields = ["procedure_date", "description", "status", 
-										"practitioner", "medical_department", "notes"]
-						for field in optional_fields:
-							if hasattr(surgery, field) and getattr(surgery, field):
-								surgery_data[field] = getattr(surgery, field)
-						
-						patient.append("patient_surgery_history", surgery_data)
-			
+			# if self.patient_surgery_history:
+			# 	# Clear existing surgical history
+			# 	patient.patient_surgery_history = []
+			# 	# Add new records
+			# 	for surgery in self.patient_surgery_history:
+			# 		if surgery.procedure_template:
+			# 			surgery_data = {
+			# 				"procedure_template": surgery.procedure_template
+			# 			}	
+			# 			# Copy optional fields if they exist
+			# 			optional_fields = ["procedure_date", "description", "status", 
+			# 							"practitioner", "medical_department", "notes"]
+			# 			for field in optional_fields:
+			# 				if hasattr(surgery, field) and getattr(surgery, field):
+			# 					surgery_data[field] = getattr(surgery, field)
+			# 			patient.append("patient_surgery_history", surgery_data)
+			###
+
 			# Update family history (Patient Encounter Diagnosis)
 			if self.family_medical_history:
 				# Clear existing family history
