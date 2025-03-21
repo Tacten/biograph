@@ -55,8 +55,6 @@ class Patient(Document):
 					"message": result["message"] or "Possible duplicate patient record(s) found",
 					"matches": result["matches"]
 				}
-		if not self.external_id:
-			self.external_id = self.name
 
 	def before_insert(self):
 		self.set_missing_customer_details()

@@ -21,7 +21,6 @@
   "dob",
   "age_html",
   "image",
-  "external_id",
   "column_break_14",
   "status",
   "uid",
@@ -529,12 +528,6 @@
    "fieldname": "family_history",
    "fieldtype": "Small Text",
    "label": "Family History (Legacy)"
-  },
-  {
-   "fieldname": "external_id",
-   "fieldtype": "Data",
-   "label": "External ID",
-   "read_only": 1
   }
  ],
  "grid_page_length": 50,

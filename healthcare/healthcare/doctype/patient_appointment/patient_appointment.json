@@ -12,7 +12,6 @@
   "status",
   "appointment_type",
   "appointment_for",
-  "external_id",
   "column_break_1",
   "company",
   "practitioner",
@@ -423,12 +422,6 @@
    "options": "Service Request",
    "read_only": 1,
    "search_index": 1
-  },
-  {
-   "fieldname": "external_id",
-   "fieldtype": "Data",
-   "label": "External ID",
-   "read_only": 1
   }
  ],
  "links": [],
