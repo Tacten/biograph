@@ -96,14 +96,14 @@ def get_invoiced_details(self, on_referesh = False):
 	""", as_dict=1)
 
 	total_amount = frappe.db.sql(f"""
-		Select si.name, sum(si.grand_total) as grand_total
+		Select si.name, si.grand_total as grand_total
 		From `tabSales Invoice` as si
 		Left Join `tabSales Invoice Item` as sii ON sii.parent = si.name
 		Where si.docstatus = 1 and sii.reference_dt = 'Therapy Plan' and sii.reference_dn = '{self.name}'
 		Group By si.name
 	""", as_dict=1)
 
-	grand_total = total_amount[0].get("grand_total")
+	grand_total = sum([row.grand_total for row in total_amount])
 
 	htmls = """
 		<h3>No of Invoiced Therapy Session</h3>
@@ -130,8 +130,8 @@ def get_invoiced_details(self, on_referesh = False):
 
 		""".format(row.service, row.no_of_session)
 	htmls += "</table>"
-	
-	return  { "html" : htmls , "data" : str(data), "grand_total" : grand_total}
+	no_of_session = sum([row.no_of_session for row in data])
+	return  { "html" : htmls , "data" : str(data), "grand_total" : grand_total, "no_of_session" : no_of_session}
 
 
 @frappe.whitelist()

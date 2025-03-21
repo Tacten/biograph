@@ -592,12 +592,13 @@ def update_therapy_plan(self, method):
 		if row.reference_dt == "Therapy Plan":
 			doc = frappe.get_doc(row.reference_dt, row.reference_dn)
 			data = get_invoiced_details(doc)
-			if method == "on_submit":
-				total_paid_amount = data.get("grand_total") + self.grand_total
-			if method == "on_cancel":
-				total_paid_amount = data.get("grand_total")
+			
+			total_paid_amount = data.get("grand_total")
+			no_of_session = data.get("no_of_session") 
+		
 			frappe.db.set_value("Therapy Plan", row.reference_dn, "invoiced_amount", total_paid_amount)
 			frappe.db.set_value("Therapy Plan", row.reference_dn, "invoice_json", data.get("data"))
+			frappe.db.set_value("Therapy Plan", row.reference_dn, "total_invoiced_session", no_of_session)
 
 def set_invoiced(item, method, ref_invoice=None):
 	invoiced = False

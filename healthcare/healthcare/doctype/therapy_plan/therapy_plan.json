@@ -24,6 +24,7 @@
   "title",
   "section_break_9",
   "total_sessions",
+  "total_invoiced_session",
   "column_break_11",
   "total_sessions_completed",
   "section_break_zmve",
@@ -174,10 +175,16 @@
    "fieldtype": "Currency",
    "label": "Invoiced Amount",
    "read_only": 1
+  },
+  {
+   "fieldname": "total_invoiced_session",
+   "fieldtype": "Int",
+   "label": "Total Invoiced Session",
+   "read_only": 1
   }
  ],
  "links": [],
- "modified": "2025-03-21 17:51:24.167294",
+ "modified": "2025-03-21 18:44:18.294821",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Therapy Plan",
