@@ -535,15 +535,20 @@ def manage_invoice_validate(doc, method):
 
 
 def manage_invoice_submit_cancel(doc, method):
+	update_therapy_plan(doc, method)
 	if not doc.patient:
 		return
 
 	if doc.items:
+		reference_flag = False
 		for item in doc.items:
 			if item.get("reference_dt") and item.get("reference_dn"):
+				reference_flag = True
 				# TODO check
 				# if frappe.get_meta(item.reference_dt).has_field("invoiced"):
-				set_invoiced(item, method, doc.name)
+		if reference_flag:	
+			set_invoiced(item, method, doc.name)
+
 		if method == "on_submit" and frappe.db.get_single_value(
 			"Healthcare Settings", "create_observation_on_si_submit"
 		):
@@ -581,6 +586,19 @@ def manage_invoice_submit_cancel(doc, method):
 						},
 					)
 
+def update_therapy_plan(self, method):
+	from healthcare.healthcare.doctype.therapy_plan.therapy_plan import get_invoiced_details
+	for row in self.items:
+		if row.reference_dt == "Therapy Plan":
+			doc = frappe.get_doc(row.reference_dt, row.reference_dn)
+			data = get_invoiced_details(doc)
+			
+			total_paid_amount = data.get("grand_total")
+			no_of_session = data.get("no_of_session") 
+		
+			frappe.db.set_value("Therapy Plan", row.reference_dn, "invoiced_amount", total_paid_amount)
+			frappe.db.set_value("Therapy Plan", row.reference_dn, "invoice_json", data.get("data"))
+			frappe.db.set_value("Therapy Plan", row.reference_dn, "total_invoiced_session", no_of_session)
 
 def set_invoiced(item, method, ref_invoice=None):
 	invoiced = False
@@ -648,7 +666,7 @@ def validate_invoiced_on_submit(item):
 
 	else:
 		is_invoiced = frappe.db.get_value(item.reference_dt, item.reference_dn, "invoiced")
-	if is_invoiced:
+	if is_invoiced and item.reference_dt != "Therapy Plan":
 		frappe.throw(
 			_("The item referenced by {0} - {1} is already invoiced").format(
 				item.reference_dt, item.reference_dn
