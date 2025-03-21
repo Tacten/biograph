@@ -68,7 +68,9 @@ frappe.ui.form.on('Therapy Plan', {
 			}
 			
 			frm.add_custom_button(__('Sales Invoice'), function() {
-				frm.trigger('make_sales_invoice');
+				if (frm.doc.total_plan_amount  < frm.doc.invoiced_amount){
+					frm.trigger('make_sales_invoice');
+				}
 			}, __('Create'));
 			
 		}
