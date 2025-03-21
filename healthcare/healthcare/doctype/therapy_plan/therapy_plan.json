@@ -27,9 +27,9 @@
   "column_break_11",
   "total_sessions_completed",
   "section_break_zmve",
-  "total_amount",
+  "total_plan_amount",
   "column_break_dryw",
-  "paid_amount"
+  "invoiced_amount"
  ],
  "fields": [
   {
@@ -147,18 +147,8 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "total_amount",
-   "fieldtype": "Currency",
-   "label": "Total Amount"
-  },
-  {
    "fieldname": "column_break_dryw",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "paid_amount",
-   "fieldtype": "Currency",
-   "label": "Paid Amount"
   },
   {
    "fieldname": "section_break_hkst",
@@ -172,10 +162,22 @@
   {
    "fieldname": "section_break_zupr",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "total_plan_amount",
+   "fieldtype": "Currency",
+   "label": "Total Plan Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "invoiced_amount",
+   "fieldtype": "Currency",
+   "label": "Invoiced Amount",
+   "read_only": 1
   }
  ],
  "links": [],
- "modified": "2025-03-21 11:43:31.341434",
+ "modified": "2025-03-21 17:51:24.167294",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Therapy Plan",

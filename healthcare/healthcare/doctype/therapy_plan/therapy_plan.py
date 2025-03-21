@@ -50,8 +50,9 @@ class TherapyPlan(Document):
 		for row in self.therapy_plan_details:
 			doc = frappe.get_doc("Therapy Type", row.therapy_type)
 			if doc.is_billable:
-				total_charges += doc.rate * row.no_of_sessions
-		self.total_amount = total_charges
+				no_of_sessions = row.no_of_sessions  or 0
+				total_charges += doc.rate * no_of_sessions
+		self.total_plan_amount = total_charges
 
 		invoices = frappe.db.sql(f"""
 				Select si.name, si.grand_total
@@ -64,7 +65,7 @@ class TherapyPlan(Document):
 		paid_amount = 0
 		for row in invoices:
 			paid_amount += row.grand_total
-		self.paid_amount = paid_amount
+		self.invoiced_amount = paid_amount
 
 	@frappe.whitelist()
 	def set_therapy_details_from_template(self):
@@ -94,15 +95,25 @@ def get_invoiced_details(self, on_referesh = False):
 		Group By sii.item_code
 	""", as_dict=1)
 
+	total_amount = frappe.db.sql(f"""
+		Select si.name, sum(si.grand_total) as grand_total
+		From `tabSales Invoice` as si
+		Left Join `tabSales Invoice Item` as sii ON sii.parent = si.name
+		Where si.docstatus = 1 and sii.reference_dt = 'Therapy Plan' and sii.reference_dn = '{self.name}'
+		Group By si.name
+	""", as_dict=1)
+
+	grand_total = total_amount[0].get("grand_total")
+
 	htmls = """
-		<h3>No of billed Therapy session</h3>
+		<h3>No of Invoiced Therapy Session</h3>
 		<table class="table">
 			<tr>
 				<th>
 					<p>Therapy Type</p>
 				</th>
 				<th>
-					<p>No of Session Billed</p>
+					<p>No of Session Invoiced</p>
 				</th>
 			</tr>
 		"""
@@ -119,8 +130,8 @@ def get_invoiced_details(self, on_referesh = False):
 
 		""".format(row.service, row.no_of_session)
 	htmls += "</table>"
-	frappe.db.set_value("Therapy Plan", self.name, "invoice_json", str(data))
-	return True, htmls
+	
+	return  { "html" : htmls , "data" : str(data), "grand_total" : grand_total}
 
 
 @frappe.whitelist()
@@ -132,10 +143,12 @@ def get_services_details(self):
 		invoiced_data = eval(doc.get("invoice_json"))
 
 		for row in doc.get('therapy_plan_details'):
+			
 			session = 0
 			for d in invoiced_data:
 				if row.get("therapy_type") == d.get("service"):
-					session += 1
+					session += d.get("no_of_session")
+
 			therapy_data.append({
 				"therapy_type" : row.get("therapy_type"),
 				"sessions" : row.get("no_of_sessions") - session

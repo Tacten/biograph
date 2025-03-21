@@ -18,18 +18,18 @@ frappe.ui.form.on('Therapy Plan', {
 					on_referesh : true
 				},
 				callback:(r)=>{
+					frm.set_df_property("invoice_details", "options", r.message.html)
 					frm.refresh_field("invoice_json")
-					console.log(r.message[1])
-					frm.set_df_property("invoice_details", "options", r.message[1])
 				}
 			})
 		}
 	},
 	refresh: function(frm) {
+		frm.refresh_field("invoice_json")
 		if (!frm.doc.__islocal) {
+			frm.dashboard.refresh()
 			frm.trigger('show_progress_for_therapies');
 			frm.trigger('show_progress_for_invoice_billing');
-			
 			if (frm.doc.status != 'Completed') {
 				let therapy_types = (frm.doc.therapy_plan_details || []).map(function(d){ return d.therapy_type; });
 				const fields = [{
@@ -108,7 +108,6 @@ frappe.ui.form.on('Therapy Plan', {
 			},
 			callback:(r)=>{
 				let data = r.message
-				console.log(data)
 				let dialog = new frappe.ui.Dialog({
 					title: __("Update Items"),
 					size: "extra-large",
@@ -193,14 +192,14 @@ frappe.ui.form.on('Therapy Plan', {
 		let message = '';
 
 		// completed sessions
-		let title = __('{0} amount billed out of {1} amount', [frm.doc.paid_amount, frm.doc.total_amount]);
-		if(frm.doc.total_amount == frm.doc.paid_amount){
-			title = __('100% billed', [frm.doc.paid_amount, frm.doc.total_amount]);
+		let title = __('{0} amount billed out of {1} amount', [frm.doc.invoiced_amount, frm.doc.total_plan_amount]);
+		if(frm.doc.total_plan_amount == frm.doc.invoiced_amount && frm.doc.total_plan_amount > 0){
+			title = __('100% billed', [frm.doc.invoiced_amount, frm.doc.total_plan_amount]);
 		}
 		
 		bars.push({
 			'title': title,
-			'width': ((frm.doc.paid_amount / frm.doc.total_amount) * 100) + '%',
+			'width': ((frm.doc.invoiced_amount / frm.doc.total_plan_amount) * 100) + '%',
 			'progress_class': 'progress-bar-success'
 		});
 		if (bars[0].width == '0%') {
@@ -209,17 +208,6 @@ frappe.ui.form.on('Therapy Plan', {
 		message = title;
 		frm.dashboard.add_progress(__('Status'), bars, message);
 	},
-	get_billed_invoiced_data : function (frm) {
-		frappe.call({
-			method: "healthcare.healthcare.doctype.therapy_plan.therapy_plan.get_invoiced_details",
-			args : {
-				self : frm.doc
-			},
-			callback : (r) =>{
-				frm.refresh_field("invoice_json")
-			}
-		})
-	}
 });
 
 frappe.ui.form.on('Therapy Plan Detail', {

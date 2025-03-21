@@ -535,6 +535,7 @@ def manage_invoice_validate(doc, method):
 
 
 def manage_invoice_submit_cancel(doc, method):
+	update_therapy_plan(doc, method)
 	if not doc.patient:
 		return
 
@@ -585,6 +586,18 @@ def manage_invoice_submit_cancel(doc, method):
 						},
 					)
 
+def update_therapy_plan(self, method):
+	from healthcare.healthcare.doctype.therapy_plan.therapy_plan import get_invoiced_details
+	for row in self.items:
+		if row.reference_dt == "Therapy Plan":
+			doc = frappe.get_doc(row.reference_dt, row.reference_dn)
+			data = get_invoiced_details(doc)
+			if method == "on_submit":
+				total_paid_amount = data.get("grand_total") + self.grand_total
+			if method == "on_cancel":
+				total_paid_amount = data.get("grand_total")
+			frappe.db.set_value("Therapy Plan", row.reference_dn, "invoiced_amount", total_paid_amount)
+			frappe.db.set_value("Therapy Plan", row.reference_dn, "invoice_json", data.get("data"))
 
 def set_invoiced(item, method, ref_invoice=None):
 	invoiced = False
