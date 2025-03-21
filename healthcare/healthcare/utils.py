@@ -539,11 +539,15 @@ def manage_invoice_submit_cancel(doc, method):
 		return
 
 	if doc.items:
+		reference_flag = False
 		for item in doc.items:
 			if item.get("reference_dt") and item.get("reference_dn"):
+				reference_flag = True
 				# TODO check
 				# if frappe.get_meta(item.reference_dt).has_field("invoiced"):
-				set_invoiced(item, method, doc.name)
+		if reference_flag:	
+			set_invoiced(item, method, doc.name)
+
 		if method == "on_submit" and frappe.db.get_single_value(
 			"Healthcare Settings", "create_observation_on_si_submit"
 		):
@@ -648,7 +652,7 @@ def validate_invoiced_on_submit(item):
 
 	else:
 		is_invoiced = frappe.db.get_value(item.reference_dt, item.reference_dn, "invoiced")
-	if is_invoiced:
+	if is_invoiced and item.reference_dt != "Therapy Plan":
 		frappe.throw(
 			_("The item referenced by {0} - {1} is already invoiced").format(
 				item.reference_dt, item.reference_dn

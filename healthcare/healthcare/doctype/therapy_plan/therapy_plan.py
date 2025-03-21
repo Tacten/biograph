@@ -82,34 +82,70 @@ class TherapyPlan(Document):
 
 
 @frappe.whitelist()
-def get_invoiced_details(self):
+def get_invoiced_details(self, on_referesh = False):
+	if on_referesh:
+		self = frappe._dict(json.loads(self))
+	
 	data = frappe.db.sql(f"""
-		Select si.name, count(sii.item_code) as no_of_session, si.grand_total, sii.qty, sii.item_code as service
+		Select si.name, si.grand_total, sum(sii.qty) as no_of_session, sii.item_code as service
 		From `tabSales Invoice` as si
 		Left Join `tabSales Invoice Item` as sii ON sii.parent = si.name
 		Where si.docstatus = 1 and sii.reference_dt = 'Therapy Plan' and sii.reference_dn = '{self.name}'
 		Group By sii.item_code
 	""", as_dict=1)
-	
-	self.db_set("invoice_json" , str(data))
-	self.reload()
+
+	htmls = """
+		<h3>No of billed Therapy session</h3>
+		<table class="table">
+			<tr>
+				<th>
+					<p>Therapy Type</p>
+				</th>
+				<th>
+					<p>No of Session Billed</p>
+				</th>
+			</tr>
+		"""
+	for row in data:
+		htmls += """
+				<tr>
+					<td>
+						{0}
+					</td>
+					<td>
+						{1}
+					</td>
+				</tr>
+
+		""".format(row.service, row.no_of_session)
+	htmls += "</table>"
+	frappe.db.set_value("Therapy Plan", self.name, "invoice_json", str(data))
+	return True, htmls
+
 
 @frappe.whitelist()
 def get_services_details(self):
 	doc = json.loads(self)
 	therapy_data  = []
-	invoiced_data = eval(doc.get("invoice_json"))
 
-	for row in doc.get('therapy_plan_details'):
-		session = 0
-		for d in invoiced_data:
-			frappe.throw(str(d.get("service")))
-			if row.get("therapy_type") == d.get("service"):
-				session += 1
-		therapy_data.append({
-			"therapy_type" : row.get("therapy_type"),
-			"sessions" : session
-		})
+	if doc.get("invoice_json"):
+		invoiced_data = eval(doc.get("invoice_json"))
+
+		for row in doc.get('therapy_plan_details'):
+			session = 0
+			for d in invoiced_data:
+				if row.get("therapy_type") == d.get("service"):
+					session += 1
+			therapy_data.append({
+				"therapy_type" : row.get("therapy_type"),
+				"sessions" : row.get("no_of_sessions") - session
+			})
+	else:
+		for row in doc.get('therapy_plan_details'):
+			therapy_data.append({
+				"therapy_type" : row.get("therapy_type"),
+				"sessions" : row.get("no_of_sessions")
+			})
 	return therapy_data
 
 	
@@ -151,10 +187,9 @@ def make_sales_invoice(reference_name, patient, company, items, therapy_plan_tem
 	price_list, price_list_currency = frappe.db.get_values(
 		"Price List", {"selling": 1}, ["name", "currency"]
 	)[0]
-	frappe.throw(str(price_list))
+	
 	items =  eval(items)
 
-	item_line = si.append("items", {})
 	for row in items:
 		args = {
 			"doctype": "Sales Invoice",
@@ -168,14 +203,15 @@ def make_sales_invoice(reference_name, patient, company, items, therapy_plan_tem
 		}
 
 		item_details = get_item_details(args)
-		frappe.msgprint(str(item_details.price_list_rate))
-		item_line.item_code = row.get("therapy_type"),
-		item_line.qty = row.get("sessions")
-		item_line.rate = item_details.price_list_rate
-		item_line.amount = flt(item_line.rate) * flt(item_line.qty)
-		item_line.reference_dt = "Therapy Plan"
-		item_line.reference_dn = reference_name
-		item_line.description = item_details.description
-	si.append("items", item_line)
+		si.append("items", {
+			"item_code" :row.get("therapy_type"),
+			"qty" : row.get("sessions"),
+			"rate": item_details.price_list_rate,
+			"amount" : flt(item_details.price_list_rate) * flt(row.get("sessions")),
+			"reference_dt" : "Therapy Plan",
+			"reference_dn" : reference_name,
+			"description" : item_details.description
+		})
+		
 	si.set_missing_values(for_validate=True)
 	return si

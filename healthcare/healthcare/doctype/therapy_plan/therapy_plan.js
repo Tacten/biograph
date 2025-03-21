@@ -9,7 +9,22 @@ frappe.ui.form.on('Therapy Plan', {
 			{fieldname: 'sessions_completed', columns: 2}
 		];
 	},
-
+	onload:(frm)=>{
+		if(!frm.doc.__islocal){
+			frappe.call({
+				method : "healthcare.healthcare.doctype.therapy_plan.therapy_plan.get_invoiced_details",
+				args : {
+					self : frm.doc,
+					on_referesh : true
+				},
+				callback:(r)=>{
+					frm.refresh_field("invoice_json")
+					console.log(r.message[1])
+					frm.set_df_property("invoice_details", "options", r.message[1])
+				}
+			})
+		}
+	},
 	refresh: function(frm) {
 		if (!frm.doc.__islocal) {
 			frm.trigger('show_progress_for_therapies');
@@ -51,14 +66,13 @@ frappe.ui.form.on('Therapy Plan', {
 					}, __('Select Therapy Type'), __('Create'));
 				}, __('Create'));
 			}
-
 			
 			frm.add_custom_button(__('Sales Invoice'), function() {
 				frm.trigger('make_sales_invoice');
 			}, __('Create'));
 			
 		}
-
+		
 		if (frm.doc.therapy_plan_template) {
 			frm.fields_dict.therapy_plan_details.grid.update_docfield_property(
 				'therapy_type', 'read_only', 1
@@ -186,7 +200,7 @@ frappe.ui.form.on('Therapy Plan', {
 		
 		bars.push({
 			'title': title,
-			'width': (frm.doc.total_amount / frm.doc.paid_amount * 100) + '%',
+			'width': ((frm.doc.paid_amount / frm.doc.total_amount) * 100) + '%',
 			'progress_class': 'progress-bar-success'
 		});
 		if (bars[0].width == '0%') {
