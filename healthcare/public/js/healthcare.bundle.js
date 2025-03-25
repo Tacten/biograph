@@ -7,3 +7,4 @@ import "./healthcare_note.js";
 import "./healthcare_note.html";
 import "./healthcare_orders.html";
 import "./mark_unavailable.js";
+import "./form.js"
