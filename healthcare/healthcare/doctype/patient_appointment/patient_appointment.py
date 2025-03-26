@@ -897,7 +897,6 @@ def get_appointment_item(appointment_doc, item):
 
 def cancel_appointment(appointment_id):
 	appointment = frappe.get_doc("Patient Appointment", appointment_id)
-	appointment.status = "Cancelled"
 	if appointment.invoiced:
 		sales_invoice = check_sales_invoice_exists(appointment)
 		if sales_invoice and cancel_sales_invoice(sales_invoice):
@@ -923,7 +922,6 @@ def cancel_appointment(appointment_id):
 		event_doc = frappe.get_doc("Event", appointment.event)
 		event_doc.status = "Cancelled"
 		event_doc.save(ignore_permissions=True)
-	appointment.save()
 	frappe.msgprint(msg)
 
 
@@ -1133,9 +1131,8 @@ def validate_practitioner_schedules(schedule_entry, practitioner):
 
 @frappe.whitelist()
 def update_status(appointment_id, status):
-	if status != "Cancelled":
-		frappe.db.set_value("Patient Appointment", appointment_id, "status", status)
 	appointment_doc = frappe.get_doc("Patient Appointment", appointment_id)
+	appointment_doc.db_set("status", status)
 	
 	# Different handling based on appointment type
 	if status == "Cancelled":
