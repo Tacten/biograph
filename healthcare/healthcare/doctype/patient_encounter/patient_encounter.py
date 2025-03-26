@@ -159,7 +159,7 @@ class PatientEncounter(Document):
 			return
 
 		for therapy in self.therapies:
-			if therapy.no_of_sessions <= 0:
+			if not therapy.no_of_sessions or therapy.no_of_sessions <= 0:
 				frappe.throw(
 					_("Row #{0} (Therapies): Number of Sessions should be at least 1").format(therapy.idx)
 				)
