@@ -27,6 +27,15 @@ class TherapyType(Document):
 		if self.change_in_item:
 			self.update_item_and_item_price()
 
+	def before_rename(self, old_name, new_name, merge=False):
+		# Don't rename the linked item, just return the new name
+		return new_name
+
+	def after_rename(self, old_name, new_name, merge=False):
+		# Update only therapy_type field, do not update item_code or item_name
+		self.db_set("therapy_type", new_name)
+		return new_name
+
 	def enable_disable_item(self):
 		if self.is_billable:
 			if self.disabled:
