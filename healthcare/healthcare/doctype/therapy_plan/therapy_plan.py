@@ -206,7 +206,7 @@ def make_sales_invoice(reference_name, patient, company, items, therapy_plan_tem
 	for row in items:
 		args = {
 			"doctype": "Sales Invoice",
-			"item_code": row.get("therapy_type"),
+			"item_code": frappe.db.get_value("Therapy Type", row.get("therapy_type"), "item"),
 			"company": company,
 			"customer": si.customer,
 			"selling_price_list": price_list,
@@ -217,7 +217,7 @@ def make_sales_invoice(reference_name, patient, company, items, therapy_plan_tem
 
 		item_details = get_item_details(args)
 		si.append("items", {
-			"item_code" :row.get("therapy_type"),
+			"item_code" : frappe.db.get_value("Therapy Type", row.get("therapy_type"), "item"),
 			"qty" : row.get("sessions"),
 			"rate": item_details.price_list_rate,
 			"amount" : flt(item_details.price_list_rate) * flt(row.get("sessions")),
