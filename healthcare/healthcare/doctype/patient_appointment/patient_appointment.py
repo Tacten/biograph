@@ -345,7 +345,7 @@ class PatientAppointment(Document):
 			return
 			
 		# If appointment is already marked as "Needs Rescheduling", we should check if it has been rescheduled
-		if self.status == "Needs Rescheduling":
+		if self.status == "Needs Rescheduling" and self.status != "Cancelled":
 			# If this has been modified and saved, it means the appointment was rescheduled
 			if self.modified != self.creation:
 				if appointment_date > today:
@@ -357,13 +357,13 @@ class PatientAppointment(Document):
 
 		# If appointment is created for today set status as Open else Scheduled
 		if appointment_date == today:
-			if self.status not in ["Checked In", "Checked Out", "Open", "Confirmed"]:
+			if self.status not in ["Checked In", "Checked Out", "Open", "Confirmed", "Cancelled"]:
 				self.status = "Open"
 
-		elif appointment_date > today and self.status not in ["Scheduled", "Confirmed"]:
+		elif appointment_date > today and self.status not in ["Scheduled", "Confirmed", "Cancelled"]:
 			self.status = "Scheduled"
 
-		elif appointment_date < today and self.status != "No Show":
+		elif appointment_date < today and self.status not in ["No Show", "Cancelled"]:
 			self.status = "No Show"
 
 	def validate_overlaps(self):
@@ -1132,7 +1132,8 @@ def validate_practitioner_schedules(schedule_entry, practitioner):
 @frappe.whitelist()
 def update_status(appointment_id, status):
 	appointment_doc = frappe.get_doc("Patient Appointment", appointment_id)
-	appointment_doc.db_set("status", status)
+	appointment_doc.status = "Cancelled"
+	appointment_doc.save()
 	
 	# Different handling based on appointment type
 	if status == "Cancelled":
