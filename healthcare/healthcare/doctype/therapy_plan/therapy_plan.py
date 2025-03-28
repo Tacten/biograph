@@ -146,7 +146,7 @@ def get_services_details(self):
 			
 			session = 0
 			for d in invoiced_data:
-				if row.get("therapy_type") == d.get("service"):
+				if frappe.db.get_value("Therapy Type", row.get("therapy_type"), "item") == d.get("service"):
 					session += d.get("no_of_session")
 
 			therapy_data.append({
