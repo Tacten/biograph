@@ -1773,3 +1773,97 @@ def update_unavailability_appointment_names():
 	frappe.db.commit()
 	print(f"Updated names for {count} unavailability appointments")
 	return count
+
+@frappe.whitelist()
+def check_conflicts(practitioner=None, appointment_date=None, from_time=None, to_time=None, appointment=None, 
+                   department=None, service_unit=None, appointment_for=None):
+	"""
+	Check for conflicting appointments within a time range
+	:param practitioner: The Healthcare Practitioner
+	:param appointment_date: Date to check
+	:param from_time: Start time
+	:param to_time: End time
+	:param appointment: Current appointment (to exclude from conflicts)
+	:param department: Medical Department
+	:param service_unit: Healthcare Service Unit
+	:param appointment_for: Appointment For (Practitioner/Department/Service Unit)
+	:return: List of conflicting appointments
+	"""
+	# Convert strings to time objects
+	from_time = get_time(from_time)
+	to_time = get_time(to_time)
+	
+	# Convert datetime strings to datetime objects
+	start_dt = combine_datetime(appointment_date, from_time)
+	end_dt = combine_datetime(appointment_date, to_time)
+	
+	# Build the query filters
+	filters = {
+		"appointment_date": appointment_date,
+		"status": ["not in", ["Cancelled", "Closed"]],
+	}
+	
+	# Filter based on appointment_for
+	if appointment_for == "Practitioner" and practitioner:
+		filters["practitioner"] = practitioner
+	elif appointment_for == "Department" and department:
+		filters["department"] = department
+	elif appointment_for == "Service Unit" and service_unit:
+		filters["service_unit"] = service_unit
+	elif practitioner:  # For backward compatibility
+		filters["practitioner"] = practitioner
+	
+	if appointment:
+		filters["name"] = ["!=", appointment]
+	
+	# Query appointments on the specified date
+	appointments = frappe.get_all(
+		"Patient Appointment",
+		filters=filters,
+		fields=["name", "appointment_time", "duration", "status", "patient_name", "practitioner", "department", "service_unit"]
+	)
+	
+	# Check for overlaps
+	conflicts = []
+	for app in appointments:
+		app_start_time = get_time(app.appointment_time)
+		app_end_time = add_to_time(app_start_time, app.duration)
+		
+		app_start_dt = combine_datetime(appointment_date, app_start_time)
+		app_end_dt = combine_datetime(appointment_date, app_end_time)
+		
+		# Check if this appointment overlaps with the requested time range
+		if (
+			(app_start_dt <= start_dt < app_end_dt) or
+			(app_start_dt < end_dt <= app_end_dt) or
+			(start_dt <= app_start_dt and end_dt >= app_end_dt)
+		):
+			conflicts.append(app)
+	
+	return conflicts
+
+def combine_datetime(date, time):
+	"""
+	Combine date and time into a datetime object
+	:param date: Date string or date object
+	:param time: Time string or time object
+	:return: datetime object
+	"""
+	if isinstance(date, str):
+		date = getdate(date)
+	if isinstance(time, str):
+		time = get_time(time)
+	
+	return datetime.combine(date, time)
+
+def add_to_time(time, minutes):
+	"""
+	Add minutes to a time object
+	:param time: Time object
+	:param minutes: Minutes to add
+	:return: Time object
+	"""
+	from datetime import date
+	dt = datetime.combine(date.today(), time)
+	dt = dt + timedelta(minutes=minutes)
+	return dt.time()
