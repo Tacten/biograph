@@ -74,13 +74,20 @@ frappe.ui.form.on('Patient Appointment', {
 			frm.page.set_primary_action(__('Save'), () => frm.save());
 		}
 
-		// Handle Unavailable appointment
+		// Handle Unavailable appointment - this always returns early
 		if (frm.doc.appointment_type === "Unavailable" && frm.doc.status !== "Cancelled") {
 			frm.add_custom_button(__('Cancel Unavailability'), function() {
 				update_status(frm, 'Cancelled');
 			}).addClass("btn-danger");
 			
 			return; // Return early to not add other buttons for this status
+		}
+		
+		// Handle Block Booking appointment - add custom cancel button but don't return early
+		if (frm.doc.appointment_type === "Block Booking" && frm.doc.status !== "Cancelled") {
+			frm.add_custom_button(__('Cancel'), function() {
+				update_status(frm, 'Cancelled');
+			});
 		}
 
 		if (frm.doc.patient) {
@@ -404,6 +411,7 @@ let check_and_set_availability = function(frm) {
 	let add_video_conferencing = null;
 	let overlap_appointments = null;
 	let appointment_based_on_check_in = false;
+	let is_block_booking = false;
 
 	show_availability();
 
@@ -426,66 +434,172 @@ let check_and_set_availability = function(frm) {
 				{ fieldtype: 'Column Break' },
 				{ fieldtype: 'Date', reqd: 1, fieldname: 'appointment_date', label: 'Date', min_date: new Date(frappe.datetime.get_today()) },
 				{ fieldtype: 'Section Break' },
+				{ 
+					fieldtype: 'Check', 
+					fieldname: 'block_booking', 
+					label: 'Block Booking', 
+					default: 0,
+					description: __('Enable to book an appointment for a custom time block instead of predefined slots'),
+					onchange: function() {
+						is_block_booking = this.get_value();
+						toggle_booking_type(d, is_block_booking);
+					}
+				},
+				{ fieldtype: 'Section Break', fieldname: 'slots_section' },
+				{ 
+					fieldtype: 'Time', 
+					fieldname: 'from_time', 
+					label: 'From Time', 
+					reqd: 0,
+					hidden: 1,
+					default: '09:00:00',
+					description: __('Start time of the block appointment') 
+				},
+				{ 
+					fieldtype: 'Time', 
+					fieldname: 'to_time', 
+					label: 'To Time', 
+					reqd: 0, 
+					hidden: 1,
+					default: '17:00:00',
+					description: __('End time of the block appointment')
+				},
 				{ fieldtype: 'HTML', fieldname: 'available_slots' },
 			],
 			primary_action_label: __('Book'),
 			primary_action: async function() {
-				frm.set_value('appointment_time', selected_slot);
-				add_video_conferencing = add_video_conferencing && !d.$wrapper.find(".opt-out-check").is(":checked")
-					&& !overlap_appointments
-
-				frm.set_value('add_video_conferencing', add_video_conferencing);
-				if (!frm.doc.duration) {
-					frm.set_value('duration', duration);
-				}
-				let practitioner = frm.doc.practitioner;
-
-				frm.set_value('practitioner', d.get_value('practitioner'));
-				frm.set_value('department', d.get_value('department'));
-				frm.set_value('appointment_date', d.get_value('appointment_date'));
-				
-				// Ensure appointment_based_on_check_in is set to false when not checked
-				// We need to explicitly set it to 0 to avoid null values
-				frm.set_value('appointment_based_on_check_in', appointment_based_on_check_in ? 1 : 0);
-
-				if (service_unit) {
-					frm.set_value('service_unit', service_unit);
-				}
-				
-				// If the appointment was previously marked as Needs Rescheduling, update the status
-				if (frm.doc.status === 'Needs Rescheduling') {
-					let appointment_date = moment(d.get_value('appointment_date'));
-					let today = moment().startOf('day');
+				if (is_block_booking) {
+					let values = d.get_values();
 					
-					if (appointment_date.isAfter(today)) {
-						frm.set_value('status', 'Scheduled');
-					} else if (appointment_date.isSame(today)) {
-						frm.set_value('status', 'Open');
+					if (!values) return;
+					
+					if (values.from_time >= values.to_time) {
+						frappe.throw(__("From Time must be before To Time"));
+						return;
 					}
-				}
-
-				d.hide();
-				frm.enable_save();
-				await frm.save();
-				if (!frm.is_new() && (!practitioner || practitioner == d.get_value('practitioner'))) {
-					await frappe.db.get_single_value("Healthcare Settings", "show_payment_popup").then(val => {
-						frappe.call({
-							method: "healthcare.healthcare.doctype.fee_validity.fee_validity.check_fee_validity",
-							args: { "appointment": frm.doc },
-							callback: (r) => {
-								if (val && !r.message && !frm.doc.invoiced) {
-									make_payment(frm, val);
-								} else {
-									frappe.call({
-										method: "healthcare.healthcare.doctype.patient_appointment.patient_appointment.update_fee_validity",
-										args: { "appointment": frm.doc }
-									});
-								}
-							}
-						});
+					
+					if (values.from_time && typeof values.from_time === 'string') {
+						if (!values.from_time.includes(':')) {
+							values.from_time = values.from_time + ":00";
+						}
+						if (values.from_time.split(':').length === 2) {
+							values.from_time = values.from_time + ":00";
+						}
+					}
+					
+					if (values.to_time && typeof values.to_time === 'string') {
+						if (!values.to_time.includes(':')) {
+							values.to_time = values.to_time + ":00";
+						}
+						if (values.to_time.split(':').length === 2) {
+							values.to_time = values.to_time + ":00";
+						}
+					}
+					
+					try {
+						let from_datetime = frappe.datetime.str_to_obj(values.date + " " + values.from_time);
+						let to_datetime = frappe.datetime.str_to_obj(values.date + " " + values.to_time);
+						let duration_minutes = (to_datetime - from_datetime) / (1000 * 60);
+						values.duration = duration_minutes;
+					} catch (e) {
+						console.error("Error calculating duration:", e);
+					}
+					
+					frappe.show_alert({
+						message: __("Checking for conflicts..."),
+						indicator: "blue"
 					});
+					
+					let formValues = {
+						practitioner: values.practitioner,
+						department: values.department,
+						service_unit: '',
+						date: values.appointment_date,
+						from_time: values.from_time,
+						to_time: values.to_time,
+						duration: values.duration
+					};
+					
+					d.hide();
+					
+					frappe.call({
+						method: "healthcare.healthcare.doctype.patient_appointment.patient_appointment.check_unavailability_conflicts",
+						args: {
+							filters: formValues
+						},
+						callback: function(r) {
+							if (r.message && Array.isArray(r.message) && r.message.length > 0) {
+								show_block_booking_conflict_dialog(formValues, r.message);
+							} else {
+								create_block_appointment(formValues, frm);
+							}
+						}
+					});
+				} else {
+					frm.set_value('appointment_time', selected_slot);
+					add_video_conferencing = add_video_conferencing && !d.$wrapper.find(".opt-out-check").is(":checked")
+						&& !overlap_appointments
+
+					frm.set_value('add_video_conferencing', add_video_conferencing);
+					if (!frm.doc.duration) {
+						frm.set_value('duration', duration);
+					}
+					let practitioner = frm.doc.practitioner;
+
+					frm.set_value('practitioner', d.get_value('practitioner'));
+					frm.set_value('department', d.get_value('department'));
+					frm.set_value('appointment_date', d.get_value('appointment_date'));
+					
+					if (duration) {
+						let start_time = moment(selected_slot, 'HH:mm:ss');
+						
+						let end_time = moment(start_time).add(duration, 'minutes');
+						
+						let end_time_str = end_time.format('HH:mm:ss');
+						
+						frm.set_value('end_time', end_time_str);
+					}
+					
+					frm.set_value('appointment_based_on_check_in', appointment_based_on_check_in ? 1 : 0);
+
+					if (service_unit) {
+						frm.set_value('service_unit', service_unit);
+					}
+					
+					if (frm.doc.status === 'Needs Rescheduling') {
+						let appointment_date = moment(d.get_value('appointment_date'));
+						let today = moment().startOf('day');
+						
+						if (appointment_date.isAfter(today)) {
+							frm.set_value('status', 'Scheduled');
+						} else if (appointment_date.isSame(today)) {
+							frm.set_value('status', 'Open');
+						}
+					}
+
+					d.hide();
+					frm.enable_save();
+					await frm.save();
+					if (!frm.is_new() && (!practitioner || practitioner == d.get_value('practitioner'))) {
+						await frappe.db.get_single_value("Healthcare Settings", "show_payment_popup").then(val => {
+							frappe.call({
+								method: "healthcare.healthcare.doctype.fee_validity.fee_validity.check_fee_validity",
+								args: { "appointment": frm.doc },
+								callback: (r) => {
+									if (val && !r.message && !frm.doc.invoiced) {
+										make_payment(frm, val);
+									} else {
+										frappe.call({
+											method: "healthcare.healthcare.doctype.patient_appointment.patient_appointment.update_fee_validity",
+											args: { "appointment": frm.doc }
+										});
+									}
+								}
+							});
+						});
+					}
+					d.get_primary_btn().attr('disabled', true);
 				}
-				d.get_primary_btn().attr('disabled', true);
 			}
 		});
 
@@ -515,24 +629,248 @@ let check_and_set_availability = function(frm) {
 			}
 		};
 
-		// disable dialog action initially
 		d.get_primary_btn().attr('disabled', true);
-
-		// Field Change Handler
 
 		let fd = d.fields_dict;
 
 		d.fields_dict['appointment_date'].df.onchange = () => {
-			show_slots(d, fd);
+			if (is_block_booking) {
+				if (d.get_value('appointment_date') && d.get_value('from_time') && d.get_value('to_time') && 
+				    d.get_value('from_time') < d.get_value('to_time')) {
+					d.get_primary_btn().attr('disabled', null);
+				}
+			} else {
+				show_slots(d, fd);
+			}
 		};
+		
+		d.fields_dict['from_time'].df.onchange = () => {
+			if (is_block_booking && d.get_value('appointment_date') && 
+			    d.get_value('from_time') && d.get_value('to_time') && 
+			    d.get_value('from_time') < d.get_value('to_time')) {
+				d.get_primary_btn().attr('disabled', null);
+			}
+		};
+		
+		d.fields_dict['to_time'].df.onchange = () => {
+			if (is_block_booking && d.get_value('appointment_date') && 
+			    d.get_value('from_time') && d.get_value('to_time') && 
+			    d.get_value('from_time') < d.get_value('to_time')) {
+				d.get_primary_btn().attr('disabled', null);
+			}
+		};
+		
 		d.fields_dict['practitioner'].df.onchange = () => {
 			if (d.get_value('practitioner') && d.get_value('practitioner') != selected_practitioner) {
 				selected_practitioner = d.get_value('practitioner');
-				show_slots(d, fd);
+				if (!is_block_booking) {
+					show_slots(d, fd);
+				} else if (d.get_value('appointment_date') && 
+				    d.get_value('from_time') && d.get_value('to_time') && 
+				    d.get_value('from_time') < d.get_value('to_time')) {
+					d.get_primary_btn().attr('disabled', null);
+				}
 			}
 		};
 
 		d.show();
+	}
+	
+	function toggle_booking_type(d, is_block) {
+		if (is_block) {
+			d.set_df_property('available_slots', 'hidden', 1);
+			d.set_df_property('from_time', 'hidden', 0);
+			d.set_df_property('to_time', 'hidden', 0);
+			d.set_df_property('from_time', 'reqd', 1);
+			d.set_df_property('to_time', 'reqd', 1);
+			
+			selected_slot = null;
+			
+			d.set_title(__('Block Time Booking'));
+			
+			d.fields_dict.available_slots.$wrapper.html('');
+			
+			if (d.get_value('appointment_date') && d.get_value('practitioner') && 
+			    d.get_value('from_time') && d.get_value('to_time') && 
+			    d.get_value('from_time') < d.get_value('to_time')) {
+				d.get_primary_btn().attr('disabled', null);
+			} else {
+				d.get_primary_btn().attr('disabled', true);
+			}
+		} else {
+			d.set_df_property('available_slots', 'hidden', 0);
+			d.set_df_property('from_time', 'hidden', 1);
+			d.set_df_property('to_time', 'hidden', 1);
+			d.set_df_property('from_time', 'reqd', 0);
+			d.set_df_property('to_time', 'reqd', 0);
+			
+			d.set_title(__('Available slots'));
+			
+			if (d.get_value('practitioner') && d.get_value('appointment_date')) {
+				show_slots(d, d.fields_dict);
+			}
+		}
+	}
+	
+	function show_block_booking_conflict_dialog(values, conflicts) {
+		let conflict_html = `<div class="conflicts-container">
+			<div class="alert alert-danger">
+				<strong>${__("Cannot book time block appointment!")}</strong> ${__("The following appointments conflict with the selected time:")}
+			</div>
+			<div class="conflict-list" style="max-height: 300px; overflow-y: auto;">
+				<table class="table table-bordered">
+					<thead>
+						<tr>
+							<th>${__("Patient")}</th>
+							<th>${__("Time")}</th>
+							<th>${__("Type")}</th>
+							<th>${__("Status")}</th>
+						</tr>
+					</thead>
+					<tbody>`;
+		
+		conflicts.forEach(function(conflict) {
+			conflict_html += `<tr>
+				<td>${conflict.patient_name || conflict.patient}</td>
+				<td>${conflict.appointment_time}</td>
+				<td>${conflict.appointment_type || ""}</td>
+				<td>${conflict.status}</td>
+			</tr>`;
+		});
+		
+		conflict_html += `</tbody>
+				</table>
+			</div>
+			<div class="alert alert-info mt-3">
+				${__("Total conflicting appointments: ")} <strong>${conflicts.length}</strong>
+			</div>
+			<div class="alert alert-warning">
+				<strong>${__("Important:")}</strong> ${__("You must cancel these appointments before booking a time block appointment for this time.")}
+			</div>
+		</div>`;
+		
+		let d = new frappe.ui.Dialog({
+			title: __("Appointment Conflicts Detected"),
+			fields: [
+				{
+					fieldtype: "HTML",
+					fieldname: "conflicts_html",
+					options: conflict_html
+				}
+			],
+			primary_action_label: __("Go Back"),
+			primary_action: function() {
+				d.hide();
+				check_and_set_availability(frm);
+			}
+		});
+		
+		d.show();
+	}
+	
+	function create_block_appointment(values, frm) {
+		// Check if patient is selected
+		if (!frm.doc.patient) {
+			frappe.msgprint({
+				title: __('Patient Required'),
+				message: __('Please select a patient before booking a block appointment'),
+				indicator: 'red'
+			});
+			check_and_set_availability(frm); // Reopen the dialog
+			return;
+		}
+		
+		frappe.confirm(
+			__("Are you sure you want to book this time block appointment?"),
+			function() {
+				// Calculate duration in minutes based on from and to time
+				let from_time_obj = moment(values.from_time, 'HH:mm:ss');
+				let to_time_obj = moment(values.to_time, 'HH:mm:ss');
+				
+				// Ensure to_time is after from_time
+				if (to_time_obj.isBefore(from_time_obj)) {
+					frappe.msgprint({
+						title: __('Invalid Time Range'),
+						message: __('End time must be after start time'),
+						indicator: 'red'
+					});
+					return;
+				}
+				
+				// Calculate duration in minutes
+				let duration_minutes = to_time_obj.diff(from_time_obj, 'minutes');
+				
+				console.log("Block appointment details:", {
+					from: values.from_time,
+					to: values.to_time,
+					duration: duration_minutes
+				});
+				
+				// Set the form values from the block booking dialog
+				frm.set_value('appointment_date', values.date);
+				frm.set_value('appointment_time', values.from_time);
+				frm.set_value('end_time', values.to_time);
+				frm.set_value('duration', duration_minutes);
+				
+				// Ensure these fields are also set for completeness
+				frm.set_value('end_time', values.to_time);
+				
+				// Set the appointment datetime for proper filtering
+				let appointment_datetime = moment(values.date).format('YYYY-MM-DD') + ' ' + values.from_time;
+				frm.set_value('appointment_datetime', appointment_datetime);
+				
+				// Set appointment end datetime 
+				let appointment_end_datetime = moment(values.date).format('YYYY-MM-DD') + ' ' + values.to_time;
+				frm.set_value('appointment_datetime', appointment_end_datetime);
+				
+				// Set practitioner/department
+				frm.set_value('practitioner', values.practitioner);
+				if (values.department) {
+					frm.set_value('department', values.department);
+				}
+				
+				// Calculate the status based on the appointment date
+				let appointment_date = moment(values.date);
+				let today = moment().startOf('day');
+				
+				if (appointment_date.isAfter(today)) {
+					frm.set_value('status', 'Scheduled');
+				} else if (appointment_date.isSame(today)) {
+					frm.set_value('status', 'Open');
+				}
+				
+				frm.enable_save();
+				frm.save()
+					.then(() => {
+						// Add a reload to ensure UI is updated properly
+						frm.reload_doc();
+						
+						frappe.show_alert({
+							message: __("Time block appointment for {0} booked successfully from {1} to {2}", [
+								frm.doc.patient_name, 
+								moment(values.from_time, 'HH:mm:ss').format('hh:mm A'),
+								moment(values.to_time, 'HH:mm:ss').format('hh:mm A')
+							]),
+							indicator: "green"
+						}, 5);
+						
+						// Refresh any views if needed
+						if (cur_list && cur_list.doctype === "Patient Appointment") {
+							cur_list.refresh();
+						} else if (cur_calendar && cur_calendar.doctype === "Patient Appointment") {
+							cur_calendar.refresh();
+						}
+					})
+					.catch((err) => {
+						console.error("Error saving block appointment:", err);
+						frappe.msgprint({
+							title: __('Error'),
+							message: __('Failed to save block appointment. Please try again.'),
+							indicator: 'red'
+						});
+					});
+			}
+		);
 	}
 
 	function show_slots(d, fd) {
@@ -550,7 +888,6 @@ let check_and_set_availability = function(frm) {
 					if (data.slot_details.length > 0) {
 						let $wrapper = d.fields_dict.available_slots.$wrapper;
 
-						// make buttons for each slot
 						let slot_html = get_slots(data.slot_details, data.fee_validity, d.get_value('appointment_date'));
 
 						$wrapper
@@ -558,7 +895,6 @@ let check_and_set_availability = function(frm) {
 							.addClass('text-center')
 							.html(slot_html);
 
-						// highlight button when clicked
 						$wrapper.on('click', 'button', function() {
 							let $btn = $(this);
 							$wrapper.find('button').removeClass('btn-outline-primary');
@@ -569,7 +905,6 @@ let check_and_set_availability = function(frm) {
 							duration = $btn.attr('data-duration');
 							add_video_conferencing = parseInt($btn.attr('data-tele-conf'));
 							overlap_appointments = parseInt($btn.attr('data-overlap-appointments'));
-							// show option to opt out of tele conferencing
 							if ($btn.attr('data-tele-conf') == 1) {
 								if (d.$wrapper.find(".opt-out-conf-div").length) {
 									d.$wrapper.find(".opt-out-conf-div").show();
@@ -600,12 +935,10 @@ let check_and_set_availability = function(frm) {
 								d.$wrapper.find(".opt-out-conf-div").hide();
 							}
 
-							// enable primary action 'Book'
 							d.get_primary_btn().attr('disabled', null);
 						});
 
 					} else {
-						//	fd.available_slots.html('Please select a valid date.'.bold())
 						show_empty_state(d.get_value('practitioner'), d.get_value('appointment_date'));
 					}
 				},
@@ -658,34 +991,42 @@ let check_and_set_availability = function(frm) {
 						slot_end_time = moment(slot.to_time, 'HH:mm:ss');
 						interval = (slot_end_time - slot_start_time) / 60000 | 0;
 
-						// restrict past slots based on the current time.
 						let now = moment();
-						let booked_moment = ""
+						let booked_moment = "";
 						if((now.format("YYYY-MM-DD") == appointment_date) && (slot_start_time.isBefore(now) && !slot.maximum_appointments)){
 							disabled = true;
 						} else {
-							// iterate in all booked appointments, update the start time and duration
 							slot_info.appointments.forEach((booked) => {
+								// Get the start time of the booked appointment
 								booked_moment = moment(booked.appointment_time, 'HH:mm:ss');
-								let end_time = booked_moment.clone().add(booked.duration, 'minutes');
+								
+								// Get the end time - either from explicit end_time or calculated from duration
+								let end_time;
+								if (booked.end_time) {
+									// Use explicit end time if available (block appointments)
+									end_time = moment(booked.end_time, 'HH:mm:ss');
+								} else {
+									// Otherwise calculate from duration
+									end_time = booked_moment.clone().add(booked.duration, 'minutes');
+								}
 
-								// Special handling for unavailable appointments - always disable the slot
+								// Special handling for Unavailable appointments
 								if (booked.status === "Unavailable" && booked.appointment_type === "Unavailable") {
-									// Check if the unavailable appointment overlaps with this slot
 									if (slot_start_time.isBefore(end_time) && slot_end_time.isAfter(booked_moment)) {
 										disabled = true;
 										tool_tip = __("Practitioner unavailable at this time");
-										return false;  // Exit the forEach loop early
+										return false;
 									}
 								}
 
-								// to get apointment count for all day appointments
+								// Handle maximum appointments capacity
 								if (slot.maximum_appointments) {
 									if (booked.appointment_date == appointment_date) {
 										appointment_count++;
 									}
 								}
-								// Deal with 0 duration appointments
+								
+								// Check if the slot time matches exactly with a booked appointment
 								if (booked_moment.isSame(slot_start_time) || booked_moment.isBetween(slot_start_time, slot_end_time)) {
 									if (booked.duration == 0) {
 										disabled = true;
@@ -693,10 +1034,20 @@ let check_and_set_availability = function(frm) {
 									}
 								}
 
-								// Check for overlaps considering appointment duration
+								// Overlap checks
 								if (slot_info.allow_overlap != 1) {
-									if (slot_start_time.isBefore(end_time) && slot_end_time.isAfter(booked_moment)) {
-										// There is an overlap
+									// Check if the current slot overlaps with any booked appointment
+									// This handles the case where a block appointment might span multiple slots
+									let slot_overlaps_with_booked = (
+										// Slot starts during the booked appointment
+										(slot_start_time.isSameOrAfter(booked_moment) && slot_start_time.isBefore(end_time)) ||
+										// Slot ends during the booked appointment
+										(slot_end_time.isAfter(booked_moment) && slot_end_time.isSameOrBefore(end_time)) ||
+										// Slot completely contains the booked appointment
+										(slot_start_time.isSameOrBefore(booked_moment) && slot_end_time.isSameOrAfter(end_time))
+									);
+									
+									if (slot_overlaps_with_booked) {
 										disabled = true;
 										return false;
 									}
@@ -705,7 +1056,6 @@ let check_and_set_availability = function(frm) {
 										appointment_count++;
 									}
 									if (appointment_count >= slot_info.service_unit_capacity) {
-										// There is an overlap
 										disabled = true;
 										return false;
 									}
@@ -752,14 +1102,7 @@ let check_and_set_availability = function(frm) {
 
 				}
 			}).join("");
-
-				if (slot_info.service_unit_capacity) {
-					slot_html += `<br/><small>${__('Each slot indicates the capacity currently available for booking')}</small>`;
-				}
-				slot_html += `<br/><br/>`;
-
 		});
-
 		return slot_html;
 	}
 };
@@ -895,11 +1238,19 @@ let create_vital_signs = function(frm) {
 
 let update_status = function(frm, status) {
 	let doc = frm.doc;
-	let msg = status === 'Cancelled' ? 
-		(doc.appointment_type === 'Unavailable' ? 
-			__('Are you sure you want to cancel this unavailability record?') : 
-			__('Are you sure you want to cancel this appointment?')) : 
-		__('Set Status to') + " " + status;
+	let msg = "";
+	
+	if (status === 'Cancelled') {
+		if (doc.appointment_type === 'Unavailable') {
+			msg = __('Are you sure you want to cancel this unavailability record?');
+		} else if (doc.appointment_type === 'Block Booking') {
+			msg = __('Are you sure you want to cancel this time block appointment?');
+		} else {
+			msg = __('Are you sure you want to cancel this appointment?');
+		}
+	} else {
+		msg = __('Set Status to') + " " + status;
+	}
 	
 	frappe.confirm(msg,
 		function() {
@@ -937,6 +1288,9 @@ let make_payment = function (frm, automate_invoicing) {
 			});
 		}
 
+		let is_block_booking = frm.doc.appointment_type === "Block Booking";
+		let charge_label = is_block_booking ? "Time Block Appointment Charge" : "Consultation Charge";
+
 		let fields = [
 			{
 				label: "Patient",
@@ -955,7 +1309,7 @@ let make_payment = function (frm, automate_invoicing) {
 				fieldtype: "Column Break",
 			},
 			{
-				label: "Consultation Charge",
+				label: charge_label,
 				fieldname: "consultation_charge",
 				fieldtype: "Currency",
 				read_only: true,
@@ -1136,23 +1490,13 @@ let show_message = function(d, message, field) {
 };
 
 let reschedule_appointment = function(frm) {
-	// For appointments with "Needs Rescheduling" status, we'll use the standard
-	// check_and_set_availability function but add special handling for updating the status
-	
-	// Store the original status to restore if user cancels
 	let original_status = frm.doc.status;
+	let is_block_booking = frm.doc.appointment_type === "Block Booking";
 	
-	// Use the standard availability checking function
 	check_and_set_availability(frm);
 	
-	// After the standard function completes and user selects a slot,
-	// we need to update the status from "Needs Rescheduling" to "Scheduled"
-	
-	// Hook into the form's "after_save" event temporarily
 	let after_save_handler = function() {
-		// If the appointment date or time was changed, update the status
 		if (frm.doc.status === "Needs Rescheduling") {
-			// Set status to Scheduled or Open based on the appointment date
 			let today = frappe.datetime.get_today();
 			let status = today === frm.doc.appointment_date ? "Open" : "Scheduled";
 			
@@ -1164,12 +1508,19 @@ let reschedule_appointment = function(frm) {
 					});
 					frm.reload_doc();
 				});
+		} else if (is_block_booking) {
+			// For block bookings, show confirmation
+			frappe.show_alert({
+				message: __("Time block appointment has been rescheduled"),
+				indicator: "green"
+			}, 5);
+			
+			// Ensure document is reloaded to reflect changes
+			frm.reload_doc();
 		}
 		
-		// Remove the handler after it runs once
 		frm.off("after_save", after_save_handler);
 	};
 	
-	// Add the temporary handler
 	frm.on("after_save", after_save_handler);
 };
