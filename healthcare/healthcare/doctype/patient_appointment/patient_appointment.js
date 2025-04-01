@@ -444,6 +444,21 @@ let check_and_set_availability = function(frm) {
 				frm.set_value('department', d.get_value('department'));
 				frm.set_value('appointment_date', d.get_value('appointment_date'));
 				
+				// Calculate and set the end time based on the selected slot's duration
+				if (duration) {
+					// Convert the selected_slot (which is the start time) to a Date object
+					let start_time = moment(selected_slot, 'HH:mm:ss');
+					
+					// Add the duration to get the end time
+					let end_time = moment(start_time).add(duration, 'minutes');
+					
+					// Format the end time as a string in the format HH:MM:SS
+					let end_time_str = end_time.format('HH:mm:ss');
+					
+					// Set the end_time field with the calculated value
+					frm.set_value('end_time', end_time_str);
+				}
+				
 				// Ensure appointment_based_on_check_in is set to false when not checked
 				// We need to explicitly set it to 0 to avoid null values
 				frm.set_value('appointment_based_on_check_in', appointment_based_on_check_in ? 1 : 0);

@@ -370,6 +370,11 @@ healthcare.appointment.create_unavailability = function(values) {
             if (r.message) {
                 console.log("Unavailability creation response:", r.message);
                 
+                // If we have the end time in the response, store it
+                if (r.message.end_time) {
+                    console.log("End time for unavailability:", r.message.end_time);
+                }
+                
                 frappe.show_alert({
                     message: __("Time marked as unavailable successfully"),
                     indicator: "green"

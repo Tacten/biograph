@@ -11,7 +11,7 @@ from frappe import _
 from frappe.core.doctype.sms_settings.sms_settings import send_sms
 from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils import flt, format_date, get_link_to_form, get_time, getdate
+from frappe.utils import add_to_date, flt, format_date, get_link_to_form, get_time, getdate
 
 from erpnext.setup.doctype.employee.employee import is_holiday
 
@@ -254,7 +254,13 @@ class PatientAppointment(Document):
 		starts_on = datetime.combine(
 			getdate(self.appointment_date), get_time(self.appointment_time)
 		)
-		ends_on = starts_on + timedelta(minutes=flt(self.duration))
+		
+		# Use end_time if available, otherwise calculate based on duration
+		if self.end_time:
+			ends_on = datetime.combine(getdate(self.appointment_date), get_time(self.end_time))
+		else:
+			ends_on = starts_on + timedelta(minutes=flt(self.duration))
+			
 		google_calendar = frappe.db.get_value(
 			"Healthcare Practitioner", self.practitioner, "google_calendar"
 		)
@@ -610,27 +616,21 @@ class PatientAppointment(Document):
 				frappe.throw(msg, title=_("Invalid Healthcare Service Unit"))
 
 	def set_appointment_datetime(self):
-		self.appointment_datetime = "%s %s" % (
-			self.appointment_date,
-			self.appointment_time or "00:00:00",
-		)
+		"""Set appointment_datetime field based on appointment date and time."""
+		self.appointment_datetime = "%s %s" % (self.appointment_date, self.appointment_time or "00:00:00")
 		
-		# Calculate the appointment end datetime based on duration
-		if self.duration:
-			start_dt = datetime.combine(getdate(self.appointment_date), get_time(self.appointment_time))
-			end_dt = start_dt + timedelta(minutes=flt(self.duration))
+		# Set the end time based on duration
+		if self.appointment_time:
+			start_time = get_time(self.appointment_time)
+			end_time = add_to_date(datetime.combine(getdate(), start_time), minutes=self.duration)
+			end_time_str = end_time.time().strftime("%H:%M:%S")
 			
-			# Format the end time properly for all fields
-			end_time_str = end_dt.time().strftime("%H:%M:%S")
-			
-			# Set all end time related fields
+			# Set both appointment_end_time (for compatibility) and end_time
 			self.appointment_end_time = end_time_str
+			self.end_time = end_time_str
+			
 			self.appointment_end_datetime = "%s %s" % (self.appointment_date, end_time_str)
-			self.end_time = end_time_str  # Fix for the end_time field showing raw timestamp
-			
-			# Log for debugging
-			print(f"Set appointment end time to {end_time_str} based on duration {self.duration}")
-			
+
 	def set_payment_details(self):
 		if frappe.db.get_single_value("Healthcare Settings", "show_payment_popup"):
 			details = get_appointment_billing_item_and_rate(self)
@@ -1638,21 +1638,36 @@ def create_unavailability_appointment(data):
 	print(f"Created unavailability appointment: {appointment.name}")
 	print(f"Appointment duration: {duration} minutes, end time: {to_time}")
 	
-	# After insert, double-check that title matches patient_name
+	# After insert, double-check that title matches patient_name and end_time is set
+	update_values = {}
 	if appointment.title != appointment.patient_name:
+		update_values["title"] = appointment.patient_name
+	
+	# Double-check that end_time is set correctly
+	if not appointment.end_time or appointment.end_time != to_time.strftime('%H:%M:%S'):
+		update_values["end_time"] = to_time.strftime('%H:%M:%S')
+	
+	if update_values:
 		frappe.db.set_value(
 			"Patient Appointment",
 			appointment.name,
-			"title",
-			appointment.patient_name,
+			update_values,
 			update_modified=False
 		)
-		print(f"Fixed title to match patient_name: {appointment.patient_name}")
+		print(f"Fixed values after insert: {update_values}")
 	
 	# Notify of update to refresh any views
 	appointment.notify_update()
 	
-	return appointment
+	# Include end_time in the response for the JavaScript
+	return {
+		"name": appointment.name,
+		"date": date.strftime('%Y-%m-%d'),
+		"from_time": from_time.strftime('%H:%M:%S'),
+		"to_time": to_time.strftime('%H:%M:%S'),
+		"end_time": to_time.strftime('%H:%M:%S'),
+		"duration": duration
+	}
 
 @frappe.whitelist()
 def update_appointment_end_times():
@@ -1687,7 +1702,8 @@ def update_appointment_end_times():
 					appointment.name, 
 					{
 						"appointment_end_time": end_time,
-						"appointment_end_datetime": end_datetime
+						"appointment_end_datetime": end_datetime,
+						"end_time": end_time
 					},
 					update_modified=False
 				)
