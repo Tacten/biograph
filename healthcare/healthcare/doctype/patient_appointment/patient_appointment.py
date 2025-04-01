@@ -390,33 +390,33 @@ class PatientAppointment(Document):
 		if not self.practitioner:
 			return
 
-		end_time = datetime.combine(
-			getdate(self.appointment_date), get_time(self.appointment_time)
-		) + timedelta(minutes=flt(self.duration))
+		# Calculate end time based on duration or directly from end_time field
+		if self.end_time:
+			# Use the end_time directly if it's set
+			end_time = datetime.combine(
+				getdate(self.appointment_date), get_time(self.end_time)
+			)
+		else:
+			# Otherwise calculate from duration
+			end_time = datetime.combine(
+				getdate(self.appointment_date), get_time(self.appointment_time)
+			) + timedelta(minutes=flt(self.duration))
 
-		# First check for duplicate unavailability appointments
-		if self.appointment_type == "Unavailable":
-			# Calculate the end time string for filtering
-			end_time_str = end_time.time().strftime("%H:%M:%S")
-			
-			# Use Frappe ORM to find overlapping unavailable appointments
-			filters = {
+		# Check for overlaps with unavailable time slots (block appointments marked as Unavailable)
+		unavailable_appointments = frappe.get_all(
+			"Patient Appointment",
+			filters={
 				"appointment_date": self.appointment_date,
-				"practitioner": self.practitioner,
 				"name": ["!=", self.name],
 				"status": "Unavailable",
-				"appointment_type": "Unavailable"
-			}
-			
-			# Get all unavailability appointments for the same practitioner on the same day
-			existing_unavailable = frappe.get_all(
-				"Patient Appointment",
-				filters=filters,
-				fields=["name", "appointment_time", "duration", "end_time"] 
-			)
-			
-			# Check for overlaps manually
-			for existing in existing_unavailable:
+				"appointment_type": "Unavailable",
+				"practitioner": self.practitioner,
+			},
+			fields=["name", "appointment_time", "duration", "end_time"]
+		)
+		
+		for existing in unavailable_appointments:
+			if not self.status == "Unavailable":  # Only regular appointments need to avoid unavailable slots
 				# Get existing appointment time boundaries
 				existing_start_time = get_time(existing.appointment_time)
 				
@@ -460,33 +460,69 @@ class PatientAppointment(Document):
 						OverlapError,
 					)
 
-		# all appointments for both patient and practitioner overlapping the duration of this appointment
+		# Modified SQL query to include end_time check for better overlap detection
+		# This will check for overlaps using a range comparison that handles block appointments properly
 		overlapping_appointments = frappe.db.sql(
 			"""
 			SELECT
-				name, practitioner, patient, appointment_time, duration, service_unit, status, appointment_type
+				name, practitioner, patient, appointment_time, duration, service_unit, status, appointment_type,
+				end_time
 			FROM
 				`tabPatient Appointment`
 			WHERE
 				appointment_date=%(appointment_date)s AND name!=%(name)s AND status NOT IN ("Closed", "Cancelled") AND
 				(
-					/* Regular overlap check for patient and practitioner */
+					/* Regular overlap check for patient and practitioner with end_time support */
 					(
 						(practitioner=%(practitioner)s OR patient=%(patient)s) AND
 						(
-							(appointment_time<%(appointment_time)s AND appointment_time + INTERVAL duration MINUTE>%(appointment_time)s) OR
-							(appointment_time>%(appointment_time)s AND appointment_time<%(end_time)s) OR
-							(appointment_time=%(appointment_time)s)
+							/* Case 1: Using explicitly set end_time if available */
+							(
+								end_time IS NOT NULL AND (
+									/* Our start is during their time block */
+									(%(appointment_time)s >= appointment_time AND %(appointment_time)s < end_time) OR
+									/* Their start is during our time block */
+									(appointment_time >= %(appointment_time)s AND appointment_time < %(end_time)s) OR
+									/* Exactly matching start times */
+									(appointment_time = %(appointment_time)s)
+								)
+							)
+							OR
+							/* Case 2: Using duration-based calculation when end_time not available */
+							(
+								end_time IS NULL AND (
+									(appointment_time<%(appointment_time)s AND appointment_time + INTERVAL duration MINUTE>%(appointment_time)s) OR
+									(appointment_time>%(appointment_time)s AND appointment_time<%(end_time)s) OR
+									(appointment_time=%(appointment_time)s)
+								)
+							)
 						)
 					)
 					OR
-					/* Special check for unavailable slots for this practitioner */
+					/* Special check for unavailable slots for this practitioner with end_time support */
 					(
 						practitioner=%(practitioner)s AND status="Unavailable" AND appointment_type="Unavailable" AND
 						(
-							(appointment_time<%(appointment_time)s AND appointment_time + INTERVAL duration MINUTE>%(appointment_time)s) OR
-							(appointment_time>%(appointment_time)s AND appointment_time<%(end_time)s) OR
-							(appointment_time=%(appointment_time)s)
+							/* Case 1: Using explicitly set end_time if available */
+							(
+								end_time IS NOT NULL AND (
+									/* Our start is during their time block */
+									(%(appointment_time)s >= appointment_time AND %(appointment_time)s < end_time) OR
+									/* Their start is during our time block */
+									(appointment_time >= %(appointment_time)s AND appointment_time < %(end_time)s) OR
+									/* Exactly matching start times */
+									(appointment_time = %(appointment_time)s)
+								)
+							)
+							OR
+							/* Case 2: Using duration-based calculation when end_time not available */
+							(
+								end_time IS NULL AND (
+									(appointment_time<%(appointment_time)s AND appointment_time + INTERVAL duration MINUTE>%(appointment_time)s) OR
+									(appointment_time>%(appointment_time)s AND appointment_time<%(end_time)s) OR
+									(appointment_time=%(appointment_time)s)
+								)
+							)
 						)
 					)
 				)
@@ -497,7 +533,7 @@ class PatientAppointment(Document):
 				"practitioner": self.practitioner,
 				"patient": self.patient,
 				"appointment_time": self.appointment_time,
-				"end_time": end_time.time(),
+				"end_time": end_time.time().strftime("%H:%M:%S")
 			},
 			as_dict=True,
 		)
@@ -619,13 +655,35 @@ class PatientAppointment(Document):
 		"""Set appointment_datetime field based on appointment date and time."""
 		self.appointment_datetime = "%s %s" % (self.appointment_date, self.appointment_time or "00:00:00")
 		
-		# Set the end time based on duration
-		if self.appointment_time:
+		# Set the end time based on duration or use existing end_time
+		if self.end_time:
+			# If end_time is already set, use it and ensure other fields are consistent
+			end_time_str = self.end_time
+			if isinstance(self.end_time, datetime):
+				end_time_str = self.end_time.strftime("%H:%M:%S")
+			
+			# Make sure appointment_end_time is also set
+			self.appointment_end_time = end_time_str
+			
+			# Set appointment_end_datetime
+			self.appointment_end_datetime = "%s %s" % (self.appointment_date, end_time_str)
+			
+			# Calculate and update duration based on end_time for consistency
+			if self.appointment_time:
+				start_time = get_time(self.appointment_time)
+				end_time = get_time(end_time_str)
+				
+				if end_time > start_time:
+					start_dt = datetime.combine(getdate(), start_time)
+					end_dt = datetime.combine(getdate(), end_time)
+					self.duration = (end_dt - start_dt).total_seconds() / 60
+		elif self.appointment_time:
+			# If no end_time but we have duration and appointment_time, calculate end_time
 			start_time = get_time(self.appointment_time)
 			end_time = add_to_date(datetime.combine(getdate(), start_time), minutes=self.duration)
 			end_time_str = end_time.time().strftime("%H:%M:%S")
 			
-			# Set both appointment_end_time (for compatibility) and end_time
+			# Set both appointment_end_time and end_time
 			self.appointment_end_time = end_time_str
 			self.end_time = end_time_str
 			
@@ -700,12 +758,29 @@ class PatientAppointment(Document):
 
 	def ensure_duration_is_set(self):
 		"""Ensure that appointment duration is properly set based on appointment type or slot"""
+		
+		# First check if we have both appointment_time and end_time set - this takes highest priority
+		if self.appointment_time and self.end_time:
+			start_time = get_time(self.appointment_time)
+			end_time = get_time(self.end_time)
+			
+			# Ensure end time is after start time
+			if end_time > start_time:
+				start_dt = datetime.combine(getdate(), start_time)
+				end_dt = datetime.combine(getdate(), end_time)
+				duration_minutes = (end_dt - start_dt).total_seconds() / 60
+				
+				# Set the duration based on the time difference
+				self.duration = duration_minutes
+				print(f"Set duration to {duration_minutes} minutes based on end_time")
+				return
+			
 		# If a duration is already set, respect it
 		if self.duration:
 			print(f"Using existing duration: {self.duration} minutes")
 			return
 			
-		# First try to get duration from schedule slot if it's available
+		# Next try to get duration from schedule slot if it's available
 		if self.practitioner and self.appointment_date and self.appointment_time:
 			# Get the practitioner's schedule
 			practitioner_doc = frappe.get_doc("Healthcare Practitioner", self.practitioner)
@@ -1074,7 +1149,8 @@ def get_available_slots(practitioner_doc, date):
 				appointments = frappe.get_all(
 					"Patient Appointment",
 					filters=filters,
-					fields=["name", "appointment_time", "duration", "status", "appointment_date", "appointment_type"],
+					fields=["name", "appointment_time", "duration", "status", 
+					        "appointment_date", "appointment_type", "end_time"],
 				)
 				
 				# Now also fetch any unavailability appointments for this practitioner
@@ -1087,11 +1163,32 @@ def get_available_slots(practitioner_doc, date):
 						"status": "Unavailable",
 						"appointment_type": "Unavailable"
 					},
-					fields=["name", "appointment_time", "duration", "status", "appointment_date", "appointment_type"]
+					fields=["name", "appointment_time", "duration", "status", 
+					        "appointment_date", "appointment_type", "end_time"]
 				)
 				
-				# Combine with regular appointments
+				# Also get any block-based appointments that might overlap this practitioner's slots
+				block_appointments = frappe.get_all(
+					"Patient Appointment",
+					filters={
+						"practitioner": practitioner,
+						"appointment_date": date,
+						"status": ["not in", ["Cancelled"]],
+						"end_time": ["is", "set"]
+					},
+					fields=["name", "appointment_time", "duration", "status", 
+					        "appointment_date", "appointment_type", "end_time"]
+				)
+				
+				# Combine with regular appointments - include all types of appointments
+				# that could affect slot availability
 				appointments.extend(unavailable_appointments)
+				
+				# Add block appointments that aren't already in the list
+				existing_names = [app.name for app in appointments]
+				for block_app in block_appointments:
+					if block_app.name not in existing_names:
+						appointments.append(block_app)
 
 				slot_details.append(
 					{

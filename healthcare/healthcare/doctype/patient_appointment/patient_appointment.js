@@ -783,13 +783,51 @@ let check_and_set_availability = function(frm) {
 		frappe.confirm(
 			__("Are you sure you want to book this time block appointment?"),
 			function() {
+				// Calculate duration in minutes based on from and to time
+				let from_time_obj = moment(values.from_time, 'HH:mm:ss');
+				let to_time_obj = moment(values.to_time, 'HH:mm:ss');
+				
+				// Ensure to_time is after from_time
+				if (to_time_obj.isBefore(from_time_obj)) {
+					frappe.msgprint({
+						title: __('Invalid Time Range'),
+						message: __('End time must be after start time'),
+						indicator: 'red'
+					});
+					return;
+				}
+				
+				// Calculate duration in minutes
+				let duration_minutes = to_time_obj.diff(from_time_obj, 'minutes');
+				
+				console.log("Block appointment details:", {
+					from: values.from_time,
+					to: values.to_time,
+					duration: duration_minutes
+				});
+				
 				// Set the form values from the block booking dialog
 				frm.set_value('appointment_date', values.date);
 				frm.set_value('appointment_time', values.from_time);
 				frm.set_value('end_time', values.to_time);
-				frm.set_value('duration', values.duration);
+				frm.set_value('duration', duration_minutes);
+				
+				// Ensure these fields are also set for completeness
+				frm.set_value('end_time', values.to_time);
+				
+				// Set the appointment datetime for proper filtering
+				let appointment_datetime = moment(values.date).format('YYYY-MM-DD') + ' ' + values.from_time;
+				frm.set_value('appointment_datetime', appointment_datetime);
+				
+				// Set appointment end datetime 
+				let appointment_end_datetime = moment(values.date).format('YYYY-MM-DD') + ' ' + values.to_time;
+				frm.set_value('appointment_datetime', appointment_end_datetime);
+				
+				// Set practitioner/department
 				frm.set_value('practitioner', values.practitioner);
-				frm.set_value('department', values.department);
+				if (values.department) {
+					frm.set_value('department', values.department);
+				}
 				
 				// Calculate the status based on the appointment date
 				let appointment_date = moment(values.date);
@@ -954,14 +992,25 @@ let check_and_set_availability = function(frm) {
 						interval = (slot_end_time - slot_start_time) / 60000 | 0;
 
 						let now = moment();
-						let booked_moment = ""
+						let booked_moment = "";
 						if((now.format("YYYY-MM-DD") == appointment_date) && (slot_start_time.isBefore(now) && !slot.maximum_appointments)){
 							disabled = true;
 						} else {
 							slot_info.appointments.forEach((booked) => {
+								// Get the start time of the booked appointment
 								booked_moment = moment(booked.appointment_time, 'HH:mm:ss');
-								let end_time = booked_moment.clone().add(booked.duration, 'minutes');
+								
+								// Get the end time - either from explicit end_time or calculated from duration
+								let end_time;
+								if (booked.end_time) {
+									// Use explicit end time if available (block appointments)
+									end_time = moment(booked.end_time, 'HH:mm:ss');
+								} else {
+									// Otherwise calculate from duration
+									end_time = booked_moment.clone().add(booked.duration, 'minutes');
+								}
 
+								// Special handling for Unavailable appointments
 								if (booked.status === "Unavailable" && booked.appointment_type === "Unavailable") {
 									if (slot_start_time.isBefore(end_time) && slot_end_time.isAfter(booked_moment)) {
 										disabled = true;
@@ -970,11 +1019,14 @@ let check_and_set_availability = function(frm) {
 									}
 								}
 
+								// Handle maximum appointments capacity
 								if (slot.maximum_appointments) {
 									if (booked.appointment_date == appointment_date) {
 										appointment_count++;
 									}
 								}
+								
+								// Check if the slot time matches exactly with a booked appointment
 								if (booked_moment.isSame(slot_start_time) || booked_moment.isBetween(slot_start_time, slot_end_time)) {
 									if (booked.duration == 0) {
 										disabled = true;
@@ -982,8 +1034,20 @@ let check_and_set_availability = function(frm) {
 									}
 								}
 
+								// Overlap checks
 								if (slot_info.allow_overlap != 1) {
-									if (slot_start_time.isBefore(end_time) && slot_end_time.isAfter(booked_moment)) {
+									// Check if the current slot overlaps with any booked appointment
+									// This handles the case where a block appointment might span multiple slots
+									let slot_overlaps_with_booked = (
+										// Slot starts during the booked appointment
+										(slot_start_time.isSameOrAfter(booked_moment) && slot_start_time.isBefore(end_time)) ||
+										// Slot ends during the booked appointment
+										(slot_end_time.isAfter(booked_moment) && slot_end_time.isSameOrBefore(end_time)) ||
+										// Slot completely contains the booked appointment
+										(slot_start_time.isSameOrBefore(booked_moment) && slot_end_time.isSameOrAfter(end_time))
+									);
+									
+									if (slot_overlaps_with_booked) {
 										disabled = true;
 										return false;
 									}
@@ -1038,14 +1102,7 @@ let check_and_set_availability = function(frm) {
 
 				}
 			}).join("");
-
-				if (slot_info.service_unit_capacity) {
-					slot_html += `<br/><small>${__('Each slot indicates the capacity currently available for booking')}</small>`;
-				}
-				slot_html += `<br/><br/>`;
-
 		});
-
 		return slot_html;
 	}
 };
