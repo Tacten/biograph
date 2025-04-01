@@ -830,13 +830,31 @@ class PatientAppointment(Document):
 	@frappe.whitelist()
 	def get_therapy_types(self):
 		if not self.therapy_plan:
-			return
+			return []
 
 		therapy_types = []
-		doc = frappe.get_doc("Therapy Plan", self.therapy_plan)
-		for entry in doc.therapy_plan_details:
-			therapy_types.append(entry.therapy_type)
-
+		therapy_plan_doc = frappe.get_doc("Therapy Plan", self.therapy_plan)
+		
+		for entry in therapy_plan_doc.therapy_plan_details:
+			therapy_type_name = entry.therapy_type
+			therapy_type_doc = frappe.get_doc("Therapy Type", therapy_type_name)
+			
+			# Check if this therapy type is already in the appointment's therapy_types table
+			already_added = False
+			if self.therapy_types:
+				for t in self.therapy_types:
+					if t.therapy_type == therapy_type_name:
+						already_added = True
+						break
+						
+			# If not already added, add it to the return list
+			if not already_added:
+				therapy_types.append({
+					"therapy_type": therapy_type_name,
+					"therapy_name": therapy_type_doc.therapy_type,  # The display name
+					"duration": therapy_type_doc.default_duration or 45
+				})
+		
 		return therapy_types
 
 
@@ -1413,20 +1431,89 @@ def get_procedure_prescribed(patient):
 
 @frappe.whitelist()
 def get_prescribed_therapies(patient):
-	return frappe.db.sql(
+	therapy_plan_details = frappe.db.sql(
 		"""
-			SELECT
-				t.therapy_type, t.name, t.parent, e.practitioner,
-				e.encounter_date, e.therapy_plan, e.medical_department
-			FROM
-				`tabPatient Encounter` e, `tabTherapy Plan Detail` t
-			WHERE
-				e.patient=%(patient)s and t.parent=e.name
-			ORDER BY
-				e.creation desc
-		""",
-		{"patient": patient},
+		SELECT
+			t.therapy_type, t.name, e.name, e.practitioner, e.encounter_date,
+			t.therapy_plan, e.medical_department
+		FROM
+			`tabPatient Encounter` e, `tabTherapy Plan Detail` t
+		WHERE
+			e.patient=%s
+			and t.parent=e.therapy_plan
+			and e.docstatus=1
+			and e.therapy_plan is not null
+		ORDER BY
+			e.creation desc
+		""", (patient)
 	)
+	return therapy_plan_details
+
+
+@frappe.whitelist()
+def create_therapy_sessions(appointment, therapy_types):
+	"""
+	Create Therapy Sessions from a Patient Appointment
+	
+	:param appointment: Name of the Patient Appointment
+	:param therapy_types: List of Therapy Types to create sessions for
+	:returns: List of created Therapy Sessions
+	"""
+	if isinstance(therapy_types, str):
+		therapy_types = json.loads(therapy_types)
+		
+	appointment_doc = frappe.get_doc("Patient Appointment", appointment)
+	created_sessions = []
+	
+	for therapy_type in therapy_types:
+		# Check if this therapy type is in the appointment's therapy_types table
+		therapy_found = False
+		for t in appointment_doc.therapy_types:
+			if t.therapy_type == therapy_type:
+				therapy_found = True
+				
+				# Skip if session already created
+				if t.session_created:
+					continue
+					
+				# Create the therapy session
+				therapy_session = frappe.new_doc("Therapy Session")
+				therapy_session.patient = appointment_doc.patient
+				therapy_session.therapy_type = therapy_type
+				therapy_session.therapy_plan = appointment_doc.therapy_plan
+				therapy_session.appointment = appointment_doc.name
+				therapy_session.company = appointment_doc.company
+				therapy_session.department = appointment_doc.department
+				therapy_session.practitioner = appointment_doc.practitioner
+				therapy_session.duration = t.duration or 45
+				therapy_session.location = appointment_doc.service_unit
+				therapy_session.start_time = appointment_doc.appointment_time
+				therapy_session.service_unit = appointment_doc.service_unit
+				therapy_session.appointment_date = appointment_doc.appointment_date
+				
+				# Set end time based on duration
+				if appointment_doc.appointment_time and t.duration:
+					appointment_time = datetime.datetime.combine(
+						datetime.date.today(), 
+						datetime.datetime.strptime(appointment_doc.appointment_time, '%H:%M:%S').time()
+					)
+					appointment_time += datetime.timedelta(minutes=t.duration)
+					therapy_session.end_time = appointment_time.strftime('%H:%M:%S')
+				
+				therapy_session.save()
+				
+				# Update the therapy in the appointment
+				t.session_created = 1
+				t.therapy_session = therapy_session.name
+				created_sessions.append(therapy_session.name)
+		
+		if not therapy_found:
+			frappe.msgprint(f"Therapy Type {therapy_type} not found in the appointment", alert=True)
+	
+	if created_sessions:
+		appointment_doc.save()
+		
+	return created_sessions
 
 
 def update_appointment_status():

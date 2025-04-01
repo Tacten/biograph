@@ -322,18 +322,36 @@ frappe.ui.form.on('Patient Appointment', {
 
 	therapy_plan: function(frm) {
 		frm.trigger('set_therapy_type_filter');
+		// Clear therapy types when therapy plan changes
+		frm.set_value('therapy_types', []);
+		
+		// Auto-fetch therapy types when therapy plan is selected
+		if (frm.doc.therapy_plan) {
+			frm.call('get_therapy_types').then(r => {
+				if (r.message && r.message.length) {
+					r.message.forEach(therapy => {
+						let row = frappe.model.add_child(frm.doc, 'Patient Appointment Therapy', 'therapy_types');
+						row.therapy_type = therapy.therapy_type;
+						row.therapy_name = therapy.therapy_name;
+						row.duration = therapy.duration;
+					});
+					frm.refresh_field('therapy_types');
+					
+					frappe.show_alert({
+						message: __('Therapy types added from therapy plan'),
+						indicator: 'green'
+					});
+				}
+			});
+		}
 	},
 
 	set_therapy_type_filter: function(frm) {
 		if (frm.doc.therapy_plan) {
 			frm.call('get_therapy_types').then(r => {
-				frm.set_query('therapy_type', function() {
-					return {
-						filters: {
-							'name': ['in', r.message]
-						}
-					};
-				});
+				if (r.message) {
+					frm.set_df_property('therapy_types', 'options', 'Patient Appointment Therapy');
+				}
 			});
 		}
 	},
@@ -401,6 +419,73 @@ frappe.ui.form.on('Patient Appointment', {
 				}
 			});
 		}
+	},
+
+	create_therapy_sessions: function(frm) {
+		if (!frm.doc.therapy_types || !frm.doc.therapy_types.length) {
+			frappe.msgprint(__('No therapy types selected'));
+			return;
+		}
+
+		let d = new frappe.ui.Dialog({
+			title: __('Create Therapy Sessions'),
+			fields: [
+				{
+					fieldname: 'therapy_types_html',
+					fieldtype: 'HTML'
+				}
+			],
+			primary_action_label: __('Create Sessions'),
+			primary_action: function() {
+				let selected_therapies = [];
+				$(d.fields_dict.therapy_types_html.$wrapper).find(':checkbox:checked').each(function() {
+					selected_therapies.push($(this).val());
+				});
+
+				if (!selected_therapies.length) {
+					frappe.msgprint(__('Please select at least one therapy type'));
+					return;
+				}
+
+				frappe.call({
+					method: 'healthcare.healthcare.doctype.patient_appointment.patient_appointment.create_therapy_sessions',
+					args: {
+						appointment: frm.doc.name,
+						therapy_types: selected_therapies
+					},
+					freeze: true,
+					freeze_message: __('Creating Therapy Sessions...'),
+					callback: function(r) {
+						if (r.message) {
+							frappe.show_alert({
+								message: __('Therapy Sessions created successfully'),
+								indicator: 'green'
+							});
+							frm.reload_doc();
+							d.hide();
+						}
+					}
+				});
+			}
+		});
+
+		let therapy_types_html = '<div style="max-height: 300px; overflow-y: auto;">';
+		therapy_types_html += '<table class="table table-bordered">';
+		therapy_types_html += '<thead><tr><th style="width: 30px;"></th><th>Therapy Type</th><th>Created?</th></tr></thead>';
+		therapy_types_html += '<tbody>';
+
+		frm.doc.therapy_types.forEach(function(therapy) {
+			therapy_types_html += `<tr>
+				<td><input type="checkbox" value="${therapy.therapy_type}" ${therapy.session_created ? 'disabled' : ''} ${therapy.session_created ? '' : 'checked'}></td>
+				<td>${therapy.therapy_name || therapy.therapy_type}</td>
+				<td>${therapy.session_created ? `<span class="indicator green">Yes</span>` : `<span class="indicator orange">No</span>`}</td>
+			</tr>`;
+		});
+
+		therapy_types_html += '</tbody></table></div>';
+		
+		d.fields_dict.therapy_types_html.$wrapper.html(therapy_types_html);
+		d.show();
 	}
 });
 
@@ -1183,44 +1268,86 @@ let show_therapy_types = function(frm, result) {
 		title: __('Prescribed Therapies'),
 		fields: [
 			{
-				fieldtype: 'HTML', fieldname: 'therapy_type'
+				fieldtype: 'HTML', 
+				fieldname: 'therapy_type',
+				label: __('Select Therapies')
 			}
-		]
-	});
-	var html_field = d.fields_dict.therapy_type.$wrapper;
-	$.each(result, function(x, y) {
-		var row = $(repl('<div class="col-xs-12" style="padding-top:12px; text-align:center;" >\
-		<div class="col-xs-5"> %(encounter)s <br> %(practitioner)s <br> %(date)s </div>\
-		<div class="col-xs-5"> %(therapy)s </div>\
-		<div class="col-xs-2">\
-		<a data-therapy="%(therapy)s" data-therapy-plan="%(therapy_plan)s" data-name="%(name)s"\
-		data-encounter="%(encounter)s" data-practitioner="%(practitioner)s"\
-		data-date="%(date)s"  data-department="%(department)s">\
-		<button class="btn btn-default btn-xs">Add\
-		</button></a></div></div><div class="col-xs-12"><hr/><div/>', {
-			therapy: y[0],
-			name: y[1], encounter: y[2], practitioner: y[3], date: y[4],
-			department: y[6] ? y[6] : '', therapy_plan: y[5]
-		})).appendTo(html_field);
-
-		row.find("a").click(function() {
-			frm.doc.therapy_type = $(this).attr("data-therapy");
-			frm.doc.practitioner = $(this).attr("data-practitioner");
-			frm.doc.department = $(this).attr("data-department");
-			frm.doc.therapy_plan = $(this).attr("data-therapy-plan");
-			frm.refresh_field("therapy_type");
-			frm.refresh_field("practitioner");
-			frm.refresh_field("department");
-			frm.refresh_field("therapy-plan");
-			frappe.db.get_value('Therapy Type', frm.doc.therapy_type, 'default_duration', (r) => {
-				if (r.default_duration) {
-					frm.set_value('duration', r.default_duration)
+		],
+		primary_action_label: __('Add Selected Therapies'),
+		primary_action: function() {
+			let selected_therapies = [];
+			$(d.fields_dict.therapy_type.$wrapper).find(':checkbox:checked').each(function() {
+				let therapy_type = $(this).val();
+				let therapy_plan = $(this).data('therapy-plan');
+				let therapy_name = $(this).data('therapy-name');
+				
+				// Check if therapy is already selected
+				let exists = false;
+				if (frm.doc.therapy_types) {
+					frm.doc.therapy_types.forEach(function(t) {
+						if (t.therapy_type === therapy_type) {
+							exists = true;
+						}
+					});
+				}
+				
+				if (!exists) {
+					let therapy = frappe.model.add_child(frm.doc, 'Patient Appointment Therapy', 'therapy_types');
+					therapy.therapy_type = therapy_type;
+					therapy.therapy_name = therapy_name;
 				}
 			});
+			
+			frm.refresh_field('therapy_types');
 			d.hide();
-			return false;
-		});
+		}
 	});
+	
+	var html_field = d.fields_dict.therapy_type.$wrapper;
+	html_field.empty();
+	
+	// Add "Select All" checkbox
+	var select_all = $(`<div class="select-all" style="margin-bottom: 10px; font-weight: bold;">
+		<input type="checkbox" id="select_all_therapies" style="margin-right: 5px;">
+		<label for="select_all_therapies">${__('Select All')}</label>
+	</div>`);
+	
+	select_all.find('#select_all_therapies').on('change', function() {
+		var checked = $(this).prop('checked');
+		html_field.find('.therapy-checkbox').prop('checked', checked);
+	});
+	
+	html_field.append(select_all);
+	
+	// Add therapy types with checkboxes
+	var table = $(`<table class="table table-bordered">
+		<thead>
+			<tr>
+				<th style="width: 30px;"></th>
+				<th>${__('Encounter')}</th>
+				<th>${__('Therapy Type')}</th>
+				<th>${__('Therapy Plan')}</th>
+			</tr>
+		</thead>
+		<tbody></tbody>
+	</table>`);
+	
+	html_field.append(table);
+	
+	$.each(result, function(x, y) {
+		var row = $(`<tr>
+			<td>
+				<input type="checkbox" class="therapy-checkbox" value="${y[0]}" 
+				data-therapy-plan="${y[5]}" data-therapy-name="${y[0]}">
+			</td>
+			<td>${y[2]} <br> ${y[3]} <br> ${y[4]}</td>
+			<td>${y[0]}</td>
+			<td>${y[5]}</td>
+		</tr>`);
+		
+		table.find('tbody').append(row);
+	});
+	
 	d.show();
 };
 

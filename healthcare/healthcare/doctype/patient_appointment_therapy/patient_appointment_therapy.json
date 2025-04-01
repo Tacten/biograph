@@ -1,0 +1,67 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2023-11-21 12:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "therapy_type",
+  "therapy_name",
+  "session_created",
+  "therapy_session",
+  "duration"
+ ],
+ "fields": [
+  {
+   "fieldname": "therapy_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Therapy Type",
+   "options": "Therapy Type",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "therapy_type.therapy_type",
+   "fieldname": "therapy_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Therapy Name",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "session_created",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Session Created",
+   "read_only": 1
+  },
+  {
+   "fieldname": "therapy_session",
+   "fieldtype": "Link",
+   "label": "Therapy Session",
+   "options": "Therapy Session",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "therapy_type.default_duration",
+   "fieldname": "duration",
+   "fieldtype": "Int",
+   "label": "Duration (In Minutes)",
+   "read_only": 1
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2023-11-21 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Healthcare",
+ "name": "Patient Appointment Therapy",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
