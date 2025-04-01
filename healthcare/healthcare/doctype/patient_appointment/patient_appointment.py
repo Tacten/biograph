@@ -412,7 +412,7 @@ class PatientAppointment(Document):
 			existing_unavailable = frappe.get_all(
 				"Patient Appointment",
 				filters=filters,
-				fields=["name", "appointment_time", "appointment_end_time", "duration"]
+				fields=["name", "appointment_time", "duration", "end_time"] 
 			)
 			
 			# Check for overlaps manually
@@ -421,8 +421,8 @@ class PatientAppointment(Document):
 				existing_start_time = get_time(existing.appointment_time)
 				
 				# Calculate or get end time
-				if existing.appointment_end_time:
-					existing_end_time = get_time(existing.appointment_end_time)
+				if existing.end_time:
+					existing_end_time = get_time(existing.end_time)
 				else:
 					existing_start_dt = datetime.combine(getdate(self.appointment_date), existing_start_time)
 					existing_end_dt = existing_start_dt + timedelta(minutes=flt(existing.duration or 0))
@@ -1133,23 +1133,30 @@ def validate_practitioner_schedules(schedule_entry, practitioner):
 def update_status(appointment_id, status):
 	appointment_doc = frappe.get_doc("Patient Appointment", appointment_id)
 	appointment_doc.status = "Cancelled"
-	appointment_doc.save()
 	
 	# Different handling based on appointment type
 	if status == "Cancelled":
 		if appointment_doc.appointment_type == "Unavailable":
-			# For unavailability appointments, just update the status and handle calendar event
+			# For unavailability appointments, we need to bypass validation
+			# Instead of saving the document which tries to modify set_only_once fields,
+			# directly update the status in the database
+			frappe.db.set_value("Patient Appointment", appointment_id, "status", "Cancelled")
+			
+			# Update the calendar event if it exists
 			if appointment_doc.event:
 				event_doc = frappe.get_doc("Event", appointment_doc.event)
 				event_doc.status = "Cancelled"
 				event_doc.save(ignore_permissions=True)
+			
 			frappe.msgprint(_("Unavailability record cancelled successfully"), alert=True)
 			return
 		else:
-			# For regular appointments, use standard cancellation
+			# For regular appointments, use standard save and cancellation
+			appointment_doc.save()
 			appointment_booked = False
 			cancel_appointment(appointment_id)
 	else:
+		appointment_doc.save()
 		appointment_booked = True
 
 	procedure_prescription = frappe.db.get_value(
@@ -1481,9 +1488,20 @@ def cancel_unavailability_appointment(appointment_name):
 	if appointment.appointment_type != "Unavailable":
 		frappe.throw(_("This is not an unavailability appointment"))
 	
-	appointment.status = "Cancelled"
-	appointment.save(ignore_permissions=True)
+	# Instead of saving the document which tries to modify set_only_once fields,
+	# directly update the status in the database
+	frappe.db.set_value("Patient Appointment", appointment_name, "status", "Cancelled")
 	
+	# Cancel the linked event if it exists
+	if appointment.event:
+		try:
+			event_doc = frappe.get_doc("Event", appointment.event)
+			event_doc.status = "Cancelled"
+			event_doc.save(ignore_permissions=True)
+		except Exception as e:
+			frappe.log_error(f"Error cancelling event for unavailability appointment: {str(e)}")
+	
+	frappe.msgprint(_("Unavailability record cancelled successfully"), alert=True)
 	return True
 
 def setup_appointment_type_for_unavailability():
