@@ -313,7 +313,7 @@
    "report_hide": 1
   },
   {
-   "depends_on": "eval:doc.patient && doc.therapy_plan && doc.__islocal;",
+   "depends_on": "eval:doc.patient && doc.therapy_plan;",
    "fieldname": "get_prescribed_therapies",
    "fieldtype": "Button",
    "label": "Get Prescribed Therapies"

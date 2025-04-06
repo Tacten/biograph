@@ -9,6 +9,7 @@ from frappe.utils import flt, today
 import json
 from healthcare.healthcare.utils import validate_nursing_tasks
 from erpnext.stock.get_item_details import get_item_details, get_pos_profile
+from frappe.model.mapper import get_mapped_doc
 
 
 class TherapyPlan(Document):
@@ -228,3 +229,39 @@ def make_sales_invoice(reference_name, patient, company, items, therapy_plan_tem
 		
 	si.set_missing_values(for_validate=True)
 	return si
+
+@frappe.whitelist()
+def get_invoice_details(therapy_plan):
+	invoices = frappe.db.sql(f"""
+					Select  sum(si.grand_total) as total_invoiced , sum(si.outstanding_amount) as unpaid_amount, sum(si.grand_total - si.outstanding_amount) as paid_amount
+					From `tabSales Invoice` si
+					Left Join `tabSales Invoice Item` sii ON sii.parent = si.name
+					Where si.docstatus = 1 and sii.reference_dt = 'Therapy Plan' and sii.reference_dn = '{therapy_plan}'
+				""", as_dict=1)
+
+	return invoices[0] if invoices else {}
+
+@frappe.whitelist()
+def make_patient_appointment(source_name, target_doc=None):
+	def set_missing_values(source, target):
+		target.appointment_type = "Therapy Session"
+
+
+	doclist = get_mapped_doc(
+		"Therapy Plan",
+		source_name,
+		{
+			"Therapy Plan": {
+				"doctype": "Patient Appointment",
+				"field_map": {"name" :"therapy_plan" },
+			},
+			"Therapy Plan Detail" : {
+				"doctype" : "Patient Appointment Therapy",
+				"field_map": {"custom_default_duration" :"duration" },
+			}	
+		},
+		target_doc,
+		set_missing_values,
+	)
+
+	return doclist

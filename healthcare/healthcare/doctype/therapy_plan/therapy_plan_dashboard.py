@@ -8,6 +8,7 @@ def get_data():
 		"transactions": [
 			{"label": _("Therapy Sessions"), "items": ["Therapy Session"]},
 			{"label": _("Billing"), "items": ["Sales Invoice"]},
+			{"label": _("Appointment"), "items": ["Patient Appointment"]}
 		],
-		"disable_create_buttons": ["Sales Invoice"],
+		"disable_create_buttons": ["Sales Invoice", "Patient Appointment"]
 	}
