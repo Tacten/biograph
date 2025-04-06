@@ -1464,7 +1464,7 @@ def create_therapy_sessions(appointment, therapy_types):
 		
 	appointment_doc = frappe.get_doc("Patient Appointment", appointment)
 	created_sessions = []
-	
+	duration = 0
 	for idx, therapy_type in enumerate(therapy_types):
 		# Check if this therapy type is in the appointment's therapy_types table
 		therapy_found = False
@@ -1485,8 +1485,8 @@ def create_therapy_sessions(appointment, therapy_types):
 				therapy_session.company = appointment_doc.company
 				therapy_session.department = appointment_doc.department
 				therapy_session.practitioner = appointment_doc.practitioner
-				therapy_session.duration = t.duration or 45
-				therapy_session.start_time = appointment_doc.appointment_time
+				therapy_session.duration = t.duration or 20
+				therapy_session.start_time = appointment_doc.appointment_time if idx == 0 else end_time
 				therapy_session.service_unit = appointment_doc.service_unit
 				therapy_session.start_date = appointment_doc.appointment_date
 				
@@ -1495,9 +1495,14 @@ def create_therapy_sessions(appointment, therapy_types):
 					appointment_time = datetime.combine(
 						getdate(appointment_doc.appointment_date),
 						datetime.strptime(str(appointment_doc.appointment_time), '%H:%M:%S').time()
+					) if idx == 0 else datetime.combine(
+						getdate(appointment_doc.appointment_date),
+						datetime.strptime(str(end_time), '%H:%M:%S').time()
 					)
-					appointment_time += timedelta(minutes=t.duration)
+					appointment_time += timedelta(minutes=t.duration or duration or 20)
 					therapy_session.end_time = appointment_time.strftime('%H:%M:%S')
+					duration = t.duration or duration or 20
+					end_time = appointment_time.strftime('%H:%M:%S')
 				
 				therapy_session.save()
 				
