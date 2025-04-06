@@ -29,7 +29,7 @@ frappe.ui.form.on('Therapy Plan', {
 		if (!frm.doc.__islocal) {
 			frm.dashboard.refresh()
 			frm.trigger('show_progress_for_therapies');
-			frm.trigger('show_progress_for_invoice_billing');
+			frm.trigger('prepare_dashboard');
 			if (frm.doc.status != 'Completed') {
 				let therapy_types = (frm.doc.therapy_plan_details || []).map(function(d){ return d.therapy_type; });
 				const fields = [{
@@ -72,6 +72,10 @@ frappe.ui.form.on('Therapy Plan', {
 						frm.trigger('make_sales_invoice');
 					}, __('Create'));
 			}
+			
+			frm.add_custom_button(__('Patient Appointment'), function() {
+				frm.trigger('make_patient_appointment');
+			}, __('Create'));
 			
 		}
 		
@@ -189,27 +193,34 @@ frappe.ui.form.on('Therapy Plan', {
 		message = title;
 		frm.dashboard.add_progress(__('Status'), bars, message);
 	},
-	show_progress_for_invoice_billing: function(frm) {
-		let bars = [];
-		let message = '';
-
-		// completed sessions
-		let title = __('{0} amount billed out of {1} amount', [frm.doc.invoiced_amount, frm.doc.total_plan_amount]);
-		if(frm.doc.total_plan_amount == frm.doc.invoiced_amount && frm.doc.total_plan_amount > 0){
-			title = __('100% billed', [frm.doc.invoiced_amount, frm.doc.total_plan_amount]);
-		}
-		
-		bars.push({
-			'title': title,
-			'width': ((frm.doc.invoiced_amount / frm.doc.total_plan_amount) * 100) + '%',
-			'progress_class': 'progress-bar-success'
-		});
-		if (bars[0].width == '0%') {
-			bars[0].width = '0.5%';
-		}
-		message = title;
-		frm.dashboard.add_progress(__('Status'), bars, message);
+	prepare_dashboard : (frm)=>{
+		frappe.call({
+			method : "healthcare.healthcare.doctype.therapy_plan.therapy_plan.get_invoice_details",
+			args : {
+				therapy_plan : frm.doc.name
+			},
+			callback :(r)=>{
+				if (r.message){
+					let not_invoiced = frm.doc.total_plan_amount - frm.doc.invoiced_amount
+					frm.dashboard.add_indicator(`<b>Total Plan Amount :&nbsp;</b> ₹ ${frm.doc.total_plan_amount}`, "blue");
+					frm.dashboard.add_indicator(`<b>Total Invoiced :&nbsp;</b> ₹ ${r.message.total_invoiced}`, "blue");
+					frm.dashboard.add_indicator(`<b>Plan Not Invoiced :&nbsp;</b> ₹ ${not_invoiced}`, "orange");
+					frm.dashboard.add_indicator(`<b>Plan Paid Amount :&nbsp;</b> ₹ ${r.message.paid_amount}`, "green");
+					frm.dashboard.add_indicator(`<b>Plan Unpaid Amount :&nbsp;</b> ₹ ${r.message.unpaid_amount}`, "orange");
+					document.querySelectorAll('.col-sm-3.indicator-column').forEach(function(el) {
+						el.classList.remove('col-sm-3');
+						el.classList.add('col-4', 'mb-4');
+					});
+				}
+			}
+		})
 	},
+	make_patient_appointment : (frm)=>{
+		frappe.model.open_mapped_doc({
+			method: "healthcare.healthcare.doctype.therapy_plan.therapy_plan.make_patient_appointment",
+			frm: cur_frm,
+		});
+	}
 });
 
 frappe.ui.form.on('Therapy Plan Detail', {
