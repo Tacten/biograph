@@ -7,7 +7,6 @@
  "engine": "InnoDB",
  "field_order": [
   "therapy_type",
-  "therapy_name",
   "session_created",
   "therapy_session",
   "duration"
@@ -22,14 +21,6 @@
    "reqd": 1
   },
   {
-   "fetch_from": "therapy_type.therapy_type",
-   "fieldname": "therapy_name",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Therapy Name",
-   "read_only": 1
-  },
-  {
    "default": "0",
    "fieldname": "session_created",
    "fieldtype": "Check",
@@ -40,6 +31,7 @@
   {
    "fieldname": "therapy_session",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Therapy Session",
    "options": "Therapy Session",
    "read_only": 1
