@@ -13,7 +13,6 @@
   "allow_booking_for",
   "column_break_jdo1",
   "color",
-  "enable_block_booking",
   "billing_tab",
   "price_list",
   "items"
@@ -76,13 +75,6 @@
    "label": "Allow Booking For",
    "options": "Practitioner\nDepartment\nService Unit",
    "reqd": 1
-  },
-  {
-   "default": "0",
-   "description": "Enable block-based appointment booking for this appointment type",
-   "fieldname": "enable_block_booking",
-   "fieldtype": "Check",
-   "label": "Enable Block Booking"
   }
  ],
  "links": [],
