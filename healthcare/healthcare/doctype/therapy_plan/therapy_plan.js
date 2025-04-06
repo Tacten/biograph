@@ -202,11 +202,9 @@ frappe.ui.form.on('Therapy Plan', {
 			callback :(r)=>{
 				if (r.message){
 					let not_invoiced = frm.doc.total_plan_amount - frm.doc.invoiced_amount
-					frm.dashboard.add_indicator(`<b>Total Plan Amount :&nbsp;</b> ₹ ${frm.doc.total_plan_amount}`, "blue");
-					frm.dashboard.add_indicator(`<b>Total Invoiced :&nbsp;</b> ₹ ${r.message.total_invoiced}`, "blue");
-					frm.dashboard.add_indicator(`<b>Plan Not Invoiced :&nbsp;</b> ₹ ${not_invoiced}`, "orange");
-					frm.dashboard.add_indicator(`<b>Plan Paid Amount :&nbsp;</b> ₹ ${r.message.paid_amount}`, "green");
-					frm.dashboard.add_indicator(`<b>Plan Unpaid Amount :&nbsp;</b> ₹ ${r.message.unpaid_amount}`, "orange");
+					frm.dashboard.add_indicator(`<b>Total Plan Amount :&nbsp;</b> ₹ ${frm.doc.total_plan_amount || 0}`, "blue");
+					frm.dashboard.add_indicator(`<b>Plan Paid Amount :&nbsp;</b> ₹ ${r.message.paid_amount || 0}`, "green");
+					frm.dashboard.add_indicator(`<b>Plan Unpaid Amount :&nbsp;</b> ₹ ${r.message.unpaid_amount || 0}`, "orange");
 					document.querySelectorAll('.col-sm-3.indicator-column').forEach(function(el) {
 						el.classList.remove('col-sm-3');
 						el.classList.add('col-4', 'mb-4');
