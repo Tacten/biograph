@@ -1255,8 +1255,7 @@ def update_status(appointment_id, status):
 			# For unavailability appointments, we need to bypass validation
 			# Instead of saving the document which tries to modify set_only_once fields,
 			# directly update the status in the database
-			# frappe.db.set_value("Patient Appointment", appointment_id, "status", "Cancelled")
-			appointment_doc.save()
+			frappe.db.set_value("Patient Appointment", appointment_id, "status", "Cancelled")
 			# Update the calendar event if it exists
 			if appointment_doc.event:
 				event_doc = frappe.get_doc("Event", appointment_doc.event)
