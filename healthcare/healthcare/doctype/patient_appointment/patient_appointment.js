@@ -7,7 +7,6 @@ frappe.ui.form.on('Patient Appointment', {
 			'Vital Signs': 'Vital Signs',
 			'Patient Encounter': 'Patient Encounter'
 		};
-		frm.set_df_property("therapy_types", "cannot_add_rows", true);
 	},
 
 	onload: function(frm) {
@@ -15,12 +14,34 @@ frappe.ui.form.on('Patient Appointment', {
 			frm.set_value('appointment_time', null);
 			frm.disable_save();
 		}
+		if(frm.doc.therapy_plan && frm.doc.__islocal){
+			frm.set_value("appointment_type", "Therapy Session")
+		}
+		if(frm.doc.__islocal && frm.doc.appointment_type == "Therapy Session"){
+			frm.set_value("practitioner", "")
+		}
 	},
 
 	refresh: function(frm) {
+		if(frm.doc.therapy_plan && frm.doc.__islocal){
+			frm.set_value("appointment_type", "Therapy Session")
+		}
+		if(frm.doc.__islocal && frm.doc.appointment_type == "Therapy Session"){
+			frm.set_value("practitioner", "")
+		}
 		frm.set_query('patient', function() {
 			return {
 				filters: { 'status': 'Active' }
+			};
+		});
+
+		frm.set_query("therapy_type", "therapy_types", function (doc, cdt, cdn) {
+			let d = locals[cdt][cdn];
+			return {
+				query : "healthcare.healthcare.doctype.patient_appointment.patient_appointment.apply_filter_on_therapy_type",
+				filters : {
+					therapy_plan : doc.therapy_plan
+				}
 			};
 		});
 
@@ -342,6 +363,15 @@ frappe.ui.form.on('Patient Appointment', {
 				}
 			});
 		}
+		frm.set_query("therapy_type", "therapy_types", function (doc, cdt, cdn) {
+			let d = locals[cdt][cdn];
+			return {
+				query : "healthcare.healthcare.doctype.patient_appointment.patient_appointment.apply_filter_on_therapy_type",
+				filters : {
+					therapy_plan : doc.therapy_plan
+				}
+			};
+		});
 	},
 
 
@@ -390,29 +420,29 @@ frappe.ui.form.on('Patient Appointment', {
 		});
 	},
 
-	get_prescribed_therapies: function(frm) {
-		frappe.call({
-			method: "healthcare.healthcare.doctype.patient_appointment.patient_appointment.get_prescribed_therapies",
-			args: { patient: frm.doc.patient, therapy_plan : frm.doc.therapy_plan },
-			callback: function(r) {
-				if (r.message) {
-					frm.set_value("therapy_types", [])
-					r.message.forEach(e =>{
-						var s = frm.add_child('therapy_types');
-						s.therapy_type = e.therapy_type
-						s.duration = e.custom_default_duration
-					})
-					refresh_field('therapy_types');
-				} else {
-					frappe.msgprint({
-						title: __('Not Therapies Prescribed'),
-						message: __('There are no Therapies prescribed for Patient {0}', [frm.doc.patient.bold()]),
-						indicator: 'blue'
-					});
-				}
-			}
-		});	
-	},
+	// get_prescribed_therapies: function(frm) {
+	// 	frappe.call({
+	// 		method: "healthcare.healthcare.doctype.patient_appointment.patient_appointment.get_prescribed_therapies",
+	// 		args: { patient: frm.doc.patient, therapy_plan : frm.doc.therapy_plan },
+	// 		callback: function(r) {
+	// 			if (r.message) {
+	// 				frm.set_value("therapy_types", [])
+	// 				r.message.forEach(e =>{
+	// 					var s = frm.add_child('therapy_types');
+	// 					s.therapy_type = e.therapy_type
+	// 					s.duration = e.custom_default_duration
+	// 				})
+	// 				refresh_field('therapy_types');
+	// 			} else {
+	// 				frappe.msgprint({
+	// 					title: __('Not Therapies Prescribed'),
+	// 					message: __('There are no Therapies prescribed for Patient {0}', [frm.doc.patient.bold()]),
+	// 					indicator: 'blue'
+	// 				});
+	// 			}
+	// 		}
+	// 	});	
+	// },
 
 	create_therapy_sessions: function(frm) {
 		if (!frm.doc.therapy_types || !frm.doc.therapy_types.length) {

@@ -1310,6 +1310,7 @@ def make_encounter(source_name, target_doc=None):
 					["invoiced", "invoiced"],
 					["company", "company"],
 				],
+				"field_no_map": ["practitioner"],
 			}
 		},
 		target_doc,
@@ -1429,22 +1430,22 @@ def get_procedure_prescribed(patient):
 	)
 
 
-@frappe.whitelist()
-def get_prescribed_therapies(patient, therapy_plan):
-	therapy_plan_details = frappe.db.sql(
-		f"""
-		SELECT 
-			tpd.therapy_type, tpd.no_of_sessions, tpd.sessions_completed, tpd.custom_default_duration
-		FROM 
-			`tabTherapy Plan Detail`  tpd
-		Left Join 
-			`tabTherapy Plan` tp ON tp.name = tpd.parent
-		Where 
-			tpd.parent = '{therapy_plan}' and
-			tp.patient = '{patient}'
-		""", as_dict=1
-	)
-	return therapy_plan_details
+# @frappe.whitelist()
+# def get_prescribed_therapies(patient, therapy_plan):
+# 	therapy_plan_details = frappe.db.sql(
+# 		f"""
+# 		SELECT 
+# 			tpd.therapy_type, tpd.no_of_sessions, tpd.sessions_completed, tpd.custom_default_duration
+# 		FROM 
+# 			`tabTherapy Plan Detail`  tpd
+# 		Left Join 
+# 			`tabTherapy Plan` tp ON tp.name = tpd.parent
+# 		Where 
+# 			tpd.parent = '{therapy_plan}' and
+# 			tp.patient = '{patient}'
+# 		""", as_dict=1
+# 	)
+# 	return therapy_plan_details
 
 
 @frappe.whitelist()
@@ -1983,3 +1984,18 @@ def update_unavailability_appointment_names():
 	frappe.db.commit()
 	print(f"Updated names for {count} unavailability appointments")
 	return count
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def apply_filter_on_therapy_type(doctype, txt, searchfield, start, page_len, filters):
+	if not filters.get("therapy_plan"):
+		frappe.throw("Please set therapy plan first")
+	conditions = ''
+	if txt:
+		conditions += f" and therapy_type like '%{txt}%'"
+	return frappe.db.sql(f"""
+			Select therapy_type, no_of_sessions, custom_default_duration
+			From `tabTherapy Plan Detail` as tpd
+			Where parent = '{filters.get("therapy_plan")}' {conditions}
+			""")
