@@ -357,7 +357,7 @@ frappe.ui.form.on('Patient Appointment', {
 					
 					frm.refresh_field('therapy_types');
 					frappe.show_alert({
-						message: __('Therapy types added from therapy plan'),
+						message: __('Therapies for the plan {0} added successfully', [frm.doc.therapy_plan]),
 						indicator: 'green'
 					});
 				}
