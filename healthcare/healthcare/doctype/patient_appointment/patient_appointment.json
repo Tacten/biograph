@@ -35,7 +35,6 @@
   "get_procedure_from_encounter",
   "procedure_prescription",
   "therapy_plan",
-  "get_prescribed_therapies",
   "column_break_17",
   "appointment_time",
   "end_time",
@@ -111,6 +110,7 @@
    "in_filter": 1,
    "in_list_view": 1,
    "label": "Status",
+   "no_copy": 1,
    "options": "\nScheduled\nOpen\nConfirmed\nChecked In\nChecked Out\nClosed\nCancelled\nNo Show\nNeeds Rescheduling\nUnavailable",
    "read_only": 1,
    "search_index": 1
@@ -155,7 +155,6 @@
    "label": "Appointment Details"
   },
   {
-   "depends_on": "eval:doc.appointment_for==\"Practitioner\"",
    "fieldname": "practitioner",
    "fieldtype": "Link",
    "in_standard_filter": 1,
@@ -311,12 +310,6 @@
    "label": "Reminded",
    "print_hide": 1,
    "report_hide": 1
-  },
-  {
-   "depends_on": "eval:doc.patient && doc.therapy_plan;",
-   "fieldname": "get_prescribed_therapies",
-   "fieldtype": "Button",
-   "label": "Get Prescribed Therapies"
   },
   {
    "depends_on": "eval: doc.patient;",
