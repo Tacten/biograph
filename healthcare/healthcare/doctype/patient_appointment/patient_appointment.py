@@ -1573,8 +1573,8 @@ def check_unavailability_conflicts(filters):
 	# Check each appointment for time conflicts
 	for appointment in appointments:
 		# Skip appointments that are already marked as unavailable
-		if appointment.get("appointment_type") == "Unavailable":
-			continue
+		# if appointment.get("appointment_type") == "Unavailable":
+		# 	continue
 		
 		# Get appointment time as datetime object for comparison
 		if isinstance(appointment.appointment_time, str):
@@ -1611,9 +1611,7 @@ def check_unavailability_conflicts(filters):
 			# Format time for display
 			appointment['appointment_time'] = appt_time.strftime("%H:%M:%S")
 			conflicts.append(appointment)
-			print(f"Found conflict with appointment {appointment.name}")
 	
-	print(f"Found {len(conflicts)} conflicting appointments")
 	return conflicts
 
 @frappe.whitelist()
