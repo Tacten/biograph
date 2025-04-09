@@ -23,6 +23,10 @@ frappe.ui.form.on('Patient Appointment', {
 	},
 
 	refresh: function(frm) {
+		if (frm.is_new()) {
+            // Manually set the indicator to "Not Saved"
+			frm.page.set_indicator(__("Not Saved"), "orange");
+        }
 		if(frm.doc.therapy_plan && frm.doc.__islocal){
 			frm.set_value("appointment_type", "Therapy Session")
 		}
