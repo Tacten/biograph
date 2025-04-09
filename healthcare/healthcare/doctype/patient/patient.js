@@ -62,8 +62,28 @@ frappe.ui.form.on('Patient', {
 			$(frm.fields_dict['age_html'].wrapper).html('');
 		}
 	},
-	
-	validate: function(frm) {
+	validate:(frm)=>{
+		if(frm.is_dirty()){
+			let missing = []
+			cur_frm.fields.forEach(r=>{ 
+				if(r.df.reqd && !frm.doc[r.df.fieldname] && !r.df.hidden){
+					missing.push(r.df.label)
+				}
+			})
+			message = __("Mandatory fields required in {0}", [__(frm.doc.doctype)]);
+
+			message = message + "<br><br><ul><li>" + missing.join("</li><li>") + "</ul>";
+			console.log(missing)
+			if (missing.length){
+				frappe.throw({
+					message: message,
+					indicator: "red",
+					title: __("Missing Fields"),
+				});
+			}
+		}
+	},
+	before_save: function(frm) {
 		// Client-side validation to check for duplicates before saving
 		if (frm.is_new()) {
 			return new Promise((resolve, reject) => {
