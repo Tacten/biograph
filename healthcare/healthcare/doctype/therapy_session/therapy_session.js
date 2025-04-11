@@ -21,11 +21,12 @@ frappe.ui.form.on('Therapy Session', {
 		});
 
 		frm.set_query('appointment', function() {
-
 			return {
+				query: "healthcare.healthcare.doctype.therapy_session.therapy_session.get_appointment_query",
 				filters: {
-					'status': ['in', ['Open', 'Scheduled']]
-				}
+					therapy_type: frm.doc.therapy_type,
+					therapy_plan: frm.doc.therapy_plan
+				},
 			};
 		});
 
@@ -148,8 +149,6 @@ frappe.ui.form.on('Therapy Session', {
 				callback: function(data) {
 					let values = {
 						'patient':data.message.patient,
-						'therapy_type': data.message.therapy_type,
-						'therapy_plan': data.message.therapy_plan,
 						'practitioner': data.message.practitioner,
 						'department': data.message.department,
 						'start_date': data.message.appointment_date,

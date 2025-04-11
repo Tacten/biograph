@@ -569,14 +569,18 @@ let check_and_set_availability = function(frm) {
 					}
 					
 					try {
-						let from_datetime = frappe.datetime.str_to_obj(values.date + " " + values.from_time);
-						let to_datetime = frappe.datetime.str_to_obj(values.date + " " + values.to_time);
+						let from_datetime = frappe.datetime.str_to_obj(values.appointment_date + " " + values.from_time);
+						let to_datetime = frappe.datetime.str_to_obj(values.appointment_date + " " + values.to_time);
 						let duration_minutes = (to_datetime - from_datetime) / (1000 * 60);
 						values.duration = duration_minutes;
 					} catch (e) {
 						console.error("Error calculating duration:", e);
 					}
-					
+					const inputDateTime = new Date(values.appointment_date + " " + values.from_time);
+					const now = new Date();
+					if (inputDateTime < now) {
+						frappe.throw("<b>Invalid time selection: Appointments cannot be scheduled for a past date and time.</b>")
+					}
 					frappe.show_alert({
 						message: __("Checking for conflicts..."),
 						indicator: "blue"
