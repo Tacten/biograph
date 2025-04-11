@@ -245,8 +245,8 @@ def get_invoice_details(therapy_plan):
 def make_patient_appointment(source_name, target_doc=None):
 	def set_missing_values(source, target):
 		target.appointment_type = "Therapy Session"
-
-
+		target.patient_phone = frappe.db.get_value("Patient", target.patient, "mobile") or frappe.db.get_value("Patient", target.patient, "phone")
+		target.patient_email = frappe.db.get_value("Patient", target.patient, "email") 
 	doclist = get_mapped_doc(
 		"Therapy Plan",
 		source_name,
