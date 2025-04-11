@@ -11,8 +11,6 @@
   "title",
   "status",
   "appointment_type",
-  "block_booking_enabled",
-  "is_block_booking",
   "appointment_for",
   "column_break_1",
   "company",
@@ -24,6 +22,8 @@
   "section_patient_details",
   "patient",
   "patient_name",
+  "patient_phone",
+  "patient_email",
   "inpatient_record",
   "column_break_4pp7",
   "patient_sex",
@@ -204,10 +204,10 @@
   },
   {
    "depends_on": "eval:doc.appointment_time",
+   "description": "Automatically calculated based on duration",
    "fieldname": "end_time",
    "fieldtype": "Time",
    "label": "End Time",
-   "description": "Automatically calculated based on duration",
    "read_only": 1
   },
   {
@@ -320,10 +320,10 @@
    "set_only_once": 1
   },
   {
+   "depends_on": "eval:doc.therapy_plan",
    "fieldname": "section_therapies",
    "fieldtype": "Section Break",
-   "label": "Therapies",
-   "depends_on": "eval:doc.therapy_plan"
+   "label": "Therapies"
   },
   {
    "fieldname": "therapy_types",
@@ -438,10 +438,24 @@
    "options": "Service Request",
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fetch_from": "patient.mobile",
+   "fetch_if_empty": 1,
+   "fieldname": "patient_phone",
+   "fieldtype": "Data",
+   "label": "Patient Phone"
+  },
+  {
+   "fetch_from": "patient.email",
+   "fetch_if_empty": 1,
+   "fieldname": "patient_email",
+   "fieldtype": "Data",
+   "label": "Patient Email"
   }
  ],
  "links": [],
- "modified": "2024-11-20 08:21:29.729408",
+ "modified": "2025-04-11 14:24:50.112794",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Patient Appointment",

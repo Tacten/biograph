@@ -933,8 +933,6 @@ let check_and_set_availability = function(frm) {
 						// Refresh any views if needed
 						if (cur_list && cur_list.doctype === "Patient Appointment") {
 							cur_list.refresh();
-						} else if (cur_calendar && cur_calendar.doctype === "Patient Appointment") {
-							cur_calendar.refresh();
 						}
 					})
 					.catch((err) => {
