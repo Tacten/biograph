@@ -185,8 +185,24 @@ frappe.ui.form.on('Patient Appointment', {
 		}
 
 		frm.trigger("make_invoice_button");
-	},
+		frm.trigger("validate_no_of_session");
 
+	},
+	validate_no_of_session:(frm)=>{
+		if(frm.doc.appointment_type == "Therapy Session" && frm.doc.therapy_plan){
+			frappe.call({
+				method : "healthcare.healthcare.doctype.therapy_session.therapy_session.validate_no_of_session",
+				args : {
+					therapy_plan : frm.doc.therapy_plan
+				},
+				callback : (r) =>{
+					if(r.message){
+						frm.set_df_property("create_therapy_sessions", "hidden", 1);
+					}
+				}
+			})
+		}
+	},
 	make_invoice_button: function (frm) {
 		// add button to invoice when show_payment_popup enabled
 		if (!frm.is_new() && !frm.doc.invoiced && frm.doc.status != "Cancelled") {
@@ -367,6 +383,7 @@ frappe.ui.form.on('Patient Appointment', {
 				}
 			});
 		}
+		frm.trigger("validate_no_of_session");
 		frm.set_query("therapy_type", "therapy_types", function (doc, cdt, cdn) {
 			let d = locals[cdt][cdn];
 			return {
