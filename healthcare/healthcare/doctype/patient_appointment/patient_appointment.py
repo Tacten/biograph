@@ -1541,7 +1541,7 @@ def check_unavailability_conflicts(filters):
 	
 	# Create base filters
 	appointment_filters = {
-		"status": ["not in", ["Cancelled", "Needs Rescheduling"]],
+		"status": ["not in", ["Cancelled", "Needs Rescheduling", "Closed"]],
 		"appointment_date": appointment_date,
 	}
 	
