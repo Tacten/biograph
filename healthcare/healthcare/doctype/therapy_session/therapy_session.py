@@ -234,9 +234,31 @@ def get_therapy_item(therapy, item):
 	item.reference_dn = therapy.name
 	return item
 
+
 @frappe.whitelist()
 def validate_no_of_session(therapy_plan):
 	total_sessions, total_sessions_completed, status = frappe.db.get_value('Therapy Plan', therapy_plan, ['total_sessions', 'total_sessions_completed', "status"])
 	if (total_sessions == total_sessions_completed) or status == "Completed":
 		return True, total_sessions
 	return False
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_appointment_query(doctype, txt, searchfield, start, page_len, filters, as_dict=False):
+	condition = ''
+	if filters.get("therapy_plan"):
+		condition += f" AND pa.therapy_plan = '{filters.get('therapy_plan')}'"
+	if filters.get("therapy_type"):
+		condition += f" AND pat.therapy_type = '{filters.get('therapy_type')}'"
+	if txt:
+		condition += f" AND ( pa.therapy_plan like '%{txt}%' or pa.name like '%{txt}%' )"
+
+	data = frappe.db.sql(f"""
+					Select pa.name, pa.therapy_plan, pat.therapy_type
+					From `tabPatient Appointment` as pa
+					Left Join `tabPatient Appointment Therapy` as pat ON pat.parent = pa.name
+					Where status in ('Open', 'Scheduled') {condition}
+	""")
+
+	return data
+
