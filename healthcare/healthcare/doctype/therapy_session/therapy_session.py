@@ -28,6 +28,11 @@ class TherapySession(Document):
 		self.validate_duplicate()
 		self.set_total_counts()
 
+		if(self.therapy_plan):
+			total_sessions, total_sessions_completed, status = frappe.db.get_value('Therapy Plan', self.therapy_plan, ['total_sessions', 'total_sessions_completed', "status"])
+			if (total_sessions == total_sessions_completed) or status == "Completed":
+				frappe.throw("Maximum number of sessions {0} already created for this Therapy Plan.".format(total_sessions))
+
 	def after_insert(self):
 		if self.service_request:
 			update_service_request_status(
@@ -230,6 +235,12 @@ def get_therapy_item(therapy, item):
 	return item
 
 
+@frappe.whitelist()
+def validate_no_of_session(therapy_plan):
+	total_sessions, total_sessions_completed, status = frappe.db.get_value('Therapy Plan', therapy_plan, ['total_sessions', 'total_sessions_completed', "status"])
+	if (total_sessions == total_sessions_completed) or status == "Completed":
+		return True, total_sessions
+	return False
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
@@ -250,3 +261,4 @@ def get_appointment_query(doctype, txt, searchfield, start, page_len, filters, a
 	""")
 
 	return data
+

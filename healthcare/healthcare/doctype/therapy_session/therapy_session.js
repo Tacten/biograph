@@ -46,7 +46,20 @@ frappe.ui.form.on('Therapy Session', {
 		if (frm.doc.therapy_plan) {
 			frm.trigger('filter_therapy_types');
 		}
-
+		if (frm.is_new() && frm.doc.therapy_plan) {
+			frm.call({
+				method : "validate_no_of_session",
+				args : {
+					therapy_plan : frm.doc.therapy_plan	
+				},
+				callback:(r)=>{
+					if(r.message){
+						console.log(r.message)
+						frappe.throw(`Maximum number of sessions ${r.message[1]} already created for this Therapy Plan.`)
+					}
+				}
+			})
+		}
 		frm.set_query("code_value", "codification_table", function(doc, cdt, cdn) {
 			let row = frappe.get_doc(cdt, cdn);
 			if (row.code_system) {
