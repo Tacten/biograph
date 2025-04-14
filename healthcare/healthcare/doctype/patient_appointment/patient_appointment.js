@@ -361,6 +361,10 @@ frappe.ui.form.on('Patient Appointment', {
 		// Auto-fetch therapy types when therapy plan is selected
 		if (frm.doc.therapy_plan) {
 			frm.call('get_therapy_types').then(r => {
+				if(r.message == "Completed"){
+					frm.set_value("therapy_plan", "")
+					frappe.throw("Oops!.. Selected Therapy Plan is Completed")
+				}
 				if (r.message && r.message.length) {
 					r.message.forEach(therapy => {
 						let row = frappe.model.add_child(frm.doc, 'Patient Appointment Therapy', 'therapy_types');
