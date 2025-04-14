@@ -10,7 +10,8 @@
   "therapy_name",
   "session_created",
   "therapy_session",
-  "duration"
+  "duration",
+  "no_of_sessions"
  ],
  "fields": [
   {
@@ -50,11 +51,17 @@
    "fieldtype": "Data",
    "label": "Therapy Name",
    "read_only": 1
+  },
+  {
+   "fieldname": "no_of_sessions",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "No of Sessions"
   }
  ],
  "istable": 1,
  "links": [],
- "modified": "2025-04-07 08:48:22.290397",
+ "modified": "2025-04-14 10:29:43.629299",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Patient Appointment Therapy",
