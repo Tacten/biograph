@@ -184,8 +184,31 @@ frappe.ui.form.on('Healthcare Practitioner', {
 				}
 			});
 		}
-	}
+	},
+
+	first_name: function (frm) {
+        if (frm.doc.first_name) {
+            frm.set_value('first_name', capitalizeWords(frm.doc.first_name));
+        }
+    },
+
+	last_name: function (frm) {
+        if (frm.doc.last_name) {
+            frm.set_value('last_name', capitalizeWords(frm.doc.last_name));
+        }
+    },
+
+	middle_name: function (frm) {
+        if (frm.doc.middle_name) {
+            frm.set_value('middle_name', capitalizeWords(frm.doc.middle_name));
+        }
+    },
+
 });
+
+function capitalizeWords(name) {
+    return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+}
 
 let set_query_service_item = function(frm, service_item_field) {
 	frm.set_query(service_item_field, function() {

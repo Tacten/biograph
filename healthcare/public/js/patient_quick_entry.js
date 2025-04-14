@@ -27,6 +27,17 @@ frappe.ui.form.PatientQuickEntryForm = class PatientQuickEntryForm extends frapp
                 frappe.throw(__('Only numbers are allowed in the Phone No field.'));
             }
         });
+
+		this.dialog.fields_dict.first_name.$wrapper.find('input').on('input', (event) => {
+            let inputVal = event.target.value;
+			this.dialog.fields_dict.first_name.set_value(capitalizeWords(inputVal));
+        });
+
+		this.dialog.fields_dict.last_name.$wrapper.find('input').on('input', (event) => {
+            let inputVal = event.target.value;
+			this.dialog.fields_dict.last_name.set_value(capitalizeWords(inputVal));
+        });
+
 		this.dialog.fields_dict.mobile.$wrapper.find('input').on('input', (event) => {
             let inputVal = event.target.value;
             if (/[a-zA-Z]/.test(inputVal)) {
@@ -35,7 +46,7 @@ frappe.ui.form.PatientQuickEntryForm = class PatientQuickEntryForm extends frapp
             }
         });
 	}
-
+	
 	get_standard_fields() {
 		return [
 			{
@@ -148,4 +159,9 @@ frappe.ui.form.PatientQuickEntryForm = class PatientQuickEntryForm extends frapp
 			}
 		];
 	}
+}
+
+
+function capitalizeWords(name) {
+	return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
 }

@@ -28,6 +28,9 @@ class HealthcarePractitioner(Document):
 			self.name = append_number_if_name_exists("Contact", self.name)
 
 	def validate(self):
+		self.first_name =  self.first_name.capitalize()
+		self.last_name =  self.last_name.capitalize() if self.last_name else ''
+		self.middle_name =  self.middle_name.capitalize() if self.middle_name else ''
 		self.set_full_name()
 		validate_party_accounts(self)
 		if self.inpatient_visit_charge_item:

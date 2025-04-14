@@ -118,8 +118,24 @@ frappe.ui.form.on('Patient', {
         if (field_value && /[a-zA-Z]/.test(field_value)) {
             frappe.throw(__('Only numbers are allowed in the Phone No field.'));
         }
-	}
+	},
+
+	first_name: function (frm) {
+        if (frm.doc.first_name) {
+            frm.set_value('first_name', capitalizeWords(frm.doc.first_name));
+        }
+    },
+
+	last_name: function (frm) {
+        if (frm.doc.last_name) {
+            frm.set_value('last_name', capitalizeWords(frm.doc.last_name));
+        }
+    },
 });
+
+function capitalizeWords(name) {
+    return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+}
 
 frappe.ui.form.on('Patient', 'dob', function(frm) {
 	if (frm.doc.dob) {
