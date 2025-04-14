@@ -834,7 +834,8 @@ class PatientAppointment(Document):
 
 		therapy_types = []
 		therapy_plan_doc = frappe.get_doc("Therapy Plan", self.therapy_plan)
-		
+		if(therapy_plan_doc.status == "Completed"):
+			return "Completed"
 		for entry in therapy_plan_doc.therapy_plan_details:
 			therapy_type_name = entry.therapy_type
 			therapy_type_doc = frappe.get_doc("Therapy Type", therapy_type_name)
