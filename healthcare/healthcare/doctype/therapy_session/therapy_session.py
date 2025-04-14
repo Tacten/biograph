@@ -9,7 +9,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils import flt, get_link_to_form, get_time, getdate
+from frappe.utils import flt, get_link_to_form, get_time, getdate, today
 
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import (
 	get_income_account,
@@ -252,9 +252,15 @@ def get_appointment_query(doctype, txt, searchfield, start, page_len, filters, a
 		condition += f" AND pat.therapy_type = '{filters.get('therapy_type')}'"
 	if txt:
 		condition += f" AND ( pa.therapy_plan like '%{txt}%' or pa.name like '%{txt}%' )"
+	if filters.get("is_new"):
+		condition += f" AND pa.appointment_date > '{today()}'"
+	else:
+		condition += f" AND pa.appointment_date > '{str(getdate(frappe.db.get_value('Therapy Session', filters.get('name'), 'creation')))}'"
+	
 
 	data = frappe.db.sql(f"""
-					Select pa.name, pa.therapy_plan, pat.therapy_type
+					Select pa.name, pa.therapy_plan, pat.therapy_type, pa.patient_name,
+					pa.practitioner, pa.practitioner_name, pa.department, pa.appointment_date, pa.appointment_time
 					From `tabPatient Appointment` as pa
 					Left Join `tabPatient Appointment Therapy` as pat ON pat.parent = pa.name
 					Where status in ('Open', 'Scheduled') {condition}
