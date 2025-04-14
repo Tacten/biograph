@@ -253,9 +253,9 @@ def get_appointment_query(doctype, txt, searchfield, start, page_len, filters, a
 	if txt:
 		condition += f" AND ( pa.therapy_plan like '%{txt}%' or pa.name like '%{txt}%' )"
 	if filters.get("is_new"):
-		condition += f" AND pa.appointment_date > '{today()}'"
+		condition += f" AND pa.appointment_date >= '{today()}'"
 	else:
-		condition += f" AND pa.appointment_date > '{str(getdate(frappe.db.get_value('Therapy Session', filters.get('name'), 'creation')))}'"
+		condition += f" AND pa.appointment_date >= '{str(getdate(frappe.db.get_value('Therapy Session', filters.get('name'), 'creation')))}'"
 	
 
 	data = frappe.db.sql(f"""
