@@ -54,5 +54,5 @@ class HealthcareSalesInvoice(SalesInvoice):
 	def validate(self):
 		super().validate()
 		if(self.paid_amount != self.grand_total):
-			frappe.throw(f"Paid Amount should be a same as invoice amount<br><b>Paid Amount = {fmt_money(budget_amount, currency=self.currency)}</b>")
+			frappe.throw(f"Paid Amount should be a same as invoice amount<br><b>Paid Amount = {fmt_money(self.grand_total, currency=self.currency)}</b>")
 		
