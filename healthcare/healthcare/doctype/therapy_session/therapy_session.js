@@ -25,7 +25,9 @@ frappe.ui.form.on('Therapy Session', {
 				query: "healthcare.healthcare.doctype.therapy_session.therapy_session.get_appointment_query",
 				filters: {
 					therapy_type: frm.doc.therapy_type,
-					therapy_plan: frm.doc.therapy_plan
+					therapy_plan: frm.doc.therapy_plan,
+					is_new : frm.is_new(),
+					name : frm.doc.name
 				},
 			};
 		});
