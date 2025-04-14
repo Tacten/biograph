@@ -373,6 +373,7 @@ frappe.ui.form.on('Patient Appointment', {
 						row.therapy_type = therapy.therapy_type;
 						row.therapy_name = therapy.therapy_name;
 						row.duration = therapy.duration;
+						row.no_of_sessions = therapy.no_of_sessions;
 					});
 					
 					frm.refresh_field('therapy_types');

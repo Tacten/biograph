@@ -852,7 +852,8 @@ class PatientAppointment(Document):
 				therapy_types.append({
 					"therapy_type": therapy_type_name,
 					"therapy_name": therapy_type_doc.therapy_type,  # The display name
-					"duration": therapy_type_doc.default_duration or 45
+					"duration": therapy_type_doc.default_duration or 45,
+					"no_of_sessions" : entry.no_of_sessions
 				})
 		
 		return therapy_types
