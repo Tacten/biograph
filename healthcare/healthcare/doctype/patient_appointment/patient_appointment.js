@@ -30,9 +30,6 @@ frappe.ui.form.on('Patient Appointment', {
 		if(frm.doc.therapy_plan && frm.doc.__islocal){
 			frm.set_value("appointment_type", "Therapy Session")
 		}
-		if(frm.doc.__islocal && frm.doc.appointment_type == "Therapy Session"){
-			frm.set_value("practitioner", "")
-		}
 		frm.set_query('patient', function() {
 			return {
 				filters: { 'status': 'Active' }
