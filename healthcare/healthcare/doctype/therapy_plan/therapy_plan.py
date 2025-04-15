@@ -233,13 +233,16 @@ def make_sales_invoice(reference_name, patient, company, items, therapy_plan_tem
 @frappe.whitelist()
 def get_invoice_details(therapy_plan):
 	invoices = frappe.db.sql(f"""
-					Select  sum(si.grand_total) as total_invoiced , sum(si.outstanding_amount) as unpaid_amount, sum(si.grand_total - si.outstanding_amount) as paid_amount
+					Select  si.grand_total as total_invoiced , si.outstanding_amount as unpaid_amount, (si.grand_total - si.outstanding_amount) as paid_amount
 					From `tabSales Invoice` si
 					Left Join `tabSales Invoice Item` sii ON sii.parent = si.name
 					Where si.docstatus = 1 and sii.reference_dt = 'Therapy Plan' and sii.reference_dn = '{therapy_plan}'
+					Group By si.name
 				""", as_dict=1)
-
-	return invoices[0] if invoices else {}
+	total_invoiced = sum([ row.total_invoiced for row in invoices ])
+	unpaid_amount = sum([ row.unpaid_amount for row in invoices ])
+	paid_amount = sum([ row.paid_amount for row in invoices ])
+	return {'total_invoiced': total_invoiced, 'unpaid_amount': unpaid_amount, 'paid_amount': paid_amount }
 
 @frappe.whitelist()
 def make_patient_appointment(source_name, target_doc=None):
