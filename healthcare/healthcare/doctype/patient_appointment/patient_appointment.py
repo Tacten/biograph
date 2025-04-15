@@ -343,7 +343,7 @@ class PatientAppointment(Document):
 		# For new appointments, set default status based on date
 		if self.is_new():
 			if appointment_date == today:
-				self.status = "Open"
+				self.status = "Confirmed"
 			elif appointment_date > today:
 				self.status = "Scheduled"
 			else:
@@ -1512,15 +1512,61 @@ def create_therapy_sessions(appointment, therapy_types):
 
 
 def update_appointment_status():
+	def set_status(appointment_doc):
+		today = getdate()
+		appointment_date = getdate(appointment_doc.appointment_date)
+
+		# If this is an unavailability appointment, always keep it as "Unavailable"
+		if appointment_doc.appointment_type == "Unavailable":
+			if appointment_doc.status != "Cancelled" and appointment_doc.status != "Unavailable":
+				return"Unavailable"
+			return
+		
+		# For new appointments, set default status based on date
+		if appointment_doc.is_new():
+			if appointment_date == today:
+				return "Confirmed"
+			elif appointment_date > today:
+				return "Scheduled"
+			else:
+				return "No Show"
+			return
+			
+		# If appointment is already marked as "Needs Rescheduling", we should check if it has been rescheduled
+		if appointment_doc.status == "Needs Rescheduling" and appointment_doc.status != "Cancelled":
+			# If this has been modified and saved, it means the appointment was rescheduled
+			if appointment_doc.modified != appointment_doc.creation:
+				if appointment_date > today:
+					return "Scheduled"
+				elif appointment_date == today:
+					return "Open"
+				return
+			return
+
+		# If appointment is created for today set status as Open else Scheduled
+		if appointment_date == today:
+			if appointment_doc.status not in ["Checked In", "Checked Out", "Open", "Confirmed", "Cancelled"]:
+				return "Open"
+
+		elif appointment_date > today and appointment_doc.status not in ["Scheduled", "Confirmed", "Cancelled"]:
+			return "Scheduled"
+
+		elif appointment_date < today and appointment_doc.status not in ["No Show", "Cancelled"]:
+			return "No Show"
+
+	
 	# update the status of appointments daily
 	appointments = frappe.get_all(
-		"Patient Appointment", {"status": ("not in", ["Closed", "Cancelled", "Confirmed", "Needs Rescheduling", "Unavailable"])}
+		"Patient Appointment", {"status": ("not in", ["Closed", "Cancelled", "Needs Rescheduling", "Unavailable"])}
 	)
 
 	for appointment in appointments:
 		appointment_doc = frappe.get_doc("Patient Appointment", appointment.name)
-		appointment_doc.set_status()
-		appointment_doc.save()
+		status = set_status(appointment_doc)
+		if status:
+			appointment_doc.db_set("status" , status, update_modified=False)
+
+	
 
 # Unavailability related methods
 
