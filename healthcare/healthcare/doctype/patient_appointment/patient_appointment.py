@@ -1564,7 +1564,7 @@ def update_appointment_status():
 		appointment_doc = frappe.get_doc("Patient Appointment", appointment.name)
 		status = set_status(appointment_doc)
 		if status:
-			appointment_doc.db_set("status" , status)
+			appointment_doc.db_set("status" , status, update_modified=False)
 
 	
 
