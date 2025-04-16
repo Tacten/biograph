@@ -150,17 +150,18 @@ def get_services_details(self):
 			for d in invoiced_data:
 				if frappe.db.get_value("Therapy Type", row.get("therapy_type"), "item") == d.get("service"):
 					session += d.get("no_of_session")
-
-			therapy_data.append({
-				"therapy_type" : row.get("therapy_type"),
-				"sessions" : row.get("no_of_sessions") - session
-			})
+			if (row.get("no_of_sessions") - session) > 0:
+				therapy_data.append({
+					"therapy_type" : row.get("therapy_type"),
+					"sessions" : row.get("no_of_sessions") - session
+				})
 	else:
 		for row in doc.get('therapy_plan_details'):
-			therapy_data.append({
-				"therapy_type" : row.get("therapy_type"),
-				"sessions" : row.get("no_of_sessions")
-			})
+			if (row.get("no_of_sessions") > 0 ):
+				therapy_data.append({
+					"therapy_type" : row.get("therapy_type"),
+					"sessions" : row.get("no_of_sessions")
+				})
 	return therapy_data
 
 	
