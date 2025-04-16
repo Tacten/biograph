@@ -29,10 +29,11 @@ class TherapySession(Document):
 		self.set_total_counts()
 
 		if(self.therapy_plan):
-			total_sessions, total_sessions_completed, status = frappe.db.get_value('Therapy Plan', self.therapy_plan, ['total_sessions', 'total_sessions_completed', "status"])
-			if (total_sessions == total_sessions_completed) or status == "Completed":
-				frappe.throw("Maximum number of sessions {0} already created for this Therapy Plan.".format(total_sessions))
-
+			therapy_plan = frappe.get_doc("Therapy Plan", self.therapy_plan)
+			for row in therapy_plan.therapy_plan_details:
+				if row.therapy_type == self.therapy_type:
+					if row.no_of_sessions == row.sessions_completed:
+						frappe.throw("Maximum number of sessions {0} already created for this Therapy Plan.".format(row.sessions_completed))
 	def after_insert(self):
 		if self.service_request:
 			update_service_request_status(

@@ -2043,5 +2043,5 @@ def apply_filter_on_therapy_type(doctype, txt, searchfield, start, page_len, fil
 	return frappe.db.sql(f"""
 			Select therapy_type, no_of_sessions, custom_default_duration
 			From `tabTherapy Plan Detail` as tpd
-			Where parent = '{filters.get("therapy_plan")}' {conditions}
+			Where no_of_sessions > sessions_completed and parent = '{filters.get("therapy_plan")}' {conditions}
 			""")

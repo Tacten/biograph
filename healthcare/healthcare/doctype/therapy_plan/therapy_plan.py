@@ -252,7 +252,8 @@ def make_patient_appointment(source_name, target_doc=None):
 		target.appointment_type = "Therapy Session"
 		target.patient_phone = frappe.db.get_value("Patient", target.patient, "mobile") or frappe.db.get_value("Patient", target.patient, "phone")
 		target.patient_email = frappe.db.get_value("Patient", target.patient, "email") 
-	doclist = get_mapped_doc(
+	
+	doc = get_mapped_doc(
 		"Therapy Plan",
 		source_name,
 		{
@@ -264,10 +265,11 @@ def make_patient_appointment(source_name, target_doc=None):
 			"Therapy Plan Detail" : {
 				"doctype" : "Patient Appointment Therapy",
 				"field_map": {"custom_default_duration" :"duration" },
+				"condition": lambda doc: abs(doc.no_of_sessions) > (doc.sessions_completed)
 			}	
 		},
 		target_doc,
 		set_missing_values,
 	)
 
-	return doclist
+	return doc
