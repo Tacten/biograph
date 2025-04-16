@@ -197,6 +197,7 @@ def make_sales_invoice(reference_name, patient, company, items, therapy_plan_tem
 	si.company = company
 	si.patient = patient
 	si.customer = frappe.db.get_value("Patient", patient, "customer")
+	si.ref_practitioner = frappe.db.get_value("Therapy Plan", reference_name, "practitioner")
 
 	# if therapy_plan_template:
 	# 	item = frappe.db.get_value("Therapy Plan Template", therapy_plan_template, "linked_item")
