@@ -139,9 +139,10 @@ def get_invoiced_details(self, on_referesh = False):
 def get_services_details(self):
 	doc = json.loads(self)
 	therapy_data  = []
+	invoice_json = get_invoiced_details(self, on_referesh=True)
 
-	if doc.get("invoice_json"):
-		invoiced_data = eval(doc.get("invoice_json"))
+	if invoice_json.get("data"):
+		invoiced_data = eval(invoice_json.get("data"))
 
 		for row in doc.get('therapy_plan_details'):
 			
