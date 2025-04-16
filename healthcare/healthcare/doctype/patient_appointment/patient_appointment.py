@@ -357,7 +357,7 @@ class PatientAppointment(Document):
 				if appointment_date > today:
 					self.status = "Scheduled"
 				elif appointment_date == today:
-					self.status = "Open"
+					self.status = "Confirmed"
 				return
 			return
 
