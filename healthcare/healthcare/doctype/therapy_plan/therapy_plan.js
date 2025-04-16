@@ -77,15 +77,17 @@ frappe.ui.form.on('Therapy Plan', {
 					frm.trigger('make_patient_appointment');
 				}, __('Create'));
 			}
-
-			if(frm.doc.total_sessions == frm.doc.total_sessions_completed || frm.doc.status == "Completed"){
-				document.querySelectorAll('button[data-doctype="Therapy Session"]').forEach(btn => {
-					btn.style.display = 'none';
-				});
-				document.querySelectorAll('button[data-doctype="Patient Appointment"]').forEach(btn => {
-					btn.style.display = 'none';
-				});
-			}
+			
+			document.querySelectorAll('button[data-doctype="Therapy Session"]').forEach(btn => {
+				btn.style.display = 'none';
+			});
+			document.querySelectorAll('button[data-doctype="Patient Appointment"]').forEach(btn => {
+				btn.style.display = 'none';
+			});
+			document.querySelectorAll('button[data-doctype="Sales Invoice"]').forEach(btn => {
+				btn.style.display = 'none';
+			});
+			
 		}
 		
 		if (frm.doc.therapy_plan_template) {
