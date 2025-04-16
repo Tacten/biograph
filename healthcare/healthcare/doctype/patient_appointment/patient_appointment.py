@@ -1592,7 +1592,8 @@ def check_unavailability_conflicts(filters):
 		"status": ["not in", ["Cancelled", "Needs Rescheduling", "Closed"]],
 		"appointment_date": appointment_date,
 	}
-	
+	if filters.get("practitioner"):
+		appointment_filters["practitioner"] = filters.get("practitioner")
 	# Add practitioner or service unit to filters based on unavailability_for
 	if filters.get("unavailability_for") == "Practitioner":
 		if filters.get("practitioner"):
