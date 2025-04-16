@@ -259,6 +259,7 @@ def make_patient_appointment(source_name, target_doc=None):
 			"Therapy Plan": {
 				"doctype": "Patient Appointment",
 				"field_map": {"name" :"therapy_plan" },
+				"field_no_map": ["practitioner"],
 			},
 			"Therapy Plan Detail" : {
 				"doctype" : "Patient Appointment Therapy",

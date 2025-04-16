@@ -5,6 +5,7 @@ frappe.ui.form.on('Patient Assessment', {
 	refresh: function(frm) {
 		if (frm.doc.assessment_template) {
 			frm.trigger('set_score_range');
+			frm.trigger('assessment_template');
 		}
 
 		if (!frm.doc.__islocal) {
