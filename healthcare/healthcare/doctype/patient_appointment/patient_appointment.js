@@ -750,6 +750,9 @@ let check_and_set_availability = function(frm) {
 			    d.get_value('from_time') < d.get_value('to_time')) {
 				d.get_primary_btn().attr('disabled', null);
 			}
+			if(d.get_value('from_time') > d.get_value('to_time')) {
+				frappe.throw("<b>From Time must be before to time</b>")
+			}
 		};
 		
 		d.fields_dict['practitioner'].df.onchange = () => {
