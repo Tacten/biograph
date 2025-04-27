@@ -11,6 +11,8 @@ class HealthcareSalesInvoice(SalesInvoice):
 		from erpnext.stock.get_item_details import get_item_details
 
 		for checked_item in checked_values:
+			if not self.ref_practitioner:
+				self.ref_practitioner= checked_item.get("practitioner")
 			item_line = self.append("items", {})
 			price_list, price_list_currency = frappe.db.get_values(
 				"Price List", {"selling": 1}, ["name", "currency"]
