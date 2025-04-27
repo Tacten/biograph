@@ -28,6 +28,8 @@ from healthcare.setup import setup_healthcare
 @frappe.whitelist()
 def get_healthcare_services_to_invoice(patient, customer, company, link_customer=False):
 	patient = frappe.get_doc("Patient", patient)
+	if not customer:
+		customer = patient.customer
 	items_to_invoice = []
 	if patient:
 		# Customer validated, build a list of billable services
@@ -83,6 +85,7 @@ def get_appointments_to_invoice(patient, company):
 						"reference_type": "Patient Appointment",
 						"reference_name": appointment.name,
 						"service": appointment.procedure_template,
+						"practitioner" : appointment.practitioner
 					}
 				)
 		# Consultation Appointments, should check fee validity
@@ -106,6 +109,7 @@ def get_appointments_to_invoice(patient, company):
 					"service": service_item,
 					"rate": practitioner_charge,
 					"income_account": income_account,
+					"practitioner": appointment.practitioner
 				}
 			)
 
@@ -437,7 +441,7 @@ def get_appointment_billing_item_and_rate(doc):
 	if not service_item:
 		throw_config_service_item(is_inpatient)
 
-	if not practitioner_charge and doc.get("practitioner"):
+	if not practitioner_charge and frappe.db.exists("Healthcare Practitioner", doc.get("practitioner")):
 		throw_config_practitioner_charge(is_inpatient, doc.practitioner)
 
 	if not practitioner_charge and not doc.get("practitioner"):
@@ -508,7 +512,7 @@ def get_practitioner_billing_details(practitioner, is_inpatient):
 	else:
 		fields = ["op_consulting_charge_item", "op_consulting_charge"]
 
-	if practitioner:
+	if frappe.db.exists("Healthcare Practitioner", practitioner):
 		service_item, practitioner_charge = frappe.db.get_value(
 			"Healthcare Practitioner", practitioner, fields
 		)

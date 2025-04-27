@@ -3,6 +3,9 @@ frappe.ui.form.on('Sales Invoice', {
 	refresh(frm) {
 		if (frm.doc.docstatus === 0 && !frm.doc.is_return) {
 			frm.add_custom_button(__('Healthcare Services'), function() {
+				if(!frm.doc.patient){
+					frappe.throw("Patient is not selected, Please select a patient first.")
+				}
 				frappe.db.get_value("Patient", frm.doc.patient, "customer")
 				.then(r => {
 					let link_customer = null;
@@ -225,6 +228,12 @@ var get_checked_values= function($results) {
 			else{
 				checked_values['rate'] = false;
 			}
+			if($(this).attr('data-practitioner') != 'undefined'){
+				checked_values['practitioner'] = $(this).attr('data-practitioner');
+			}
+			else{
+				checked_values['practitioner'] = false;
+			}
 			if($(this).attr('data-income-account') != 'undefined'){
 				checked_values['income_account'] = $(this).attr('data-income-account');
 			}
@@ -318,6 +327,7 @@ var list_row_data_items = function(head, $row, result, invoice_healthcare_servic
 				data-rate = ${result.rate}
 				data-income-account = "${result.income_account}"
 				data-qty = ${result.qty}
+				data-practitioner = ${result.practitioner}
 				data-description = "${result.description}">
 				</div>`).append($row);
 	}
@@ -328,6 +338,7 @@ var list_row_data_items = function(head, $row, result, invoice_healthcare_servic
 				data-qty = ${result.quantity}
 				data-dn= "${result.reference_name}"
 				data-dt= "${result.reference_type}"
+				data-practitioner= "${result.practitioner}"
 				data-rate = ${result.rate}
 				data-description = "${result.description}">
 				</div>`).append($row);
@@ -351,7 +362,9 @@ var add_to_item_line = function(frm, checked_values, invoice_healthcare_services
 	}
 	else{
 		for(let i=0; i<checked_values.length; i++){
+			console.log(checked_values[i].practitioner)
 			var si_item = frappe.model.add_child(frm.doc, 'Sales Invoice Item', 'items');
+			frm.set_value("ref_practitioner", checked_values[i].practitioner)
 			frappe.model.set_value(si_item.doctype, si_item.name, 'item_code', checked_values[i]['item']);
 			frappe.model.set_value(si_item.doctype, si_item.name, 'qty', 1);
 			frappe.model.set_value(si_item.doctype, si_item.name, 'reference_dn', checked_values[i]['dn']);
