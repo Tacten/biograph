@@ -102,14 +102,6 @@ class HealthcarePractitioner(Document):
 					)
 				break
 		
-		schedule = []
-		for practitioner_schedule in self.practitioner_schedules:
-			if practitioner_schedule.schedule not in schedule:
-				schedule.append(practitioner_schedule.schedule)
-			else:
-				frappe.throw("Schedule {0} is already selected, Not allow to select a same schedule in another row.".format(
-					frappe.bold(practitioner_schedule.schedule)
-				))
 		
 
 	def validate_user_id(self):
