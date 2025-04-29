@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-utils
 # Copyright (c) 2018, earthians and contributors
 # For license information, please see license.txt
 
@@ -42,6 +42,7 @@ def get_healthcare_services_to_invoice(patient, customer, company, link_customer
 		items_to_invoice += get_therapy_sessions_to_invoice(patient, company)
 		items_to_invoice += get_service_requests_to_invoice(patient, company)
 		items_to_invoice += get_observations_to_invoice(patient, company)
+		items_to_invoice += get_package_subscriptions_to_invoice(patient, company)
 		validate_customer_created(patient, customer, link_customer)
 		return items_to_invoice
 
@@ -115,6 +116,35 @@ def get_appointments_to_invoice(patient, company):
 
 	return appointments_to_invoice
 
+def get_package_subscriptions_to_invoice(patient, company):
+	subscriptions_to_invoice = []
+	subscriptions = frappe.db.get_all(
+		"Package Subscription",
+		fields=["name", "healthcare_package"],
+		filters={
+			"patient": patient.name,
+			"company": company,
+			"invoiced": False,
+			"docstatus": 1,
+		},
+	)
+	for sub in subscriptions:
+		subscription_doc = frappe.get_doc("Package Subscription", sub.name)
+		item, item_wise_invoicing = frappe.get_cached_value(
+			"Healthcare Package", sub.healthcare_package, ["item", "item_wise_invoicing"]
+		)
+		if not item_wise_invoicing:
+			subscriptions_to_invoice.append(
+				{"reference_type": "Package Subscription", "reference_name": sub.name, "service": item}
+			)
+		else:
+			for item in subscription_doc.package_details:
+				if not item.invoiced:
+					subscriptions_to_invoice.append(
+						{"reference_type": item.doctype, "reference_name": item.name, "service": item.item_code}
+					)
+
+	return subscriptions_to_invoice
 
 def get_encounters_to_invoice(patient, company):
 	if not isinstance(patient, str):
@@ -441,7 +471,7 @@ def get_appointment_billing_item_and_rate(doc):
 	if not service_item:
 		throw_config_service_item(is_inpatient)
 
-	if not practitioner_charge and frappe.db.exists("Healthcare Practitioner", doc.get("practitioner")):
+	if not practitioner_charge and doc.get("practitioner"):
 		throw_config_practitioner_charge(is_inpatient, doc.practitioner)
 
 	if not practitioner_charge and not doc.get("practitioner"):

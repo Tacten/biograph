@@ -101,7 +101,7 @@ class HealthcarePractitioner(Document):
 						title=_("Google Calendar Required"),
 					)
 				break
-		schedule = []
+	 	schedule = []
         for practitioner_schedule in self.practitioner_schedules:
             if practitioner_schedule.schedule not in schedule:
                 schedule.append(practitioner_schedule.schedule)
@@ -111,6 +111,7 @@ class HealthcarePractitioner(Document):
                 ))
 
 
+  
 	def validate_user_id(self):
 		if not frappe.db.exists("User", self.user_id):
 			frappe.throw(_("User {0} does not exist").format(self.user_id))
