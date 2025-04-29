@@ -19,7 +19,7 @@
 
 ### Introduction
 
-Biograph (a clone and enhancements of Marley Health) enables the health domain in ERPNext and has various features that will help healthcare practitioners, clinics and hospitals to leverage the power of Frappe and ERPNext. It is built on Frappe, a full-stack, meta-data driven, web framework, and integrates seamlessly with ERPNext, the most agile ERP software. Marley Health helps to manage healthcare workflows efficiently and most of the design is based on HL7 FHIR (Fast Health Interoperability Resources).
+Biograph (a fork and enhancements of Marley Health) enables the health domain in ERPNext and has various features that will help healthcare practitioners, clinics and hospitals to leverage the power of Frappe and ERPNext. It is built on Frappe, a full-stack, meta-data driven, web framework, and integrates seamlessly with ERPNext, the most agile ERP software. Marley Health helps to manage healthcare workflows efficiently and most of the design is based on HL7 FHIR (Fast Health Interoperability Resources).
 
 
 ### Key Features
@@ -50,7 +50,7 @@ $ bench --site demo.com install-app healthcare
 
 ### Documentation
 
-Complete documentation for Marley Health is available at https://frappehealth.com/docs
+Complete documentation for Biograph is available at [Documentation-Wiki](https://deepwiki.com/Tacten/biograph)
 
 
 ### License
@@ -60,4 +60,4 @@ GNU GPL V3. See [license.txt](https://github.com/earthians/marley/blob/develop/l
 
 ### Credits
 
-Marley Health module is developed & maintained by Earthians and community contributors.
+Biograph (Fork and Enhancements of Marley Health) is  developed & maintained by Tacten and community contributors.
