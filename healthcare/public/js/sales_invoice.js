@@ -72,12 +72,6 @@ frappe.ui.form.on('Sales Invoice', {
 
 	items_add: function (frm) {
 		set_service_unit(frm);
-	},
-
-	paid_amount : (frm) =>{
-		if(frm.doc.paid_amount != frm.doc.grand_total){
-			frappe.throw(`Paid Amount should be a same as invoice amount<br><b>Paid Amount = ${format_currency(frm.doc.grand_total)}</b>`)
-		}
 	}
 });
 
