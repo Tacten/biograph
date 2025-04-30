@@ -111,6 +111,7 @@ class HealthcarePractitioner(Document):
 				))
 
 
+  
 	def validate_user_id(self):
 		if not frappe.db.exists("User", self.user_id):
 			frappe.throw(_("User {0} does not exist").format(self.user_id))
