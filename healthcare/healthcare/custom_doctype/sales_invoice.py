@@ -1,7 +1,6 @@
 import frappe
 
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import SalesInvoice
-from frappe.utils import fmt_money
 
 
 
@@ -52,9 +51,3 @@ class HealthcareSalesInvoice(SalesInvoice):
 				item_line.medical_department = lab_test.department
 
 		self.set_missing_values(for_validate=True)
-
-	def validate(self):
-		super().validate()
-		if(self.paid_amount != self.grand_total):
-			frappe.throw(f"Paid Amount should be a same as invoice amount<br><b>Paid Amount = {fmt_money(self.grand_total, currency=self.currency)}</b>")
-		
