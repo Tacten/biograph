@@ -786,6 +786,9 @@ def create_service_request_from_widget(encounter, data, medication_request=False
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_filtered_advice_template(doctype, txt, searchfield, start, page_len, filters):
+	filters["symptoms"] = filters.get("doc").get("symptoms")
+	filters["diagnosis"] = filters.get("doc").get("diagnosis")
+	
 	symptoms, diagnosis = [], []
 
 	if filters.get("symptoms"):
@@ -798,26 +801,28 @@ def get_filtered_advice_template(doctype, txt, searchfield, start, page_len, fil
 
 	if symptoms:
 		formatted_symptoms = ", ".join([f'"{s}"' for s in symptoms])
-		symptoms_condition = f"pes.complaint IN ({formatted_symptoms})"
+		symptoms_condition = f"pes.complaint in ({formatted_symptoms})"
 		conditions.append(symptoms_condition)
 
 	if diagnosis:
 		formatted_diagnosis = ", ".join([f'"{d}"' for d in diagnosis])
-		diagnosis_condition = f"ped.diagnosis IN ({formatted_diagnosis})"
+		diagnosis_condition = f"ped.diagnosis in ({formatted_diagnosis})"
 		conditions.append(diagnosis_condition)
 
-	# Combine conditions with OR
+	
 	where_clause = " OR ".join(conditions)
 	where_sql = f"WHERE {where_clause}" if conditions else ""
 
 	result = frappe.db.sql(
 		f"""
-		SELECT dat.name
+		SELECT DISTINCT dat.name
 		FROM `tabDoctor Advice Template` AS dat
 		LEFT JOIN `tabPatient Encounter Diagnosis` AS ped ON ped.parent = dat.name
 		LEFT JOIN `tabPatient Encounter Symptom` AS pes ON pes.parent = dat.name
 		{where_sql}
-		LIMIT {start}, {page_len}
-		"""
+		""", as_dict=1
 	)
+
+	result = tuple((row.name, "Doctor Advice") for row in result)
+
 	return result

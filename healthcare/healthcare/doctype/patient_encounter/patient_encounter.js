@@ -233,8 +233,7 @@ frappe.ui.form.on('Patient Encounter', {
 			return {
 				query: "healthcare.healthcare.doctype.patient_encounter.patient_encounter.get_filtered_advice_template",
 				filters: {
-					symptoms: frm.doc.symptoms,
-					diagnosis: frm.doc.diagnosis
+					doc: frm.doc,
 				}
 			};
 		}
