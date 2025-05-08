@@ -1,0 +1,75 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:title",
+ "creation": "2025-05-08 17:55:33.560479",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "diagnosis",
+  "column_break_nfum",
+  "history_of_present_illness",
+  "section_break_fkjn",
+  "doctor_advice"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "unique": 1
+  },
+  {
+   "fieldname": "diagnosis",
+   "fieldtype": "Table MultiSelect",
+   "label": "Diagnosis ",
+   "options": "Patient Encounter Diagnosis"
+  },
+  {
+   "fieldname": "section_break_fkjn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_nfum",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "history_of_present_illness",
+   "fieldtype": "Table MultiSelect",
+   "label": "History of Present Illness",
+   "options": "Patient Encounter Symptom"
+  },
+  {
+   "fieldname": "doctor_advice",
+   "fieldtype": "Text Editor"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-05-08 21:00:37.143086",
+ "modified_by": "Administrator",
+ "module": "Healthcare",
+ "name": "Doctor Advice Template",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

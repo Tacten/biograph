@@ -228,6 +228,16 @@ frappe.ui.form.on('Patient Encounter', {
 		var table_list =  ["drug_prescription", "lab_test_prescription", "procedure_prescription", "therapies"]
 		apply_code_sm_filter_to_child(frm, "priority", table_list, "Priority")
 		apply_code_sm_filter_to_child(frm, "intent", table_list, "Intent")
+
+		frm.fields_dict['doctor_advice_template'].get_query = function(){
+			return {
+				query: "healthcare.healthcare.doctype.patient_encounter.patient_encounter.get_filtered_advice_template",
+				filters: {
+					symptoms: frm.doc.symptoms,
+					diagnosis: frm.doc.diagnosis
+				}
+			};
+		}
 	},
 
 	appointment: function(frm) {
@@ -275,6 +285,13 @@ frappe.ui.form.on('Patient Encounter', {
 			};
 			frm.set_value(values);
 			frm.set_df_property('patient', 'read_only', 0);
+		}
+	},
+	
+	doctor_advice_template: function(frm){
+		if (frm.doc.doctor_advice_template){
+			frm.add_fetch("doctor_advice_template", "doctor_advice", "doctor_advice");
+			frm.refresh_field("doctor_advice_template")
 		}
 	},
 
