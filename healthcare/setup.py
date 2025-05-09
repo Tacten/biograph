@@ -2,6 +2,8 @@
 import frappe
 from erpnext.setup.utils import insert_record
 from frappe import _
+import os
+import shutil
 
 data = {
 	"desktop_icons": [
@@ -171,6 +173,8 @@ def setup_healthcare():
 	create_default_root_service_units()
 
 	setup_domain()
+
+	setup_patient_history_assets()
 
 	frappe.clear_cache()
 
@@ -1617,3 +1621,35 @@ def remove_portal_settings_menu_items():
 	menu_items = frappe.get_hooks("standard_portal_menu_items", app_name="healthcare")
 	for item in menu_items:
 		frappe.db.delete("Portal Menu Item", item)
+
+
+def setup_patient_history_assets():
+	"""Copy patient history assets to public folder."""
+	# Create directories if they don't exist
+	js_path = frappe.get_app_path('healthcare', 'public', 'js')
+	css_path = frappe.get_app_path('healthcare', 'public', 'css')
+	
+	if not os.path.exists(js_path):
+		os.makedirs(js_path)
+	
+	if not os.path.exists(css_path):
+		os.makedirs(css_path)
+	
+	# Source paths
+	source_js = frappe.get_app_path('healthcare', 'healthcare', 'doctype', 'patient', 
+								   'patient_history', 'patient_history.js')
+	source_css = frappe.get_app_path('healthcare', 'healthcare', 'doctype', 'patient', 
+									'patient_history', 'patient_history.css')
+	
+	# Destination paths
+	dest_js = os.path.join(js_path, 'patient_history.js')
+	dest_css = os.path.join(css_path, 'patient_history.css')
+	
+	# Copy files
+	if os.path.exists(source_js):
+		shutil.copy2(source_js, dest_js)
+	
+	if os.path.exists(source_css):
+		shutil.copy2(source_css, dest_css)
+		
+	print("Patient history assets copied successfully")

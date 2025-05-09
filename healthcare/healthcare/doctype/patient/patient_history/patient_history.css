@@ -1,0 +1,138 @@
+.patient-history-container .label {
+	display: inline-block;
+	margin-right: 7px;
+}
+
+.patient-history-container .list-row {
+	border: none;
+	padding: 0px;
+	cursor: pointer;
+}
+
+.patient-history-filter {
+	margin-left: 35px;
+	width: 25%;
+}
+
+.date-indicator {
+	background: none;
+	font-size: 12px;
+	vertical-align: middle;
+	font-weight: bold;
+	color: #6c7680;
+}
+
+.date-indicator::after {
+	margin: 0 -4px 0 12px;
+	content: '';
+	display: inline-block;
+	height: 8px;
+	width: 8px;
+	border-radius: 8px;
+	background: #d1d8dd;
+}
+
+.date-indicator.blue {
+	color: #5e64ff;
+}
+
+.date-indicator.blue::after {
+	background: #5e64ff;
+}
+
+.patient-history-container .medical_record-message {
+	border-left: 1px solid #d1d8dd;
+	padding: 15px;
+	padding-right: 30px;
+}
+
+.patient-history-container .medical_record-date {
+	padding: 15px;
+	padding-right: 0px;
+}
+
+.patient-history-container .patient_vital_charts {
+	padding: 20px 15px;
+	border-bottom: 1px solid #d1d8dd;
+	text-align: center;
+}
+
+.patient-history-container .plot {
+	height: 140px;
+	width: 97%;
+	margin: auto;
+}
+
+.patient-history-container .list-filters {
+	display: none;
+}
+
+.avatar {
+	display: inline-block;
+	overflow: hidden;
+	line-height: 1;
+	vertical-align: middle;
+	border-radius: 3px;
+}
+
+.d-flex {
+	display: flex;
+}
+
+.width-full {
+	width: 100%;
+}
+
+.p-3 {
+	padding: 16px;
+}
+
+.mt-2 {
+	margin-top: 8px;
+}
+
+.mr-3 {
+	margin-right: 16px;
+}
+
+.flex-column {
+	flex-direction: column;
+}
+
+.py-3 {
+	padding-top: 16px;
+	padding-bottom: 16px;
+}
+
+.border-bottom {
+	border-bottom: 1px #e1e4e8 solid;
+}
+
+.patient-history-container .frappe-card {
+	background-color: #fafbfc;
+	border: 1px solid #d1d8dd;
+	border-radius: 4px;
+	padding: 15px;
+	margin-top: 15px;
+}
+
+.p-5 {
+	padding: 25px;
+}
+
+.mt-3 {
+	margin-top: 15px;
+}
+
+.patient-history-container .document-html {
+	margin-top: 10px;
+}
+
+.patient-history-container .document-id {
+	font-weight: 500;
+}
+
+.patient-history-container .btn-more,
+.patient-history-container .btn-less {
+	margin-top: 10px;
+} 

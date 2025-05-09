@@ -230,7 +230,7 @@ def setup_patient_duplicate_check_rules():
         existing_rule = frappe.db.exists("Patient Duplicate Check Rule Configuration", rule["rule_name"])
         if existing_rule:
             rule_doc = frappe.get_doc("Patient Duplicate Check Rule Configuration", existing_rule)
-            frappe.logger().debug(f"Rule {i}/{len(rules)}: '{rule['rule_name']}' already exists, using existing")
+            frappe.logger("web").debug(f"Rule {i}/{len(rules)}: '{rule['rule_name']}' already exists, using existing")
         else:
             # Create new rule configuration
             rule_doc = frappe.new_doc("Patient Duplicate Check Rule Configuration")
@@ -249,7 +249,7 @@ def setup_patient_duplicate_check_rules():
                     })
             
             rule_doc.save()
-            frappe.logger().debug(f"Rule {i}/{len(rules)}: '{rule['rule_name']}' created successfully")
+            frappe.logger("web").debug(f"Rule {i}/{len(rules)}: '{rule['rule_name']}' created successfully")
         
         # Link rule configuration to healthcare settings
         healthcare_settings.append("patient_duplicate_check_rules", {

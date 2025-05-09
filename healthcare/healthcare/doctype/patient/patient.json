@@ -75,7 +75,9 @@
   "alcohol_current_use",
   "column_break_32",
   "surrounding_factors",
-  "other_risk_factors"
+  "other_risk_factors",
+  "patient_history_tab",
+  "patient_history_html"
  ],
  "fields": [
   {
@@ -528,6 +530,17 @@
    "fieldname": "family_history",
    "fieldtype": "Small Text",
    "label": "Family History (Legacy)"
+  },
+  {
+   "fieldname": "patient_history_tab",
+   "fieldtype": "Tab Break",
+   "label": "Patient History"
+  },
+  {
+   "fieldname": "patient_history_html",
+   "fieldtype": "HTML",
+   "label": "Patient History",
+   "no_copy": 1
   }
  ],
  "grid_page_length": 50,

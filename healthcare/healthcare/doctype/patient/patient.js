@@ -1,8 +1,22 @@
 // Copyright (c) 2016, ESS LLP and contributors
 // For license information, please see license.txt
 {% include 'healthcare/regional/india/abdm/js/patient.js' %}
-
+// Load patient history scripts
 frappe.ui.form.on('Patient', {
+	onload: function(frm) {
+		// Load the patient history JS and CSS files
+		frappe.require([
+			'assets/healthcare/js/patient_history.js',
+			'assets/healthcare/css/patient_history.css'
+		]);
+
+		if (frm.doc.dob) {
+			$(frm.fields_dict['age_html'].wrapper).html(`${__('AGE')} : ${get_age(frm.doc.dob)}`);
+		} else {
+			$(frm.fields_dict['age_html'].wrapper).html('');
+		}
+	},
+
 	refresh: function (frm) {
 		frm.set_query('patient', 'patient_relation', function () {
 			return {
@@ -53,15 +67,13 @@ frappe.ui.form.on('Patient', {
 		} else {
 			frappe.contacts.clear_address_and_contact(frm);
 		}
-	},
 
-	onload: function (frm) {
-		if (frm.doc.dob) {
-			$(frm.fields_dict['age_html'].wrapper).html(`${__('AGE')} : ${get_age(frm.doc.dob)}`);
-		} else {
-			$(frm.fields_dict['age_html'].wrapper).html('');
+		// Initialize patient history tab if available
+		if (!frm.is_new() && frm.doc.name) {
+			setup_patient_history_tab(frm);
 		}
 	},
+	
 	validate:(frm)=>{
 		if(frm.is_dirty()){
 			let missing = []
@@ -83,6 +95,7 @@ frappe.ui.form.on('Patient', {
 			}
 		}
 	},
+	
 	before_save: function(frm) {
 		// Client-side validation to check for duplicates before saving
 		if (frm.is_new()) {
@@ -131,6 +144,11 @@ frappe.ui.form.on('Patient', {
             frm.set_value('last_name', capitalizeWords(frm.doc.last_name));
         }
     },
+
+	// Initialize patient history tab when user navigates to it
+	patient_history_tab: function(frm) {
+		setup_patient_history_tab(frm);
+	}
 });
 
 function capitalizeWords(name) {
@@ -165,6 +183,36 @@ frappe.ui.form.on('Patient Relation', {
 		};
 	}
 });
+
+// Setup the patient history tab
+function setup_patient_history_tab(frm) {
+	if (frm.doc.__islocal) return;
+	
+	// Check if the healthcare.patient_history module is loaded
+	if (typeof healthcare === 'undefined' || typeof healthcare.patient_history === 'undefined') {
+		// Try loading again if not loaded
+		frappe.require([
+			'assets/healthcare/js/patient_history.js',
+			'assets/healthcare/css/patient_history.css'
+		], function() {
+			initialize_patient_history(frm);
+		});
+	} else {
+		initialize_patient_history(frm);
+	}
+}
+
+// Initialize the patient history instance
+function initialize_patient_history(frm) {
+	if (!frm.patient_history) {
+		frm.patient_history = new healthcare.patient_history(
+			$(frm.fields_dict.patient_history_html.wrapper),
+			frm.doc.name
+		);
+	} else {
+		frm.patient_history.initialize();
+	}
+}
 
 let create_medical_record = function (frm) {
 	frappe.route_options = {
