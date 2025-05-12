@@ -90,6 +90,7 @@ var get_healthcare_services_to_invoice = function(frm, link_customer) {
 	let selected_patient = '';
 	var dialog = new frappe.ui.Dialog({
 		title: __("Get Items from Healthcare Services"),
+		size: 'large',
 		fields:[
 			{
 				fieldtype: 'Link',
@@ -114,7 +115,7 @@ var get_healthcare_services_to_invoice = function(frm, link_customer) {
 			selected_patient = patient;
 			var method = "healthcare.healthcare.utils.get_healthcare_services_to_invoice";
 			var args = {patient: patient, customer: frm.doc.customer, company: frm.doc.company, link_customer: link_customer};
-			var columns = (["service", "reference_name", "reference_type"]);
+			var columns = (["date", "reference_name", "reference_type","service" ]);
 			get_healthcare_items(frm, true, $results, $placeholder, method, args, columns);
 		}
 		else if(!patient){
@@ -256,6 +257,7 @@ var get_drugs_to_invoice = function(frm, link_customer) {
 	let selected_encounter = '';
 	var dialog = new frappe.ui.Dialog({
 		title: __("Get Items from Medication Requests"),
+		size: 'large',
 		fields:[
 			{ fieldtype: 'Link', options: 'Patient', label: 'Patient', fieldname: "patient", reqd: true },
 			{ fieldtype: 'Link', options: 'Patient Encounter', label: 'Patient Encounter', fieldname: "encounter", reqd: true,
