@@ -71,7 +71,7 @@ def get_appointments_to_invoice(patient, company):
 			"invoiced": 0,
 			"status": ["!=", "Cancelled"],
 		},
-		order_by="appointment_date",
+		order_by="appointment_date desc",
 	)
 
 	for appointment in patient_appointments:
@@ -126,6 +126,7 @@ def get_encounters_to_invoice(patient, company):
 		"Patient Encounter",
 		fields=["*"],
 		filters={"patient": patient, "company": company, "invoiced": False, "docstatus": 1},
+		order_by="encounter_date desc",
 	)
 	if encounters:
 		for encounter in encounters:
@@ -170,6 +171,7 @@ def get_lab_tests_to_invoice(patient, company):
 			"docstatus": 1,
 			"service_request": "",
 		},
+		order_by="date desc",
 	)
 	for lab_test in lab_tests:
 		item, is_billable = frappe.get_cached_value(
@@ -195,6 +197,7 @@ def get_observations_to_invoice(patient, company):
 			"docstatus": 1,
 			"service_request": "",
 		},
+		order_by="posting_date desc",
 	)
 	for observation in observations:
 		item, is_billable = frappe.get_cached_value(
@@ -220,6 +223,7 @@ def get_clinical_procedures_to_invoice(patient, company):
 			"docstatus": 1,
 			"service_request": "",
 		},
+		order_by="start_date desc"
 	)
 	for procedure in procedures:
 		if not procedure.appointment:
@@ -275,6 +279,8 @@ def get_inpatient_services_to_invoice(patient, company):
 				and io.parent=ip.name
 				and io.left=1
 				and io.invoiced=0
+			Order By 
+				ip.scheduled_date DESC
 		""",
 		(patient.name, company),
 		as_dict=1,
@@ -325,6 +331,7 @@ def get_therapy_plans_to_invoice(patient, company):
 			"therapy_plan_template": ("!=", ""),
 			"docstatus": 1,
 		},
+		order_by="start_date desc"
 	)
 	for plan in therapy_plans:
 		therapy_plans_to_invoice.append(
@@ -359,6 +366,7 @@ def get_therapy_sessions_to_invoice(patient, company):
 			"docstatus": 1,
 			"service_request": "",
 		},
+		order_by="start_date desc"
 	)
 	for therapy in therapy_sessions:
 		if not therapy.appointment:
@@ -388,6 +396,7 @@ def get_service_requests_to_invoice(patient, company):
 			"billing_status": ["!=", "Invoiced"],
 			"docstatus": 1,
 		},
+		order_by= "order_date desc"
 	)
 	for service_request in service_requests:
 		item, is_billable = frappe.get_cached_value(
