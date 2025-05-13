@@ -808,14 +808,20 @@ def get_filtered_advice_template(doctype, txt, searchfield, start, page_len, fil
 		formatted_diagnosis = ", ".join([f'"{d}"' for d in diagnosis])
 		diagnosis_condition = f"ped.diagnosis in ({formatted_diagnosis})"
 		conditions.append(diagnosis_condition)
+	txt_conditions = []
+	if txt:
+		txt_conditions.append(f"ped.diagnosis like '%{txt}%' ")
+		txt_conditions.append(f"pes.complaint like '%{txt}%' ")
+		txt_conditions.append(f"dat.name like '%{txt}%' ")
 
-	
 	where_clause = " OR ".join(conditions)
 	where_sql = f"WHERE {where_clause}" if conditions else ""
+	if txt_conditions:
+		where_sql += f" and ({'OR '.join(txt_conditions)} )"
 
 	result = frappe.db.sql(
 		f"""
-		SELECT DISTINCT dat.name
+		SELECT DISTINCT dat.name, ped.diagnosis, pes.complaint
 		FROM `tabDoctor Advice Template` AS dat
 		LEFT JOIN `tabPatient Encounter Diagnosis` AS ped ON ped.parent = dat.name
 		LEFT JOIN `tabPatient Encounter Symptom` AS pes ON pes.parent = dat.name
@@ -823,6 +829,6 @@ def get_filtered_advice_template(doctype, txt, searchfield, start, page_len, fil
 		""", as_dict=1
 	)
 
-	result = tuple((row.name, "Doctor Advice") for row in result)
+	result = tuple((row.name, row.diagnosis, row.complaint) for row in result)
 
 	return result
