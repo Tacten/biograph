@@ -7,11 +7,6 @@
 
   [Biograph](https://tacten.co/digitalhealth)
 
- <div align="center" style="max-height: 40px;">
-    <a href="https://tacten.co/digitalhealth">
-        <img src=".github/try-on-f-cloud-button.svg" height="40">
-    </a>
- </div>
 
 </div>
 
