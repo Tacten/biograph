@@ -21,6 +21,7 @@
   "mobile_phone",
   "residence_phone",
   "office_phone",
+  "description",
   "employee_and_user_details_section",
   "practitioner_type",
   "employee",
@@ -356,11 +357,16 @@
    "fieldtype": "Link",
    "label": "Supplier",
    "options": "Supplier"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Long Text",
+   "label": "Description"
   }
  ],
  "image_field": "image",
  "links": [],
- "modified": "2023-03-04 18:33:25.753648",
+ "modified": "2025-05-15 18:25:40.749270",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Healthcare Practitioner",
@@ -407,6 +413,7 @@
  ],
  "quick_entry": 1,
  "restrict_to_domain": "Healthcare",
+ "row_format": "Dynamic",
  "search_fields": "practitioner_name, mobile_phone, office_phone",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
