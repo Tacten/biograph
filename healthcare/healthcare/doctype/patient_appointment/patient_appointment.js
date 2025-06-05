@@ -272,9 +272,17 @@ frappe.ui.form.on('Patient Appointment', {
 	set_check_availability_action: function(frm) {
 		frm.page.set_primary_action(__('Check Availability'), function() {
 			if (!frm.doc.patient) {
+				frappe.utils.scroll_to(frm.get_field("patient").$wrapper, true, 30);
 				frappe.msgprint({
 					title: __('Not Allowed'),
 					message: __('Please select Patient first'),
+					indicator: 'red'
+				});
+			} else if ( !frm.doc.therapy_plan && frm.doc.appointment_type == "Therapy Session"){
+				frappe.utils.scroll_to(frm.get_field("therapy_plan").$wrapper, true, 30);
+				frappe.msgprint({
+					title: __('Not Allowed'),
+					message: __('Please select Therapy Session first'),
 					indicator: 'red'
 				});
 			} else {
