@@ -858,6 +858,12 @@ class PatientAppointment(Document):
 				})
 		
 		return therapy_types
+	
+	@frappe.whitelist()
+	def get_service_unit_values(self,selected_practitioner):
+		doc=frappe.get_doc("Healthcare Practitioner", selected_practitioner)
+		return [item.service_unit for item in doc.practitioner_schedules]
+
 
 
 @frappe.whitelist()
