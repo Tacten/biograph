@@ -27,8 +27,9 @@ class ServiceRequest(ServiceRequestController):
 		super().validate()
 		if self.template_dt and self.template_dn and not self.codification_table:
 			template_doc = frappe.get_doc(self.template_dt, self.template_dn)
-			for mcode in template_doc.codification_table:
-				self.append("codification_table", (frappe.copy_doc(mcode)).as_dict())
+			if template_doc.get("codification_table"):
+				for mcode in template_doc.codification_table:
+					self.append("codification_table", (frappe.copy_doc(mcode)).as_dict())
 
 	def set_title(self):
 		if frappe.flags.in_import and self.title:
