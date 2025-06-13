@@ -264,7 +264,7 @@ def get_appointment_query(doctype, txt, searchfield, start, page_len, filters, a
 					pa.practitioner, pa.practitioner_name, pa.department, pa.appointment_date, pa.appointment_time
 					From `tabPatient Appointment` as pa
 					Left Join `tabPatient Appointment Therapy` as pat ON pat.parent = pa.name
-					Where status in ('Open', 'Scheduled') {condition}
+					Where status in ('Open', 'Scheduled', 'Confirmed') {condition}
 	""")
 
 	return data

@@ -861,9 +861,11 @@ class PatientAppointment(Document):
 	
 	@frappe.whitelist()
 	def get_service_unit_values(self,selected_practitioner):
-		doc=frappe.get_doc("Healthcare Practitioner", selected_practitioner)
-		return [item.service_unit for item in doc.practitioner_schedules]
+		query=frappe.db.sql(
+			"Select service_unit from `tabPractitioner Service Unit Schedule` where parent='{0}'".format(selected_practitioner),as_dict=1
+		)
 
+		return [item.service_unit for item in query]
 
 
 @frappe.whitelist()

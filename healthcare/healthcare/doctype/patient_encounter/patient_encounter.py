@@ -781,3 +781,54 @@ def create_service_request_from_widget(encounter, data, medication_request=False
 		order = encounter_doc.get_order_details(template, data)
 	order.insert(ignore_permissions=True, ignore_mandatory=True)
 	order.submit()
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_filtered_advice_template(doctype, txt, searchfield, start, page_len, filters):
+	filters["symptoms"] = filters.get("doc").get("symptoms")
+	filters["diagnosis"] = filters.get("doc").get("diagnosis")
+	
+	symptoms, diagnosis = [], []
+
+	if filters.get("symptoms"):
+		symptoms = [row["complaint"] for row in filters.get("symptoms")]
+
+	if filters.get("diagnosis"):
+		diagnosis = [row["diagnosis"] for row in filters.get("diagnosis")]
+
+	conditions = []
+
+	if symptoms:
+		formatted_symptoms = ", ".join([f'"{s}"' for s in symptoms])
+		symptoms_condition = f"pes.complaint in ({formatted_symptoms})"
+		conditions.append(symptoms_condition)
+
+	if diagnosis:
+		formatted_diagnosis = ", ".join([f'"{d}"' for d in diagnosis])
+		diagnosis_condition = f"ped.diagnosis in ({formatted_diagnosis})"
+		conditions.append(diagnosis_condition)
+	txt_conditions = []
+	if txt:
+		txt_conditions.append(f"ped.diagnosis like '%{txt}%' ")
+		txt_conditions.append(f"pes.complaint like '%{txt}%' ")
+		txt_conditions.append(f"dat.name like '%{txt}%' ")
+
+	where_clause = " OR ".join(conditions)
+	where_sql = f"WHERE {where_clause}" if conditions else ""
+	if txt_conditions:
+		where_sql += f" and ({'OR '.join(txt_conditions)} )"
+
+	result = frappe.db.sql(
+		f"""
+		SELECT DISTINCT dat.name, ped.diagnosis, pes.complaint
+		FROM `tabDoctor Advice Template` AS dat
+		LEFT JOIN `tabPatient Encounter Diagnosis` AS ped ON ped.parent = dat.name
+		LEFT JOIN `tabPatient Encounter Symptom` AS pes ON pes.parent = dat.name
+		{where_sql}
+		""", as_dict=1
+	)
+
+	result = tuple((row.name, row.diagnosis, row.complaint) for row in result)
+
+	return result
