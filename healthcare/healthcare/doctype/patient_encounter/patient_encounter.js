@@ -730,7 +730,7 @@ var apply_code_sm_filter_to_child = function(frm, field, table_list, code_system
 };
 
 var show_clinical_notes = async function(frm) {
-	if (frm.doc.docstatus == 0 && frm.doc.patient) {
+	if (frm.doc.patient) {
 		const clinical_notes = new healthcare.ClinicalNotes({
 			frm: frm,
 			notes_wrapper: $(frm.fields_dict.clinical_notes.wrapper),
