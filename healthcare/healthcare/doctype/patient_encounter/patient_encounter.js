@@ -179,7 +179,7 @@ frappe.ui.form.on('Patient Encounter', {
 			return {
 				filters: {
 					//	Scheduled filter for demo ...
-					status:['in',['Open','Scheduled']]
+					status:['in',['Open','Scheduled', 'Confirmed']]
 				}
 			};
 		});
