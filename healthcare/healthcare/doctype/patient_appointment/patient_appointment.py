@@ -1018,7 +1018,7 @@ def cancel_appointment(appointment_id):
 		fee_validity = manage_fee_validity(appointment)
 		msg = _("Appointment Cancelled.")
 		if fee_validity:
-			msg += _("Fee Validity {0} updated.").format(fee_validity.name)
+			msg += _(" <b>{0}</b> updated.").format(get_link_to_form("Fee Validity",fee_validity.name, "Fee Validity"))
 
 	if appointment.event:
 		event_doc = frappe.get_doc("Event", appointment.event)
