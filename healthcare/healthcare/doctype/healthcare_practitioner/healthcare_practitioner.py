@@ -12,7 +12,7 @@ from frappe.contacts.address_and_contact import (
 from frappe.model.document import Document
 from frappe.model.naming import append_number_if_name_exists
 from frappe.utils import get_link_to_form
-
+import re
 from erpnext.accounts.party import validate_party_accounts
 
 
@@ -29,8 +29,8 @@ class HealthcarePractitioner(Document):
 
     def validate(self):
         self.first_name =  self.first_name.title()
-        self.last_name =  self.last_name.capitalize() if self.last_name else ''
-        self.middle_name =  self.middle_name.capitalize() if self.middle_name else ''
+        self.last_name =  smart_capitalize(self.last_name) if self.last_name else ''
+        self.middle_name =  smart_capitalize(self.middle_name) if self.middle_name else ''
         self.set_full_name()
         validate_party_accounts(self)
         if self.inpatient_visit_charge_item:
@@ -110,8 +110,6 @@ class HealthcarePractitioner(Document):
                     frappe.bold(practitioner_schedule.schedule)
                 ))
 
-
-  
     def validate_user_id(self):
         if not frappe.db.exists("User", self.user_id):
             frappe.throw(_("User {0} does not exist").format(self.user_id))
@@ -185,3 +183,17 @@ def get_supplier_and_user(user_id=None, supplier=None):
     )
 
     return supplier_and_user[0] if supplier_and_user else None
+
+def smart_capitalize(name):
+    parts = re.split(r'(\(.*?\))', name)
+    result = []
+
+    for part in parts:
+        if part.startswith('(') and part.endswith(')'):
+            result.append(part)
+        else:
+            # Preserve original spacing by capitalizing only words, not touching spaces
+            capitalized = re.sub(r'\b\w+\b', lambda m: m.group().capitalize(), part)
+            result.append(capitalized)
+
+    return ''.join(result)
