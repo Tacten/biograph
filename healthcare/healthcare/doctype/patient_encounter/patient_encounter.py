@@ -783,6 +783,7 @@ def create_service_request_from_widget(encounter, data, medication_request=False
 	order.submit()
 
 
+
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_filtered_advice_template(doctype, txt, searchfield, start, page_len, filters):
@@ -832,3 +833,32 @@ def get_filtered_advice_template(doctype, txt, searchfield, start, page_len, fil
 	result = tuple((row.name, row.diagnosis, row.complaint) for row in result)
 
 	return result
+
+
+@frappe.whitelist()
+def create_patient_referral(encounter, references):
+	if isinstance(references, str):
+		references = json.loads(references)
+
+	encounter_doc = frappe.get_doc("Patient Encounter", encounter)
+	for ref in references:
+		order = frappe.get_doc(
+			{
+				"doctype": "Service Request",
+				"order_date": encounter_doc.get("encounter_date"),
+				"order_time": encounter_doc.get("encounter_time"),
+				"company": encounter_doc.get("company"),
+				"status": "draft-Request Status",
+				"source_doc": "Patient Encounter",
+				"order_group": encounter,
+				"patient": encounter_doc.get("patient"),
+				"practitioner": encounter_doc.get("practitioner"),
+				"template_dt": "Appointment Type",
+				"template_dn": ref.get("appointment_type"),
+				"quantity": 1,
+				"order_description": ref.get("referral_note"),
+				"referred_to_practitioner": ref.get("refer_to"),
+			}
+		)
+		order.insert(ignore_permissions=True, ignore_mandatory=True)
+		order.submit()

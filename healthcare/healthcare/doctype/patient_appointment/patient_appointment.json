@@ -30,6 +30,8 @@
   "patient_age",
   "section_break_12",
   "duration",
+  "reference_doctype",
+  "reference_docname",
   "service_request",
   "procedure_template",
   "get_procedure_from_encounter",
@@ -451,8 +453,23 @@
    "fieldname": "patient_email",
    "fieldtype": "Data",
    "label": "Patient Email"
+  },
+  {
+   "fieldname": "reference_doctype",
+   "fieldtype": "Link",
+   "label": "Reference Doctype",
+   "options": "DocType",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reference_docname",
+   "fieldtype": "Dynamic Link",
+   "label": "Reference Docname",
+   "options": "reference_doctype",
+   "read_only": 1
   }
  ],
+ "grid_page_length": 50,
  "links": [],
  "modified": "2025-04-16 18:07:58.563796",
  "modified_by": "Administrator",
