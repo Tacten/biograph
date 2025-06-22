@@ -14,6 +14,7 @@
   "overlap_appointments",
   "inpatient_occupancy",
   "is_billable",
+  "is_modality",
   "item_details",
   "item",
   "item_code",
@@ -23,7 +24,9 @@
   "column_break_11",
   "rate",
   "description",
-  "change_in_item"
+  "change_in_item",
+  "is_ot",
+  "medical_department"
  ],
  "fields": [
   {
@@ -169,10 +172,46 @@
    "hide_days": 1,
    "hide_seconds": 1,
    "label": "Change in Item"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Service Unit Type Item"
+  },
+  {
+   "depends_on": "is_billable",
+   "fieldname": "section_break_va83",
+   "fieldtype": "Section Break",
+   "hide_border": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_ot",
+   "fieldtype": "Check",
+   "label": "Is OT"
+  },
+  {
+   "fieldname": "medical_department",
+   "fieldtype": "Link",
+   "label": "Medical Department",
+   "options": "Medical Department"
+  },
+  {
+   "fieldname": "minimum_billable_qty",
+   "fieldtype": "Int",
+   "label": "Minimum Billable Quantity"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.allow_appointments == 1 && doc.inpatient_occupany != 1",
+   "fieldname": "is_modality",
+   "fieldtype": "Check",
+   "label": "Is Modality"
   }
  ],
  "links": [],
- "modified": "2024-04-29 18:59:16.479821",
+ "modified": "2025-06-22 18:56:52.960643",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Healthcare Service Unit Type",
@@ -192,6 +231,7 @@
   }
  ],
  "restrict_to_domain": "Healthcare",
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

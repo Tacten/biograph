@@ -30,6 +30,8 @@ class HealthcareServiceUnit(NestedSet):
 		else:
 			self.name = self.healthcare_service_unit_name
 
+		self.ae_title = self.name.replace(" ", "").upper()
+
 	def on_update(self):
 		super(HealthcareServiceUnit, self).on_update()
 		self.validate_one_root()
@@ -45,13 +47,16 @@ class HealthcareServiceUnit(NestedSet):
 			self.allow_appointments = False
 			self.overlap_appointments = False
 			self.inpatient_occupancy = False
+			self.is_modality = False
 			self.service_unit_capacity = 0
 			self.occupancy_status = ""
 			self.service_unit_type = ""
+			self.ae_title = ""
 		elif self.service_unit_type != "":
 			service_unit_type = frappe.get_doc("Healthcare Service Unit Type", self.service_unit_type)
 			self.allow_appointments = service_unit_type.allow_appointments
 			self.inpatient_occupancy = service_unit_type.inpatient_occupancy
+			self.is_modality = service_unit_type.is_modality
 
 			if self.inpatient_occupancy and self.occupancy_status != "":
 				self.occupancy_status = "Vacant"

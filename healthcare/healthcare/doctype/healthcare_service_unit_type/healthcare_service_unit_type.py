@@ -32,6 +32,10 @@ class HealthcareServiceUnitType(Document):
 
 		if not self.allow_appointments:
 			self.overlap_appointments = 0
+			self.is_modality = 0
+
+		if not self.is_modality:
+			self.ae_title = ""
 
 		if self.is_billable:
 			if self.disabled:
