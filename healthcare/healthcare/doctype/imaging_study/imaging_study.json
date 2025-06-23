@@ -1,0 +1,104 @@
+{
+ "actions": [],
+ "autoname": "field:study_instance_uid",
+ "creation": "2025-06-22 18:26:03.461267",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "study_instance_uid",
+  "patient",
+  "modality",
+  "completed_on",
+  "column_break_hkud",
+  "status",
+  "description",
+  "performer"
+ ],
+ "fields": [
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Patient",
+   "options": "Patient",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "modality",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Modality (Service Unit)",
+   "options": "Healthcare Service Unit",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "column_break_hkud",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "search_index": 1
+  },
+  {
+   "fieldname": "study_instance_uid",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Study Instance UID",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "completed_on",
+   "fieldtype": "Datetime",
+   "label": "Completed On"
+  },
+  {
+   "fieldname": "performer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Performer (Practitioner)",
+   "options": "Healthcare Practitioner"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-06-22 21:41:06.387525",
+ "modified_by": "Administrator",
+ "module": "Healthcare",
+ "name": "Imaging Study",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
