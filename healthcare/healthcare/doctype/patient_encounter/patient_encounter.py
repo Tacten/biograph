@@ -321,7 +321,7 @@ class PatientEncounter(Document):
 			{
 				"patient": patient,
 			},
-			["posting_date", "note", "name", "practitioner", "user", "clinical_note_type"],
+			["modified","posting_date", "note", "name", "practitioner", "user", "clinical_note_type"],
 		)
 
 	@frappe.whitelist()
