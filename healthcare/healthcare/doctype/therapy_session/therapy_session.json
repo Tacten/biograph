@@ -253,9 +253,13 @@
   {
    "link_doctype": "Nursing Task",
    "link_fieldname": "reference_name"
+  },
+  {
+   "link_doctype": "Clinical Note",
+   "link_fieldname": "reference_name"
   }
  ],
- "modified": "2025-04-16 18:16:44.299045",
+ "modified": "2025-06-23 11:13:08.715745",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Therapy Session",
