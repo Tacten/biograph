@@ -2,6 +2,19 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Patient Assessment', {
+	validate:function(frm){
+		frm.doc.assessment_sheet.forEach(e => {
+			if(!e.score || e.score == ''){
+				console.log("hello")
+				frappe.utils.scroll_to(frm.get_field("assessment_sheet").$wrapper, true, 30);
+				frappe.throw({
+					title: __('Value Missing'),
+					message: __('Row #{0}: Score value is mission' , [e.idx]),
+					indicator: 'red'
+				});
+			}
+		});
+	},
 	refresh: function(frm) {
 		if (frm.doc.assessment_template) {
 			frm.trigger('set_score_range');
