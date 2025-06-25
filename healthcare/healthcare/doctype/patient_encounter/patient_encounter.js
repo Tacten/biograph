@@ -800,16 +800,36 @@ let create_patient_referral = function(frm) {
 			},
 		],
 		primary_action_label: __("Refer"),
-		primary_action : function() {
-			if (dialog.get_value("references").length>0) {
+		primary_action: function () {
+			const references = dialog.get_value("references");
+
+			if (references.length > 0) {
+				// Check for duplicate 'refer_to'
+				const referToSet = new Set();
+				let hasDuplicate = false;
+
+				for (let row of references) {
+					if (referToSet.has(row.refer_to)) {
+						hasDuplicate = true;
+						break;
+					}
+					referToSet.add(row.refer_to);
+				}
+
+				if (hasDuplicate) {
+					frappe.msgprint(__('Duplicate "Refer To" entries are not allowed.'));
+					return;
+				}
+
+				// Proceed with server call if no duplicates
 				frappe.call({
 					method: "healthcare.healthcare.doctype.patient_encounter.patient_encounter.create_patient_referral",
 					freeze: true,
 					args: {
 						encounter: frm.doc.name,
-						references: dialog.get_value("references"),
+						references: references,
 					},
-					callback: function(r) {
+					callback: function (r) {
 						if (r && !r.exc) {
 							dialog.hide();
 							frm.reload_doc();
@@ -820,9 +840,11 @@ let create_patient_referral = function(frm) {
 						}
 					}
 				});
+
 				frm.refresh_fields();
 			}
 		}
+
 	});
 
 	dialog.show();
