@@ -188,26 +188,52 @@ frappe.ui.form.on('Healthcare Practitioner', {
 
 	first_name: function (frm) {
         if (frm.doc.first_name) {
-            frm.set_value('first_name', capitalizeWords(frm.doc.first_name));
+			if (capitalizeWords(frm.doc.first_name).trim() !== frm.doc.first_name.trim()){
+				frm.set_value('first_name', capitalizeWords(frm.doc.first_name));
+			}
         }
     },
 
 	last_name: function (frm) {
         if (frm.doc.last_name) {
-            frm.set_value('last_name', capitalizeWords(frm.doc.last_name));
+			if (capitalizeWords(frm.doc.last_name).trim() !== frm.doc.last_name.trim()){
+            	frm.set_value('last_name', capitalizeWords(frm.doc.last_name));
+			}
         }
     },
 
 	middle_name: function (frm) {
         if (frm.doc.middle_name) {
-            frm.set_value('middle_name', capitalizeWords(frm.doc.middle_name));
+			if (capitalizeWords(frm.doc.middle_name).trim() !== frm.doc.middle_name.trim()){
+            	frm.set_value('middle_name', capitalizeWords(frm.doc.middle_name));
+			}
         }
     },
 
 });
 
-function capitalizeWords(name) {
-    return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+function capitalizeWords(text) {
+    let result = '';
+    let insideParentheses = false;
+
+    // Split the text by spaces to process word-by-word
+    text.split(' ').forEach(word => {
+        if (word.includes('(')) insideParentheses = true;
+        if (word.includes(')')) {
+            insideParentheses = false;
+            result += word + ' '; // keep it unchanged
+            return;
+        }
+
+        if (insideParentheses || word.startsWith('(')) {
+            result += word + ' ';
+        } else {
+            result += word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() + ' ';
+        }
+    });
+	const words = text.split(' ');
+    const nonEmptyWords = words.filter(w => w.trim() !== '');
+    return nonEmptyWords.length > 1 ? result.trim() : result;
 }
 
 let set_query_service_item = function(frm, service_item_field) {

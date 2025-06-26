@@ -361,12 +361,13 @@ class PatientAppointment(Document):
 				return
 			return
 
+		old_doc = self.get_doc_before_save()
 		# If appointment is created for today set status as Open else Scheduled
 		if appointment_date == today:
 			if self.status not in ["Checked In", "Checked Out", "Open", "Confirmed", "Cancelled"]:
 				self.status = "Open"
-
-		elif appointment_date > today and self.status not in ["Scheduled", "Confirmed", "Cancelled"]:
+		elif (appointment_date > today and self.status not in ["Cancelled"] and 
+			str(old_doc.appointment_datetime) != str(self.appointment_datetime)):
 			self.status = "Scheduled"
 
 		elif appointment_date < today and self.status not in ["No Show", "Cancelled"]:
@@ -858,6 +859,12 @@ class PatientAppointment(Document):
 				})
 		
 		return therapy_types
+	
+	@frappe.whitelist()
+	def get_service_unit_values(self,selected_practitioner):
+		doc=frappe.get_doc("Healthcare Practitioner", selected_practitioner)
+		return [item.service_unit for item in doc.practitioner_schedules]
+
 
 
 @frappe.whitelist()
@@ -1011,7 +1018,7 @@ def cancel_appointment(appointment_id):
 		fee_validity = manage_fee_validity(appointment)
 		msg = _("Appointment Cancelled.")
 		if fee_validity:
-			msg += _("Fee Validity {0} updated.").format(fee_validity.name)
+			msg += _(" <b>{0}</b> updated.").format(get_link_to_form("Fee Validity",fee_validity.name, "Fee Validity"))
 
 	if appointment.event:
 		event_doc = frappe.get_doc("Event", appointment.event)

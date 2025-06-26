@@ -272,9 +272,17 @@ frappe.ui.form.on('Patient Appointment', {
 	set_check_availability_action: function(frm) {
 		frm.page.set_primary_action(__('Check Availability'), function() {
 			if (!frm.doc.patient) {
+				frappe.utils.scroll_to(frm.get_field("patient").$wrapper, true, 30);
 				frappe.msgprint({
 					title: __('Not Allowed'),
 					message: __('Please select Patient first'),
+					indicator: 'red'
+				});
+			} else if ( !frm.doc.therapy_plan && frm.doc.appointment_type == "Therapy Session"){
+				frappe.utils.scroll_to(frm.get_field("therapy_plan").$wrapper, true, 30);
+				frappe.msgprint({
+					title: __('Not Allowed'),
+					message: __('Please select Therapy Session first'),
 					indicator: 'red'
 				});
 			} else {
@@ -500,6 +508,7 @@ let check_and_set_availability = function(frm) {
 	let overlap_appointments = null;
 	let appointment_based_on_check_in = false;
 	let is_block_booking = false;
+	let service_unit_values=[]
 
 	show_availability();
 
@@ -534,6 +543,7 @@ let check_and_set_availability = function(frm) {
 					}
 				},
 				{ fieldtype: 'Section Break', fieldname: 'slots_section' },
+				{ fieldtype: 'Link', options: 'Healthcare Service Unit', reqd: 0, hidden: 1, fieldname: 'service_unit', label: 'Service Unit' },
 				{ 
 					fieldtype: 'Time', 
 					fieldname: 'from_time', 
@@ -558,6 +568,7 @@ let check_and_set_availability = function(frm) {
 			primary_action: async function() {
 				if (is_block_booking) {
 					let values = d.get_values();
+					frm.doc.service_unit=values.service_unit
 					
 					if (!values) return;
 					
@@ -605,7 +616,7 @@ let check_and_set_availability = function(frm) {
 					let formValues = {
 						practitioner: values.practitioner,
 						department: values.department,
-						service_unit: '',
+						service_unit: values.service_unit,
 						date: values.appointment_date,
 						from_time: values.from_time,
 						to_time: values.to_time,
@@ -721,6 +732,14 @@ let check_and_set_availability = function(frm) {
 			}
 		};
 
+		d.fields_dict.service_unit.get_query = function() {
+			return {
+				filters: {
+					'name': ["in", service_unit_values]
+				}
+			};
+		};
+
 		d.get_primary_btn().attr('disabled', true);
 
 		let fd = d.fields_dict;
@@ -755,9 +774,19 @@ let check_and_set_availability = function(frm) {
 			}
 		};
 		
-		d.fields_dict['practitioner'].df.onchange = () => {
+		d.fields_dict['practitioner'].df.onchange = async () => {
 			if (d.get_value('practitioner') && d.get_value('practitioner') != selected_practitioner) {
 				selected_practitioner = d.get_value('practitioner');
+
+				let r = await frappe.call({
+					doc:frm.doc,
+					method: "get_service_unit_values",
+					args: {
+						selected_practitioner
+					}
+				});
+				service_unit_values = r.message;
+
 				if (!is_block_booking) {
 					show_slots(d, fd);
 				} else if (d.get_value('appointment_date') && 
@@ -776,8 +805,14 @@ let check_and_set_availability = function(frm) {
 			d.set_df_property('available_slots', 'hidden', 1);
 			d.set_df_property('from_time', 'hidden', 0);
 			d.set_df_property('to_time', 'hidden', 0);
+			if(service_unit_values.length>1){
+				d.set_df_property('service_unit', 'hidden', 0);
+			}else{
+				d.set_value("service_unit",service_unit_values[0])
+			}
 			d.set_df_property('from_time', 'reqd', 1);
 			d.set_df_property('to_time', 'reqd', 1);
+			d.set_df_property('service_unit', 'reqd', 1);
 			
 			selected_slot = null;
 			
@@ -796,8 +831,10 @@ let check_and_set_availability = function(frm) {
 			d.set_df_property('available_slots', 'hidden', 0);
 			d.set_df_property('from_time', 'hidden', 1);
 			d.set_df_property('to_time', 'hidden', 1);
+			d.set_df_property('service_unit', 'hidden', 1);
 			d.set_df_property('from_time', 'reqd', 0);
 			d.set_df_property('to_time', 'reqd', 0);
+			d.set_df_property('service_unit', 'reqd', 0);
 			
 			d.set_title(__('Available slots'));
 			
