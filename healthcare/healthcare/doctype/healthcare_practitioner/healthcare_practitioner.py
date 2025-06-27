@@ -102,13 +102,13 @@ class HealthcarePractitioner(Document):
 					)
 				break
 		schedule = []
-        for practitioner_schedule in self.practitioner_schedules:
-            if practitioner_schedule.schedule not in schedule:
-                schedule.append(practitioner_schedule.schedule)
-            else:
-                frappe.throw("Schedule {0} is already selected, Not allow to select a same schedule in another row.".format(
-                    frappe.bold(practitioner_schedule.schedule)
-                ))
+		for practitioner_schedule in self.practitioner_schedules:
+			if practitioner_schedule.schedule not in schedule:
+				schedule.append(practitioner_schedule.schedule)
+			else:
+				frappe.throw("Schedule {0} is already selected, Not allow to select a same schedule in another row.".format(
+					frappe.bold(practitioner_schedule.schedule)
+				))
 
 	def validate_user_id(self):
 		if not frappe.db.exists("User", self.user_id):
@@ -185,15 +185,15 @@ def get_supplier_and_user(user_id=None, supplier=None):
 	return supplier_and_user[0] if supplier_and_user else None
 
 def smart_capitalize(name):
-    parts = re.split(r'(\(.*?\))', name)
-    result = []
+	parts = re.split(r'(\(.*?\))', name)
+	result = []
 
-    for part in parts:
-        if part.startswith('(') and part.endswith(')'):
-            result.append(part)
-        else:
-            # Preserve original spacing by capitalizing only words, not touching spaces
-            capitalized = re.sub(r'\b\w+\b', lambda m: m.group().capitalize(), part)
-            result.append(capitalized)
+	for part in parts:
+		if part.startswith('(') and part.endswith(')'):
+			result.append(part)
+		else:
+			# Preserve original spacing by capitalizing only words, not touching spaces
+			capitalized = re.sub(r'\b\w+\b', lambda m: m.group().capitalize(), part)
+			result.append(capitalized)
 
-    return ''.join(result)
+	return ''.join(result)
