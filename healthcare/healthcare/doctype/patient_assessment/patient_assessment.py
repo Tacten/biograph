@@ -15,6 +15,8 @@ class PatientAssessment(Document):
 	def set_total_score(self):
 		total_score = 0
 		for entry in self.assessment_sheet:
+			if not entry.get("score"):
+				frappe.throw('Row #{0}: Score value is missing'.format(entry.idx))
 			total_score += int(entry.score)
 		self.total_score_obtained = total_score
 
