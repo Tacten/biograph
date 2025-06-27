@@ -185,15 +185,15 @@ def get_supplier_and_user(user_id=None, supplier=None):
 	return supplier_and_user[0] if supplier_and_user else None
 
 def smart_capitalize(name):
-	parts = re.split(r'(\(.*?\))', name)
-	result = []
+    parts = re.split(r'(\(.*?\))', name)
+    result = []
 
-	for part in parts:
-		if part.startswith('(') and part.endswith(')'):
-			result.append(part)
-		else:
-			# Preserve original spacing by capitalizing only words, not touching spaces
-			capitalized = re.sub(r'\b\w+\b', lambda m: m.group().capitalize(), part)
-			result.append(capitalized)
+    for part in parts:
+        if part.startswith('(') and part.endswith(')'):
+            result.append(part)
+        else:
+            # Preserve original spacing by capitalizing only words, not touching spaces
+            capitalized = re.sub(r'\b\w+\b', lambda m: m.group().capitalize(), part)
+            result.append(capitalized)
 
-	return ''.join(result)
+    return ''.join(result)
