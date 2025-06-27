@@ -282,7 +282,7 @@ frappe.ui.form.on('Patient Appointment', {
 				frappe.utils.scroll_to(frm.get_field("therapy_plan").$wrapper, true, 30);
 				frappe.msgprint({
 					title: __('Not Allowed'),
-					message: __('Please select Therapy Session first'),
+					message: __('Please select Therapy Plan first'),
 					indicator: 'red'
 				});
 			} else {
