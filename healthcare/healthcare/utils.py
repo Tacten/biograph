@@ -117,38 +117,6 @@ def get_appointments_to_invoice(patient, company):
 
 	return appointments_to_invoice
 
-<<<<<<< HEAD
-=======
-def get_package_subscriptions_to_invoice(patient, company):
-	subscriptions_to_invoice = []
-	subscriptions = frappe.db.get_all(
-		"Package Subscription",
-		fields=["name", "healthcare_package", "valid_to"],
-		filters={
-			"patient": patient.name,
-			"company": company,
-			"invoiced": False,
-			"docstatus": 1,
-		},
-	)
-	for sub in subscriptions:
-		subscription_doc = frappe.get_doc("Package Subscription", sub.name)
-		item, item_wise_invoicing = frappe.get_cached_value(
-			"Healthcare Package", sub.healthcare_package, ["item", "item_wise_invoicing"]
-		)
-		if not item_wise_invoicing:
-			subscriptions_to_invoice.append(
-				{"reference_type": "Package Subscription", "reference_name": sub.name, "service": item, "date" : sub.valid_to}
-			)
-		else:
-			for item in subscription_doc.package_details:
-				if not item.invoiced:
-					subscriptions_to_invoice.append(
-						{"reference_type": item.doctype, "reference_name": item.name, "service": item.item_code , "date": sub.valid_to}
-					)
-
-	return subscriptions_to_invoice
->>>>>>> 73e24582 (feat: Improve the dialog of get items from and added a date column)
 
 def get_encounters_to_invoice(patient, company):
 	if not isinstance(patient, str):
