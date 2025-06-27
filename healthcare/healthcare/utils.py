@@ -28,6 +28,8 @@ from healthcare.setup import setup_healthcare
 @frappe.whitelist()
 def get_healthcare_services_to_invoice(patient, customer, company, link_customer=False):
 	patient = frappe.get_doc("Patient", patient)
+	if not customer:
+		customer = patient.customer
 	items_to_invoice = []
 	if patient:
 		# Customer validated, build a list of billable services
@@ -83,6 +85,8 @@ def get_appointments_to_invoice(patient, company):
 						"reference_type": "Patient Appointment",
 						"reference_name": appointment.name,
 						"service": appointment.procedure_template,
+						"practitioner" : appointment.practitioner,
+						"date" : appointment.appointment_date
 					}
 				)
 		# Consultation Appointments, should check fee validity
@@ -106,11 +110,45 @@ def get_appointments_to_invoice(patient, company):
 					"service": service_item,
 					"rate": practitioner_charge,
 					"income_account": income_account,
+					"practitioner": appointment.practitioner,
+					"date": appointment.appointment_date
 				}
 			)
 
 	return appointments_to_invoice
 
+<<<<<<< HEAD
+=======
+def get_package_subscriptions_to_invoice(patient, company):
+	subscriptions_to_invoice = []
+	subscriptions = frappe.db.get_all(
+		"Package Subscription",
+		fields=["name", "healthcare_package", "valid_to"],
+		filters={
+			"patient": patient.name,
+			"company": company,
+			"invoiced": False,
+			"docstatus": 1,
+		},
+	)
+	for sub in subscriptions:
+		subscription_doc = frappe.get_doc("Package Subscription", sub.name)
+		item, item_wise_invoicing = frappe.get_cached_value(
+			"Healthcare Package", sub.healthcare_package, ["item", "item_wise_invoicing"]
+		)
+		if not item_wise_invoicing:
+			subscriptions_to_invoice.append(
+				{"reference_type": "Package Subscription", "reference_name": sub.name, "service": item, "date" : sub.valid_to}
+			)
+		else:
+			for item in subscription_doc.package_details:
+				if not item.invoiced:
+					subscriptions_to_invoice.append(
+						{"reference_type": item.doctype, "reference_name": item.name, "service": item.item_code , "date": sub.valid_to}
+					)
+
+	return subscriptions_to_invoice
+>>>>>>> 73e24582 (feat: Improve the dialog of get items from and added a date column)
 
 def get_encounters_to_invoice(patient, company):
 	if not isinstance(patient, str):
@@ -145,6 +183,7 @@ def get_encounters_to_invoice(patient, company):
 						"service": service_item,
 						"rate": practitioner_charge,
 						"income_account": income_account,
+						"date" : encounter.encounter_date
 					}
 				)
 
@@ -155,7 +194,7 @@ def get_lab_tests_to_invoice(patient, company):
 	lab_tests_to_invoice = []
 	lab_tests = frappe.get_list(
 		"Lab Test",
-		fields=["name", "template"],
+		fields=["name", "template", "date"],
 		filters={
 			"patient": patient.name,
 			"company": company,
@@ -170,7 +209,7 @@ def get_lab_tests_to_invoice(patient, company):
 		)
 		if is_billable:
 			lab_tests_to_invoice.append(
-				{"reference_type": "Lab Test", "reference_name": lab_test.name, "service": item}
+				{"reference_type": "Lab Test", "reference_name": lab_test.name, "service": item, "date":lab_test.date}
 			)
 
 	return lab_tests_to_invoice
@@ -180,7 +219,7 @@ def get_observations_to_invoice(patient, company):
 	observations_to_invoice = []
 	observations = frappe.get_list(
 		"Observation",
-		fields=["name", "observation_template"],
+		fields=["name", "observation_template", "posting_date"],
 		filters={
 			"patient": patient.name,
 			"company": company,
@@ -195,7 +234,7 @@ def get_observations_to_invoice(patient, company):
 		)
 		if is_billable:
 			observations_to_invoice.append(
-				{"reference_type": "Observation", "reference_name": observation.name, "service": item}
+				{"reference_type": "Observation", "reference_name": observation.name, "service": item, "date" : observation.posting_date}
 			)
 
 	return observations_to_invoice
@@ -221,7 +260,7 @@ def get_clinical_procedures_to_invoice(patient, company):
 			)
 			if procedure.procedure_template and is_billable:
 				clinical_procedures_to_invoice.append(
-					{"reference_type": "Clinical Procedure", "reference_name": procedure.name, "service": item}
+					{"reference_type": "Clinical Procedure", "reference_name": procedure.name, "service": item, "date" : procedure.start_date}
 				)
 
 		# consumables
@@ -259,7 +298,7 @@ def get_inpatient_services_to_invoice(patient, company):
 	inpatient_services = frappe.db.sql(
 		"""
 			SELECT
-				io.*
+				io.*, ip.scheduled_date
 			FROM
 				`tabInpatient Record` ip, `tabInpatient Occupancy` io
 			WHERE
@@ -299,6 +338,7 @@ def get_inpatient_services_to_invoice(patient, company):
 					"reference_name": inpatient_occupancy.name,
 					"service": service_unit_type.item,
 					"qty": qty,
+					"date": inpatient_occupancy.scheduled_date
 				}
 			)
 
@@ -309,7 +349,7 @@ def get_therapy_plans_to_invoice(patient, company):
 	therapy_plans_to_invoice = []
 	therapy_plans = frappe.get_list(
 		"Therapy Plan",
-		fields=["therapy_plan_template", "name"],
+		fields=["therapy_plan_template", "name", "start_date"],
 		filters={
 			"patient": patient.name,
 			"invoiced": 0,
@@ -326,6 +366,7 @@ def get_therapy_plans_to_invoice(patient, company):
 				"service": frappe.db.get_value(
 					"Therapy Plan Template", plan.therapy_plan_template, "linked_item"
 				),
+				"date" : plan.start_date
 			}
 		)
 
@@ -361,6 +402,7 @@ def get_therapy_sessions_to_invoice(patient, company):
 						"reference_type": "Therapy Session",
 						"reference_name": therapy.name,
 						"service": frappe.db.get_value("Therapy Type", therapy.therapy_type, "item"),
+						"date" : therapy.start_date
 					}
 				)
 
@@ -401,6 +443,7 @@ def get_service_requests_to_invoice(patient, company):
 					"reference_name": service_request.name,
 					"service": item,
 					"qty": service_request.quantity if service_request.quantity else 1,
+					"date": service_request.order_date 
 				}
 			)
 	return orders_to_invoice
@@ -437,7 +480,7 @@ def get_appointment_billing_item_and_rate(doc):
 	if not service_item:
 		throw_config_service_item(is_inpatient)
 
-	if not practitioner_charge and doc.get("practitioner"):
+	if not practitioner_charge and frappe.db.exists("Healthcare Practitioner", doc.get("practitioner")):
 		throw_config_practitioner_charge(is_inpatient, doc.practitioner)
 
 	if not practitioner_charge and not doc.get("practitioner"):
@@ -508,7 +551,7 @@ def get_practitioner_billing_details(practitioner, is_inpatient):
 	else:
 		fields = ["op_consulting_charge_item", "op_consulting_charge"]
 
-	if practitioner:
+	if frappe.db.exists("Healthcare Practitioner", practitioner):
 		service_item, practitioner_charge = frappe.db.get_value(
 			"Healthcare Practitioner", practitioner, fields
 		)
