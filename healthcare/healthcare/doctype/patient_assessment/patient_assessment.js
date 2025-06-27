@@ -9,7 +9,7 @@ frappe.ui.form.on('Patient Assessment', {
 				frappe.utils.scroll_to(frm.get_field("assessment_sheet").$wrapper, true, 30);
 				frappe.throw({
 					title: __('Value Missing'),
-					message: __('Row #{0}: Score value is mission' , [e.idx]),
+					message: __('Row #{0}: Score value is missing' , [e.idx]),
 					indicator: 'red'
 				});
 			}
