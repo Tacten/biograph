@@ -854,7 +854,7 @@ def create_patient_referral(encounter, references):
 				"patient": encounter_doc.get("patient"),
 				"practitioner": encounter_doc.get("practitioner"),
 				"template_dt": "Appointment Type",
-				"template_dn": ref.get("appointment_type"),
+				"template_dn": "Consultation",
 				"quantity": 1,
 				"order_description": ref.get("referral_note"),
 				"referred_to_practitioner": ref.get("refer_to"),

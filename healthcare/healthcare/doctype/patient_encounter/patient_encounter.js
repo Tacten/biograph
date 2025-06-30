@@ -783,14 +783,6 @@ let create_patient_referral = function(frm) {
 						},
 					},
 					{
-						"fieldname": "appointment_type",
-						"fieldtype": "Link",
-						"label": "Appointment Type",
-						"options": "Appointment Type",
-						"in_list_view": 1,
-						"reqd": 1,
-					},
-					{
 						"fieldname": "referral_note",
 						"fieldtype": "Long Text",
 						"label": "Referral Note",
