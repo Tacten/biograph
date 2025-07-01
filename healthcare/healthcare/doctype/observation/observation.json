@@ -13,6 +13,8 @@
   "naming_series",
   "observation_template",
   "observation_category",
+  "appointment",
+  "service_unit",
   "column_break_7xu5",
   "company",
   "posting_date",
@@ -27,34 +29,40 @@
   "gender",
   "section_break_zz5k",
   "healthcare_practitioner",
+  "column_break_uxbf",
   "practitioner_name",
   "template_details_section",
-  "has_component",
   "preferred_display_name",
-  "sample_collection_required",
-  "permitted_unit",
-  "column_break_pxgu",
-  "sample",
-  "sample_type",
-  "permitted_data_type",
   "method",
+  "column_break_pxgu",
+  "permitted_data_type",
+  "permitted_unit",
+  "has_component",
   "column_break_meur",
+  "sample_collection_required",
+  "sample_type",
+  "sample",
   "specimen",
-  "sample_collection_time",
   "column_break_yo05",
   "sample_status",
+  "sample_collection_time",
+  "radiology_section",
+  "ups_appointment",
+  "study_instance_uid",
+  "column_break_zkwe",
+  "imaging_study",
   "result_section",
   "result_template",
-  "result_attach",
+  "result_text",
   "result_boolean",
   "result_data",
-  "result_text",
   "result_float",
   "result_select",
   "result_datetime",
   "result_time",
   "result_period_from",
   "result_period_to",
+  "result_attach",
   "options",
   "time_of_result",
   "time_of_approval",
@@ -164,14 +172,13 @@
   },
   {
    "fieldname": "section_break_i70a",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Patient Details"
   },
   {
    "fetch_from": "observation_template.permitted_data_type",
    "fieldname": "permitted_data_type",
    "fieldtype": "Select",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
    "label": "Permitted Data Type",
    "options": "Quantity\nSelect\nText\nBoolean\nNumeric\nRange\nRatio\nTime\nDateTime\nPeriod\nAttach",
    "read_only_depends_on": "observation_template"
@@ -255,6 +262,7 @@
    "label": "Result"
   },
   {
+   "depends_on": "eval:doc.observation_category == \"Laboratory\"",
    "fieldname": "column_break_meur",
    "fieldtype": "Section Break",
    "label": "Sample Details"
@@ -431,7 +439,8 @@
   },
   {
    "fieldname": "section_break_zz5k",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Ordering Practitioner"
   },
   {
    "fieldname": "healthcare_practitioner",
@@ -564,12 +573,61 @@
    "fieldtype": "Check",
    "label": "Invoiced",
    "read_only": 1
+  },
+  {
+   "fieldname": "appointment",
+   "fieldtype": "Link",
+   "label": "Appointment",
+   "options": "Patient Appointment"
+  },
+  {
+   "depends_on": "eval: doc.observation_type == \"Imaging\"",
+   "fieldname": "imaging_study",
+   "fieldtype": "Link",
+   "label": "Imaging Study",
+   "options": "Imaging Study",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_uxbf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval: doc.observation_type == \"Imaging\"",
+   "fieldname": "radiology_section",
+   "fieldtype": "Section Break",
+   "label": "Radiology"
+  },
+  {
+   "depends_on": "eval: doc.observation_type == \"Imaging\"",
+   "fieldname": "study_instance_uid",
+   "fieldtype": "Data",
+   "label": "Study Instance UID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_zkwe",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval: doc.observation_type == \"Imaging\"",
+   "fieldname": "ups_appointment",
+   "fieldtype": "Data",
+   "label": "UPS Appointment (Accession Number)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "service_unit",
+   "fieldtype": "Link",
+   "label": "Service Unit / Modality",
+   "options": "Healthcare Service Unit",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-10-25 06:00:59.016090",
+ "modified": "2025-07-02 17:02:59.787382",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Observation",

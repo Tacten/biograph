@@ -5,14 +5,20 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "study_section",
   "study_instance_uid",
   "patient",
+  "patient_name",
   "modality",
   "completed_on",
   "column_break_hkud",
   "status",
+  "ups_appointment",
   "description",
-  "performer"
+  "performer",
+  "imaging_series_tab",
+  "series_instances_section",
+  "series"
  ],
  "fields": [
   {
@@ -27,11 +33,10 @@
   },
   {
    "fieldname": "modality",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Modality (Service Unit)",
-   "options": "Healthcare Service Unit",
+   "label": "Modality",
    "reqd": 1,
    "search_index": 1
   },
@@ -50,6 +55,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
+   "options": "Accession\nPending Review\nReport Generated\nArchived",
    "search_index": 1
   },
   {
@@ -63,7 +69,7 @@
   {
    "fieldname": "completed_on",
    "fieldtype": "Datetime",
-   "label": "Completed On"
+   "label": "Study Completed On"
   },
   {
    "fieldname": "performer",
@@ -72,12 +78,44 @@
    "in_standard_filter": 1,
    "label": "Performer (Practitioner)",
    "options": "Healthcare Practitioner"
+  },
+  {
+   "fetch_from": "patient.patient_name",
+   "fieldname": "patient_name",
+   "fieldtype": "Data",
+   "label": "Patient Name"
+  },
+  {
+   "description": "Accession Number",
+   "fieldname": "ups_appointment",
+   "fieldtype": "Link",
+   "label": "UPS Appointment",
+   "options": "UPS Appointment"
+  },
+  {
+   "fieldname": "study_section",
+   "fieldtype": "Section Break",
+   "label": "Study"
+  },
+  {
+   "fieldname": "imaging_series_tab",
+   "fieldtype": "Tab Break",
+   "label": "Imaging Series"
+  },
+  {
+   "fieldname": "series_instances_section",
+   "fieldtype": "Section Break",
+   "label": "Series / Instances"
+  },
+  {
+   "fieldname": "series",
+   "fieldtype": "Code"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-22 21:41:06.387525",
+ "modified": "2025-07-02 13:33:59.639167",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Imaging Study",
