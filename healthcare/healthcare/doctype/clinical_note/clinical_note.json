@@ -118,6 +118,7 @@
    "options": "Terms and Conditions"
   }
  ],
+ "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
  "modified": "2023-05-16 18:47:54.650316",
@@ -141,6 +142,7 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
