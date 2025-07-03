@@ -369,7 +369,8 @@ class PatientAppointment(Document):
 		old_doc = self.get_doc_before_save()
 		# If appointment is created for today set status as Open else Scheduled
 		if appointment_date == today:
-			self.status = "Confirmed"
+			if self.status not in ["Checked In", "Checked Out", "Open", "Confirmed", "Cancelled"]:
+				self.status = "Confirmed"
 		elif (appointment_date > today and self.status not in ["Cancelled"] and 
 			str(old_doc.appointment_datetime) != str(self.appointment_datetime)):
 			self.status = "Scheduled"
