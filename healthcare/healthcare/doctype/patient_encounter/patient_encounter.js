@@ -91,6 +91,10 @@ frappe.ui.form.on('Patient Encounter', {
 				}
 			}
 
+			frm.add_custom_button(__("Refer Patient"), function() {
+				create_patient_referral(frm);
+			},__("Create"));
+
 			frm.add_custom_button(__('Patient History'), function() {
 				if (frm.doc.patient) {
 					frappe.route_options = {'patient': frm.doc.patient};
@@ -734,3 +738,90 @@ var show_orders = async function(frm) {
 		orders.refresh();
 	}
 }
+
+let create_patient_referral = function(frm) {
+	var dialog = new frappe.ui.Dialog ({
+		title: "Patient Referral",
+		size: "large",
+		fields: [
+			{
+				label: "References",
+				fieldname: "references",
+				fieldtype: "Table",
+				is_editable_grid: true,
+				data: [],
+				fields: [
+					{
+						"fieldname": "refer_to",
+						"fieldtype": "Link",
+						"label": "Refer To",
+						"options": "Healthcare Practitioner",
+						"in_list_view": 1,
+						"reqd": 1,
+						get_query: function () {
+							return {
+								filters: {
+									name: ["!=", frm.doc.practitioner]
+								},
+							};
+						},
+					},
+					{
+						"fieldname": "referral_note",
+						"fieldtype": "Long Text",
+						"label": "Referral Note",
+						"in_list_view": 1,
+					},
+				],
+			},
+		],
+		primary_action_label: __("Refer"),
+		primary_action: function () {
+			const references = dialog.get_value("references");
+
+			if (references.length > 0) {
+				// Check for duplicate 'refer_to'
+				const referToSet = new Set();
+				let hasDuplicate = false;
+
+				for (let row of references) {
+					if (referToSet.has(row.refer_to)) {
+						hasDuplicate = true;
+						break;
+					}
+					referToSet.add(row.refer_to);
+				}
+
+				if (hasDuplicate) {
+					frappe.msgprint(__('Duplicate "Refer To" entries are not allowed.'));
+					return;
+				}
+
+				// Proceed with server call if no duplicates
+				frappe.call({
+					method: "healthcare.healthcare.doctype.patient_encounter.patient_encounter.create_patient_referral",
+					freeze: true,
+					args: {
+						encounter: frm.doc.name,
+						references: references,
+					},
+					callback: function (r) {
+						if (r && !r.exc) {
+							dialog.hide();
+							frm.reload_doc();
+							frappe.show_alert({
+								message: __("Patient referral requests created successfully"),
+								indicator: "success"
+							});
+						}
+					}
+				});
+
+				frm.refresh_fields();
+			}
+		}
+
+	});
+
+	dialog.show();
+};
