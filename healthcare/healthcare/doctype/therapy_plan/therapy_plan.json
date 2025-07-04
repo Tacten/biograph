@@ -183,7 +183,12 @@
    "read_only": 1
   }
  ],
- "links": [],
+ "links": [
+    {
+   "link_doctype": "Clinical Note",
+   "link_fieldname": "reference_name"
+  }
+ ],
  "modified": "2025-03-21 18:44:18.294821",
  "modified_by": "Administrator",
  "module": "Healthcare",

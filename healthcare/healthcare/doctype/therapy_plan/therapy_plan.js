@@ -77,6 +77,15 @@ frappe.ui.form.on('Therapy Plan', {
 					frm.trigger('make_patient_appointment');
 				}, __('Create'));
 			}
+			frm.add_custom_button(__("Clinical Note"), function() {
+				frappe.route_options = {
+					"patient": frm.doc.patient,
+					"reference_doc": "Therapy Plan",
+					"reference_name": frm.doc.name,
+					"practitioner": frm.doc.practitioner
+				}
+				frappe.new_doc("Clinical Note");
+			},__('Create'));
 			
 			document.querySelectorAll('button[data-doctype="Therapy Session"]').forEach(btn => {
 				btn.style.display = 'none';
