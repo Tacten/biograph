@@ -111,6 +111,8 @@ def get_recurring_appointment_dates(data):
         occurrences = {day: 0 for day in repeat_week_days}
     else:
         occurrences = 0
+    
+    total_day_of_booking = len(repeat_week_days)
 
     while True:
         if next_date == getdate() and from_time:
@@ -171,9 +173,13 @@ def get_recurring_appointment_dates(data):
             # Add date if within repeat_till or if no repeat_till
             if repeat_till and next_date <= repeat_till:
                 scheduled_dates.append(str(next_date))
+                if total_day_of_booking == len(repeat_week_days):
+                    first_week_date = next_date
+                total_day_of_booking -= 1
                 occurrences[weekday_name] += 1
             elif not repeat_till and max_occurrences:
                 scheduled_dates.append(str(next_date))
+                total_day_of_booking -= 1
                 occurrences[weekday_name] += 1
 
             if repeat_till and next_date >= repeat_till:
@@ -182,8 +188,11 @@ def get_recurring_appointment_dates(data):
             # Break if all weekdays have reached max_occurrences
             if max_occurrences and all(occ >= max_occurrences for occ in occurrences.values()):
                 break
-
-            next_date += timedelta(days=1)
+            if total_day_of_booking == 0 and repeat_interval != 1:
+                next_date = first_week_date + timedelta(days=7 * repeat_interval)
+                total_day_of_booking = len(repeat_week_days)
+            else:
+                next_date += timedelta(days=1)
 
         else:
             # Non-weekly repeats use a single counter
