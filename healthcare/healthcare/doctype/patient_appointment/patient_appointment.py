@@ -1564,8 +1564,7 @@ def update_appointment_status():
 
 		# If appointment is created for today set status as Open else Scheduled
 		if appointment_date == today:
-			if appointment_doc.status not in ["Checked In", "Checked Out", "Open", "Confirmed", "Cancelled"]:
-				return "Open"
+			return "Confirmed"
 
 		elif appointment_date > today and appointment_doc.status not in ["Scheduled", "Confirmed", "Cancelled"]:
 			return "Scheduled"
