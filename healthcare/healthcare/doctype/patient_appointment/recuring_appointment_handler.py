@@ -113,7 +113,7 @@ def get_recurring_appointment_dates(data):
         occurrences = 0
     
     total_day_of_booking = len(repeat_week_days)
-
+    available_any = False
     while True:
         if next_date == getdate() and from_time:
             datetime_str = f"{next_date} {from_time}"
@@ -128,14 +128,18 @@ def get_recurring_appointment_dates(data):
                 # Check if the requested time slot fits inside the available time slot
                 if row.from_time <= from_time < row.to_time:
                     available = True
+                    available_any = True
                 if row.from_time < to_time <= row.to_time:
                     available = True
+                    available_any = True
                 if (row.from_time >= from_time < row.to_time and 
                     row.from_time < to_time > row.to_time):
                     available = True
+                    available_any = True
                 if (row.from_time >= from_time < row.to_time and 
                     row.from_time < to_time <= row.to_time):
                     available = True
+                    available_any = True
 
         if not available:
             next_date += timedelta(days=1)
@@ -232,7 +236,7 @@ def get_recurring_appointment_dates(data):
     return {
         "total": len(scheduled_details),
         "dates": scheduled_details,
-        "available" : available
+        "available" : available_any
     }
 
 

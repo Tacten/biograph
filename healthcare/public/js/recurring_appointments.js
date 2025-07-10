@@ -201,6 +201,7 @@ function open_repeat_dialog() {
         ],
         secondary_action_label: "Check Availability",
         secondary_action:function() {
+            check_selected_weeks(d)
             var data = d.get_values();
             if (!(data.max_occurrences || data.repeat_till)){
                 frappe.throw("<b>Max Occurrences</b> or <b>Repeat Till</b> one of the value should be updated")
@@ -286,6 +287,28 @@ function open_repeat_dialog() {
         }
 
     });
+    d.fields_dict['repeat_till'].df.onchange =()=>{
+        html=`<div></div>`
+        d.fields_dict.available_slots.$wrapper.html(html);
+        d.get_primary_btn().hide()
+    }
+    let week_list = [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday"
+
+    ]
+    week_list.forEach(r=>{
+        d.fields_dict[r].df.onchange =()=>{
+        html=`<div></div>`
+        d.fields_dict.available_slots.$wrapper.html(html);
+        d.get_primary_btn().hide()
+    }
+    })
     d.fields_dict['from_date'].df.onchange =()=>{
         let today = frappe.datetime.get_today();
         if (d.get_value('from_date') < today) {
@@ -394,4 +417,20 @@ function open_repeat_dialog() {
 		};
     d.get_primary_btn().hide()
     d.show();
+}
+
+function check_selected_weeks(d){
+    if(
+        d.get_value("repeat_on") == "Weekly" && (
+            !(d.get_value("monday") || 
+            d.get_value("tuesday") || 
+            d.get_value("wednesday") || 
+            d.get_value('friday') || 
+            d.get_value('thursday') || 
+            d.get_value('sunday') || 
+            d.get_value('saturday')
+            )
+        )){
+        frappe.throw("💡 Please select at least one weekday to proceed.")
+    }
 }
