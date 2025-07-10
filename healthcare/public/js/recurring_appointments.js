@@ -203,8 +203,8 @@ function open_repeat_dialog() {
         ],
         secondary_action_label: "Check Availability",
         secondary_action:function() {
-            check_selected_weeks(d)
             var data = d.get_values();
+            validate_data(data)
             if (!(data.max_occurrences || data.repeat_till)){
                 frappe.throw("<b>Max Occurrences</b> or <b>Repeat Till</b> one of the value should be updated")
             }
@@ -268,6 +268,7 @@ function open_repeat_dialog() {
         primary_action_label: "Book Appointments",
         primary_action: function () {
             const data = d.get_values();
+            validate_data(data)
             if (!data) return;
 
             if (!(data.max_occurrences || data.repeat_till)) {
@@ -327,10 +328,6 @@ function open_repeat_dialog() {
         d.get_primary_btn().hide()
     }
     d.fields_dict['from_time'].df.onchange = () => {
-        if((d.get_value('from_time') > d.get_value('to_time')) || (d.get_value('from_time') == d.get_value('to_time'))) {
-            d.set_value("from_time", null)
-            frappe.throw("<b>From Time must be before To Time and it should not be same.</b>")
-        }
         html=`<div></div>`
         d.fields_dict.available_slots.$wrapper.html(html);
         d.get_primary_btn().hide()
@@ -356,8 +353,7 @@ function open_repeat_dialog() {
 					},
                     callback:(r)=>{
                         service_unit_values = r.message
-                        console.log(r.message)
-                        console.log(r.message.length)
+
                         if (r.message.length == 1){
                             d.set_value("service_unit", r.message[0])    
                             d.set_df_property("service_unit", "read_only", 1)                
@@ -424,26 +420,42 @@ function open_repeat_dialog() {
 		};
     d.get_primary_btn().hide()
     d.show();
-    setTimeout(()=>{
-        $(d.$wrapper).find('.modal-body').css({
-            'max-height' : '400px',
-            'overflow-y' : "auto"
-        })
-    })
 }
 
-function check_selected_weeks(d){
+function validate_data(data){
     if(
-        d.get_value("repeat_on") == "Weekly" && (
-            !(d.get_value("monday") || 
-            d.get_value("tuesday") || 
-            d.get_value("wednesday") || 
-            d.get_value('friday') || 
-            d.get_value('thursday') || 
-            d.get_value('sunday') || 
-            d.get_value('saturday')
+        data.repeat_on == "Weekly" && (
+            !(data.monday || 
+            data.tuesday || 
+            data.wednesday || 
+            data.friday || 
+            data.thursday || 
+            data.sunday || 
+            data.saturday
             )
         )){
         frappe.throw("💡 Please select at least one weekday to proceed.")
+    }
+    if((data.from_time > data.to_time) || (data.from_time == data.to_time)) {
+        frappe.throw("<b>From Time must be before To Time and it should not be same.</b>")
+    }
+    console.log(data.from_date)
+    const dateStr = data.from_date; // Format: YYYY-MM-DD
+    const timeStr = data.from_time   // Format: HH:MM:SS
+
+    // Combine date and time into a single string
+    const dateTimeStr = `${dateStr}T${timeStr}`;
+
+    // Create a Date object from the combined string
+    const inputDateTime = new Date(dateTimeStr);
+
+    // Get the current date and time
+    const now = new Date();
+    console.log(inputDateTime)
+    // Check if the input date-time is in the past
+    if (inputDateTime < now) {
+        frappe.throw(`Oops! The selected date and time <b>${data.from_date} ${data.from_time}</b> is in the past. Please pick a future slot.`)
+    } else {
+    console.log("Valid future date-time.");
     }
 }
