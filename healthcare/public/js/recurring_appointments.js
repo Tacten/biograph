@@ -16,7 +16,7 @@ function open_repeat_dialog() {
     let selected_practitioner = '';
     let d = new frappe.ui.Dialog({
         title: "Repeat Appointment",
-        size: "extra-large",
+        size: "large",
         fields: [
             { fieldtype: 'Section Break', fieldname: "first_section_break" },
             {
@@ -178,6 +178,7 @@ function open_repeat_dialog() {
                 fieldtype: "Date",
                 reqd: 0
             },
+            { fieldtype: 'Column Break', fieldname: 'day_break21' },
             {
                 label: "Repeat Interval",
                 fieldname: "repeat_interval",
@@ -185,6 +186,7 @@ function open_repeat_dialog() {
                 reqd: 0,
                 default: 1
             },
+            { fieldtype: 'Column Break', fieldname: 'day_break211' },
             {
                 label: "Max Occurrences",
                 fieldname: "max_occurrences",
@@ -394,4 +396,10 @@ function open_repeat_dialog() {
 		};
     d.get_primary_btn().hide()
     d.show();
+    setTimeout(()=>{
+        $(d.$wrapper).find('.modal-body').css({
+            'max-height' : '400px',
+            'overflow-y' : "auto"
+        })
+    })
 }
