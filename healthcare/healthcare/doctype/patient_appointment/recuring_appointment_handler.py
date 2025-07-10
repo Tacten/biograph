@@ -139,6 +139,11 @@ def get_recurring_appointment_dates(data):
 
         if not available:
             next_date += timedelta(days=1)
+            if repeat_till and getdate(next_date) >= getdate(repeat_till):
+                print(repeat_till, "repeat_till")
+                break
+            if max_occurrences and occurrences >= max_occurrences:
+                break
             continue
 
         # Check if the date is a holiday
@@ -203,7 +208,7 @@ def get_recurring_appointment_dates(data):
                 scheduled_dates.append(str(next_date))
                 occurrences += 1
 
-            if repeat_till and next_date >= repeat_till:
+            if repeat_till and getdate(next_date) >= getdate(repeat_till):
                 break
 
             if max_occurrences and occurrences >= max_occurrences:
@@ -226,7 +231,8 @@ def get_recurring_appointment_dates(data):
 
     return {
         "total": len(scheduled_details),
-        "dates": scheduled_details
+        "dates": scheduled_details,
+        "available" : available
     }
 
 
@@ -291,4 +297,4 @@ def get_service_unit_values(selected_practitioner):
         "Select service_unit from `tabPractitioner Service Unit Schedule` where parent='{0}'".format(selected_practitioner),as_dict=1
     )
 
-    return [item.service_unit for item in query]
+    return list(set([item.service_unit for item in query if item.service_unit]))
