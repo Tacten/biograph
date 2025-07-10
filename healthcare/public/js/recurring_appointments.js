@@ -16,7 +16,7 @@ function open_repeat_dialog() {
     let selected_practitioner = '';
     let d = new frappe.ui.Dialog({
         title: "Repeat Appointment",
-        size: "extra-large",
+        size: "large",
         fields: [
             { fieldtype: 'Section Break', fieldname: "first_section_break" },
             {
@@ -178,6 +178,7 @@ function open_repeat_dialog() {
                 fieldtype: "Date",
                 reqd: 0
             },
+            { fieldtype: 'Column Break', fieldname: 'day_break21' },
             {
                 label: "Repeat Interval",
                 fieldname: "repeat_interval",
@@ -185,6 +186,7 @@ function open_repeat_dialog() {
                 reqd: 0,
                 default: 1
             },
+            { fieldtype: 'Column Break', fieldname: 'day_break211' },
             {
                 label: "Max Occurrences",
                 fieldname: "max_occurrences",
@@ -201,42 +203,60 @@ function open_repeat_dialog() {
         ],
         secondary_action_label: "Check Availability",
         secondary_action:function() {
+            check_selected_weeks(d)
             var data = d.get_values();
             if (!(data.max_occurrences || data.repeat_till)){
                 frappe.throw("<b>Max Occurrences</b> or <b>Repeat Till</b> one of the value should be updated")
             }
-
+            
             frappe.call({
                 method : "healthcare.healthcare.doctype.patient_appointment.recuring_appointment_handler.get_recurring_appointment_dates",
                 args: {
                     data : data
                 },
                 callback:(r)=>{
-                    if (!r.message) return;
+                    console.log(r.message)
+                    if (!r.message){
+                        frappe.dom.unfreeze();
+                        return;
+                    }
                     const result = r.message.dates;  // Assuming it's a list
                     let html = `<div style="display: flex; flex-wrap: wrap; gap: 10px;">`;
-
+                    if(!r.message.available){
+                        html += `<div style="padding: 16px; border: 1px solid #f0ad4e; background-color: #fff3cd; border-radius: 8px; font-family: Arial, sans-serif; color: #856404;">
+                                    <p style="margin: 0; font-size: 16px;">
+                                        <strong>Practitioner ${data.practitioner}</strong> is unavailable during the selected time slot.
+                                        <br><br>
+                                        Please check their schedule and choose a different time.
+                                    </p>
+                                </div>
+                                `
+                        frappe.dom.unfreeze();
+                    }
                     result.forEach(slot => {
                         const color = slot.booking_flage  ? 'red' : 'green';
+                        
                         html += `
-                            <div style="
-                                background-color: ${color}; 
-                                color: white;
-                                padding: 5px 5px 5px 5px;
-                                border-radius: 6px;
-                                font-size: 12px;
-                                text-align: center;
-                            ">
-                                <strong>${frappe.datetime.str_to_user(slot.date)}</strong><br/>
-                                ${slot.from_time} - ${slot.to_time}
-                            </div>
+                        <div style="
+                        background-color: ${color}; 
+                        color: white;
+                        padding: 5px 5px 5px 5px;
+                        border-radius: 6px;
+                        font-size: 12px;
+                        text-align: center;
+                        ">
+                        <strong>${frappe.datetime.str_to_user(slot.date)}</strong><br/>
+                        ${slot.from_time} - ${slot.to_time}
+                        </div>
                         `;
                     });
-
+                    
                     html += `</div>`;
                     // Set HTML content into the dialog field
                     d.fields_dict.available_slots.$wrapper.html(html);
-                }
+                },
+                freeze: true,
+                freeze_message: __('Loading Slots...'),
             })
             d.get_primary_btn().show()
         },
@@ -269,6 +289,28 @@ function open_repeat_dialog() {
         }
 
     });
+    d.fields_dict['repeat_till'].df.onchange =()=>{
+        html=`<div></div>`
+        d.fields_dict.available_slots.$wrapper.html(html);
+        d.get_primary_btn().hide()
+    }
+    let week_list = [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday"
+
+    ]
+    week_list.forEach(r=>{
+        d.fields_dict[r].df.onchange =()=>{
+        html=`<div></div>`
+        d.fields_dict.available_slots.$wrapper.html(html);
+        d.get_primary_btn().hide()
+    }
+    })
     d.fields_dict['from_date'].df.onchange =()=>{
         let today = frappe.datetime.get_today();
         if (d.get_value('from_date') < today) {
@@ -280,33 +322,49 @@ function open_repeat_dialog() {
         d.get_primary_btn().hide()
     }
     d.fields_dict['from_time'].df.onchange = () => {
+        if((d.get_value('from_time') > d.get_value('to_time')) || (d.get_value('from_time') == d.get_value('to_time'))) {
+            d.set_value("from_time", null)
+            frappe.throw("<b>From Time must be before To Time and it should not be same.</b>")
+        }
         html=`<div></div>`
         d.fields_dict.available_slots.$wrapper.html(html);
         d.get_primary_btn().hide()
     }
     d.fields_dict['to_time'].df.onchange = () => {
+        if((d.get_value('from_time') > d.get_value('to_time')) || (d.get_value('from_time') == d.get_value('to_time'))) {
+            d.set_value("to_time", null)
+            frappe.throw("<b>From Time must be before To Time and it should not be same.</b>")
+        }
         html=`<div></div>`
         d.fields_dict.available_slots.$wrapper.html(html);
         d.get_primary_btn().hide()
+
     }
+   
     d.fields_dict['practitioner'].df.onchange = async () => {
-			if (d.get_value('practitioner') && d.get_value('practitioner') != selected_practitioner) {
+			if (d.get_value('practitioner')) {
 				selected_practitioner = d.get_value('practitioner');
 				let r = await frappe.call({
 					method: "healthcare.healthcare.doctype.patient_appointment.recuring_appointment_handler.get_service_unit_values",
 					args: {
 						selected_practitioner
-					}
+					},
+                    callback:(r)=>{
+                        service_unit_values = r.message
+                        console.log(r.message)
+                        console.log(r.message.length)
+                        if (r.message.length == 1){
+                            d.set_value("service_unit", r.message[0])    
+                            d.set_df_property("service_unit", "read_only", 1)                
+                        }
+                        else{
+                            d.set_value("service_unit", '')   
+                            d.set_df_property("service_unit", "read_only", 0)                
+                        }
+                    }
 				});
-				service_unit_values = r.message;
-                if (service_unit_values.length == 1){
-                    d.set_value("service_unit", service_unit_values[0])    
-                    d.set_df_property("service_unit", "read_only", 1)                
-                }
-			}else{
-                    d.set_value("service_unit", '')   
-                    d.set_df_property("service_unit", "read_only", 0)                
-            }
+				
+			}
             if (d.get_value('practitioner')) {
             frappe.db.get_value("Healthcare Practitioner", d.get_value('practitioner'), "department")
                 .then(r => {
@@ -361,4 +419,26 @@ function open_repeat_dialog() {
 		};
     d.get_primary_btn().hide()
     d.show();
+    setTimeout(()=>{
+        $(d.$wrapper).find('.modal-body').css({
+            'max-height' : '400px',
+            'overflow-y' : "auto"
+        })
+    })
+}
+
+function check_selected_weeks(d){
+    if(
+        d.get_value("repeat_on") == "Weekly" && (
+            !(d.get_value("monday") || 
+            d.get_value("tuesday") || 
+            d.get_value("wednesday") || 
+            d.get_value('friday') || 
+            d.get_value('thursday') || 
+            d.get_value('sunday') || 
+            d.get_value('saturday')
+            )
+        )){
+        frappe.throw("💡 Please select at least one weekday to proceed.")
+    }
 }
