@@ -285,9 +285,8 @@ function open_repeat_dialog() {
                     callback: function (r) {
                         frappe.dom.unfreeze();
                         if (r.message) {
-                            frappe.msgprint("Appointments are being created in background", () => {
-                                d.hide();
-                            });
+                            frappe.msgprint("Appointments are being created in background")
+                            d.hide();
                         }
                     }
                 });
