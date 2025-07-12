@@ -409,6 +409,7 @@ function open_repeat_dialog() {
 				}
 			};
 		};
+    d.fields_dict.repeat_till.datepicker.update("position", "top left")
     d.fields_dict.therapy_plan.get_query = function() {
 			return {
 				filters: {
