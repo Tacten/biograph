@@ -1,0 +1,28 @@
+{
+	"name": "dcmviewer",
+	"version": "1.0.0",
+	"main": "index.js",
+	"license": "MIT",
+	"dependencies": {
+		"@cornerstonejs/core": "^3.30.3",
+		"@cornerstonejs/dicom-image-loader": "^3.30.3",
+		"@cornerstonejs/nifti-volume-loader": "^3.30.3",
+		"@cornerstonejs/tools": "^3.30.3",
+		"frappe-ui": "^0.1.168",
+		"tailwindcss": "^3.4.1",
+		"vue": "^3.5.17"
+	},
+	"devDependencies": {
+		"@vitejs/plugin-vue": "^6.0.0",
+		"autoprefixer": "^10.4.19",
+		"postcss": "^8.4.38",
+		"unplugin-icons": "^22.1.0",
+		"unplugin-vue-components": "^28.8.0",
+		"vite": "^7.0.4",
+		"vue": "^3.5.17"
+	},
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build"
+	}
+}
