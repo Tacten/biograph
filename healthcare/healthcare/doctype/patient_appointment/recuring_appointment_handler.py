@@ -146,8 +146,6 @@ def get_recurring_appointment_dates(data):
             if repeat_till and getdate(next_date) >= getdate(repeat_till):
                 print(repeat_till, "repeat_till")
                 break
-            
-            weekday_name = next_date.strftime("%A")
             if repeat_on == "Weekly" and max_occurrences and occurrences.get(weekday_name, 0) >= max_occurrences:
                 # If all weekdays reached max_occurrences, break
                 if all(occ >= max_occurrences for occ in occurrences.values()):
