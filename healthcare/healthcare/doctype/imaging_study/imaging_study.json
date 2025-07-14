@@ -9,6 +9,7 @@
   "study_instance_uid",
   "patient",
   "patient_name",
+  "station_ae",
   "modality",
   "completed_on",
   "column_break_hkud",
@@ -16,9 +17,15 @@
   "ups_appointment",
   "description",
   "performer",
+  "section_break_tlsm",
+  "column_break_mxtv",
+  "preview_html",
+  "series_json",
   "imaging_series_tab",
   "series_instances_section",
-  "series"
+  "series",
+  "instances",
+  "dataset"
  ],
  "fields": [
   {
@@ -28,16 +35,17 @@
    "in_standard_filter": 1,
    "label": "Patient",
    "options": "Patient",
-   "reqd": 1,
    "search_index": 1
   },
   {
+   "fetch_from": "station_ae.service_unit_type",
    "fieldname": "modality",
-   "fieldtype": "Data",
+   "fieldtype": "Link",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Modality",
-   "reqd": 1,
+   "options": "Healthcare Service Unit Type",
+   "read_only": 1,
    "search_index": 1
   },
   {
@@ -109,13 +117,58 @@
   },
   {
    "fieldname": "series",
-   "fieldtype": "Code"
+   "fieldtype": "Code",
+   "label": "Series",
+   "read_only": 1
+  },
+  {
+   "fieldname": "instances",
+   "fieldtype": "Code",
+   "label": "Instances",
+   "read_only": 1
+  },
+  {
+   "fieldname": "dataset",
+   "fieldtype": "Code",
+   "label": "Dataset",
+   "read_only": 1
+  },
+  {
+   "fieldname": "station_ae",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Station AE",
+   "options": "Healthcare Service Unit",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "section_break_tlsm",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "preview_html",
+   "fieldtype": "HTML",
+   "label": "Preview"
+  },
+  {
+   "fieldname": "series_json",
+   "fieldtype": "Code",
+   "label": "Series JSON",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_mxtv",
+   "fieldtype": "Column Break",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-02 13:33:59.639167",
+ "modified": "2025-07-09 18:39:49.603502",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Imaging Study",

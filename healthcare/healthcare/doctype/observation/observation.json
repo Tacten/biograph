@@ -46,11 +46,15 @@
   "column_break_yo05",
   "sample_status",
   "sample_collection_time",
-  "radiology_section",
+  "imaging_procedure_section",
   "ups_appointment",
+  "modality",
+  "exam_status",
+  "column_break_cgmc",
   "study_instance_uid",
-  "column_break_zkwe",
   "imaging_study",
+  "imaging_series",
+  "image_instance",
   "result_section",
   "result_template",
   "result_text",
@@ -575,13 +579,37 @@
    "read_only": 1
   },
   {
-   "fieldname": "appointment",
+   "depends_on": "eval:doc.observation_category == \"Imaging\"",
+   "description": "Accession Number",
+   "fieldname": "ups_appointment",
    "fieldtype": "Link",
-   "label": "Appointment",
-   "options": "Patient Appointment"
+   "label": "UPS Appointment",
+   "options": "UPS Appointment",
+   "read_only": 1
   },
   {
-   "depends_on": "eval: doc.observation_type == \"Imaging\"",
+   "fieldname": "imaging_procedure_section",
+   "fieldtype": "Section Break",
+   "label": "Imaging Procedure"
+  },
+  {
+   "fetch_from": "ups_appointment.status",
+   "fieldname": "exam_status",
+   "fieldtype": "Data",
+   "label": "Exam Status",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_cgmc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "study_instance_uid",
+   "fieldtype": "Data",
+   "label": "Study Instance UID",
+   "read_only": 1
+  },
+  {
    "fieldname": "imaging_study",
    "fieldtype": "Link",
    "label": "Imaging Study",
@@ -589,45 +617,30 @@
    "read_only": 1
   },
   {
-   "fieldname": "column_break_uxbf",
-   "fieldtype": "Column Break"
-  },
-  {
-   "depends_on": "eval: doc.observation_type == \"Imaging\"",
-   "fieldname": "radiology_section",
-   "fieldtype": "Section Break",
-   "label": "Radiology"
-  },
-  {
-   "depends_on": "eval: doc.observation_type == \"Imaging\"",
-   "fieldname": "study_instance_uid",
+   "depends_on": "eval:doc.observation_category == \"Imaging\"",
+   "fetch_from": "ups_appointment.claimed_by",
+   "fieldname": "modality",
    "fieldtype": "Data",
-   "label": "Study Instance UID",
+   "label": "Modality (Service Unit)",
    "read_only": 1
   },
   {
-   "fieldname": "column_break_zkwe",
-   "fieldtype": "Column Break"
-  },
-  {
-   "depends_on": "eval: doc.observation_type == \"Imaging\"",
-   "fieldname": "ups_appointment",
-   "fieldtype": "Data",
-   "label": "UPS Appointment (Accession Number)",
-   "read_only": 1
-  },
-  {
-   "fieldname": "service_unit",
+   "fieldname": "imaging_series",
    "fieldtype": "Link",
-   "label": "Service Unit / Modality",
-   "options": "Healthcare Service Unit",
-   "read_only": 1
+   "label": "Imaging Series",
+   "options": "Imaging Study Series"
+  },
+  {
+   "fieldname": "image_instance",
+   "fieldtype": "Link",
+   "label": "Image Instance",
+   "options": "Imaging Study Series Instance"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-02 17:02:59.787382",
+ "modified": "2025-06-29 20:40:49.262493",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Observation",

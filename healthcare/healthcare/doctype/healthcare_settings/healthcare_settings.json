@@ -35,6 +35,15 @@
   "lab_test_approval_required",
   "employee_name_and_designation_in_print",
   "custom_signature_in_print",
+  "radiology_section",
+  "pacs_base_url",
+  "pacs_ae_title",
+  "username",
+  "password",
+  "column_break_dbvh",
+  "qido_rs_url",
+  "wado_rs_preview_url",
+  "wado_rs_url",
   "billing_accounts",
   "healthcare_service_items",
   "inpatient_visit_charge_item",
@@ -344,7 +353,7 @@
   {
    "fieldname": "laboratory_tab",
    "fieldtype": "Tab Break",
-   "label": "Laboratory"
+   "label": "Diagnostics"
   },
   {
    "fieldname": "billing_accounts",
@@ -436,11 +445,60 @@
    "fieldtype": "Table",
    "label": "Patient Duplicate Check Rules",
    "options": "Patient Duplicate Check Rule Link"
+  },
+  {
+   "fieldname": "naming_series_for_journal_entry",
+   "fieldtype": "Select",
+   "label": "Naming Series for Insurance Coverage Journal Entry"
+  },
+  {
+   "fieldname": "radiology_section",
+   "fieldtype": "Section Break",
+   "label": "Radiology "
+  },
+  {
+   "fieldname": "pacs_base_url",
+   "fieldtype": "Data",
+   "label": "PACS Base URL"
+  },
+  {
+   "fieldname": "column_break_dbvh",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "qido_rs_url",
+   "fieldtype": "Data",
+   "label": "QIDO-RS URL"
+  },
+  {
+   "fieldname": "wado_rs_url",
+   "fieldtype": "Data",
+   "label": "WADO-RS URL"
+  },
+  {
+   "fieldname": "pacs_ae_title",
+   "fieldtype": "Data",
+   "label": "PACS AE Title"
+  },
+  {
+   "fieldname": "password",
+   "fieldtype": "Password",
+   "label": "Password"
+  },
+  {
+   "fieldname": "wado_rs_preview_url",
+   "fieldtype": "Data",
+   "label": "WADO-RS Preview URL"
+  },
+  {
+   "fieldname": "username",
+   "fieldtype": "Data",
+   "label": "Username"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2023-11-06 14:20:22.424895",
+ "modified": "2025-07-09 16:40:58.350053",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Healthcare Settings",
