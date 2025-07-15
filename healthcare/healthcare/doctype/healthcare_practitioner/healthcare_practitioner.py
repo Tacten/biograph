@@ -144,9 +144,9 @@ def get_practitioner_list(doctype, txt, searchfield, start, page_len, filters=No
 
     filters = {**active_filter, **filters} if filters else active_filter
 
-    fields = ["name", "practitioner_name", "mobile_phone"]
+    fields = ["name", "practitioner_name", "mobile_phone", "department"]
 
-    text_in = {"name": ("like", "%%%s%%" % txt), "practitioner_name": ("like", "%%%s%%" % txt)}
+    text_in = {"name": ("like", "%%%s%%" % txt), "practitioner_name": ("like", "%%%s%%" % txt), "department": ("like", "%%%s%%" % txt)}
 
     return frappe.get_all(
         "Healthcare Practitioner",
