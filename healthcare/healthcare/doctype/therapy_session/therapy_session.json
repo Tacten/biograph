@@ -26,6 +26,10 @@
   "service_unit",
   "start_date",
   "start_time",
+  "consumables_section",
+  "consume_stock",
+  "warehouse",
+  "items",
   "exercises_section",
   "exercises",
   "section_break_23",
@@ -245,6 +249,31 @@
    "fieldname": "more_information_section",
    "fieldtype": "Section Break",
    "label": "More Information"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "consumables_section",
+   "fieldtype": "Section Break",
+   "label": "Consumables"
+  },
+  {
+   "default": "0",
+   "fieldname": "consume_stock",
+   "fieldtype": "Check",
+   "label": "Consume Stock"
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Warehouse",
+   "mandatory_depends_on": "eval: doc.consume_stock == 1",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Consumables",
+   "options": "Clinical Procedure Item"
   }
  ],
  "grid_page_length": 50,
@@ -259,8 +288,8 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2025-06-23 11:13:08.715745",
- "modified_by": "Administrator",
+ "modified": "2025-07-17 10:24:21.897494",
+ "modified_by": "abhijeet.mohanty@happiestminds.com",
  "module": "Healthcare",
  "name": "Therapy Session",
  "naming_rule": "By \"Naming Series\" field",
