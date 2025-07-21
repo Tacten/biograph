@@ -367,7 +367,9 @@ var add_to_item_line = function(frm, checked_values, invoice_healthcare_services
 		for(let i=0; i<checked_values.length; i++){
 			console.log(checked_values[i].practitioner)
 			var si_item = frappe.model.add_child(frm.doc, 'Sales Invoice Item', 'items');
-			frm.set_value("ref_practitioner", checked_values[i].practitioner)
+			if(checked_values[i]['dt'] !== 'Medication Request'){
+				frm.set_value("ref_practitioner", checked_values[i].practitioner)
+			}
 			frappe.model.set_value(si_item.doctype, si_item.name, 'item_code', checked_values[i]['item']);
 			frappe.model.set_value(si_item.doctype, si_item.name, 'qty', 1);
 			frappe.model.set_value(si_item.doctype, si_item.name, 'reference_dn', checked_values[i]['dn']);
