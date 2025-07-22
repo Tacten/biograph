@@ -6,12 +6,12 @@
  "engine": "InnoDB",
  "field_order": [
   "therapy_type",
-  "no_of_sessions",
+  "no_of_days",
+  "no_of_sessions_per_day",
   "sessions_completed",
   "service_request",
   "column_break_nrne",
-  "no_of_days",
-  "no_of_sessions_per_day",
+  "no_of_sessions",
   "section_break_hywn",
   "patient_care_type",
   "column_break_eawy",
@@ -78,10 +78,6 @@
    "read_only": 1
   },
   {
-   "fieldname": "column_break_nrne",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "no_of_days",
    "fieldtype": "Int",
    "in_list_view": 1,
@@ -92,12 +88,16 @@
    "fieldtype": "Int",
    "in_list_view": 1,
    "label": "No. of Sessions Day"
+  },
+  {
+   "fieldname": "column_break_nrne",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "istable": 1,
  "links": [],
- "modified": "2025-07-22 13:27:32.896033",
+ "modified": "2025-07-22 20:28:10.557151",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Therapy Plan Detail",
