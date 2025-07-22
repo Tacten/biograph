@@ -244,16 +244,21 @@ function open_repeat_dialog() {
                         border-radius: 6px;
                         font-size: 12px;
                         text-align: center;
-                        ">
+                        " data-action="${slot.date}">
                         <strong>${frappe.datetime.str_to_user(slot.date)}</strong><br/>
-                        ${slot.from_time} - ${slot.to_time}
+                        ${slot.from_time} - ${slot.to_time}<br/>${slot.days}
                         </div>
                         `;
                     });
-                    
+                
                     html += `</div>`;
                     // Set HTML content into the dialog field
                     d.fields_dict.available_slots.$wrapper.html(html);
+
+                    d.fields_dict.available_slots.$wrapper.find(`[data-action="${slot.date}"]`).on('click', function() {
+                        frm.events.open_specialization_form(frm, existing_doc);
+                    });
+
                 },
                 freeze: true,
                 freeze_message: __('Loading Slots...'),
