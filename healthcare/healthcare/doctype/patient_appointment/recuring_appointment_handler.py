@@ -242,6 +242,9 @@ def get_recurring_appointment_dates(data):
     service_unit = data.service_unit
     scheduled_details = get_availability(scheduled_details, data.practitioner, service_unit=service_unit)
 
+    for row in scheduled_details:
+        row.update({'days': getdate(row.get('date')).strftime("%A") })
+  
     return {
         "total": len(scheduled_details),
         "dates": scheduled_details,
