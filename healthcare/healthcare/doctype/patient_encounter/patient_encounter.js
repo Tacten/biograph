@@ -61,10 +61,30 @@ frappe.ui.form.on('Patient Encounter', {
 	},
 
 	setup: function(frm) {
-		frm.get_field('therapies').grid.editable_fields = [
-			{fieldname: 'therapy_type', columns: 8},
-			{fieldname: 'no_of_sessions', columns: 2}
+		let value = [
+				{
+					"fieldname": "therapy_type",
+					"columns": 2
+				},
+				{
+					"fieldname": "no_of_days",
+					"columns": 2
+				},
+				{
+					"fieldname": "no_of_sessions_per_day",
+					"columns": 2
+				},
+				{
+					"fieldname": "no_of_sessions",
+					"columns": 2
+				},
 		];
+		frappe.model.user_settings.save("Therapy Plan Detail", "GridView", null).then((r) => {
+			frappe.model.user_settings["Therapy Plan Detail"] = r.message || r;
+		});
+		frappe.model.user_settings.save("Therapy Plan Detail", "GridView", value).then((r) => {
+			frappe.model.user_settings["Therapy Plan Detail"] = r.message || r;
+		});
 		frm.get_field('drug_prescription').grid.editable_fields = [
 			{fieldname: 'drug_code', columns: 2},
 			{fieldname: 'drug_name', columns: 2},
