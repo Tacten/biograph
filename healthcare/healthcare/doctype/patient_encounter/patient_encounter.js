@@ -865,16 +865,28 @@ let create_patient_referral = function(frm) {
 frappe.ui.form.on('Therapy Plan Detail', {
     no_of_days:(frm, cdt, cdn)=>{
         let d = locals[cdt][cdn]
+		if(d.no_of_days < 1){
+			frappe.model.set_value(cdt, cdn, 'no_of_days', '')
+		}
         if(d['no_of_days'] && d['no_of_sessions_per_day']){
             frappe.model.set_value(cdt, cdn, 'no_of_sessions', d.no_of_days * d.no_of_sessions_per_day)
             frm.refresh_field("therapies")
-        }
+        }else{
+			frappe.model.set_value(cdt, cdn, 'no_of_sessions','')
+            frm.refresh_field("therapies")	
+		}
     },
     no_of_sessions_per_day:(frm, cdt, cdn)=>{
         let d = locals[cdt][cdn]
+		if(d.no_of_sessions_per_day < 1){
+			frappe.model.set_value(cdt, cdn, 'no_of_sessions_per_day', '')
+		}
         if(d['no_of_days'] && d['no_of_sessions_per_day']){
             frappe.model.set_value(cdt, cdn, 'no_of_sessions', d.no_of_days * d.no_of_sessions_per_day)
             frm.refresh_field("therapies")
-        }
+        }else{
+			frappe.model.set_value(cdt, cdn, 'no_of_sessions', '')
+            frm.refresh_field("therapies")	
+		}
     }
 }) 
