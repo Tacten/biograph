@@ -256,7 +256,7 @@ function open_repeat_dialog() {
                     d.fields_dict.available_slots.$wrapper.html(html);
 
                     d.fields_dict.available_slots.$wrapper.find(`[data-action="${slot.date}"]`).on('click', function() {
-                        frm.events.open_specialization_form(frm, existing_doc);
+                        console.log("Exit")
                     });
 
                 },
