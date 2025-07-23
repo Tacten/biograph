@@ -87,13 +87,15 @@
    "fieldtype": "Int",
    "in_list_view": 1,
    "label": "No. of Days",
-   "non_negative": 1
+   "non_negative": 1,
+   "read_only": 1
   },
   {
    "fieldname": "no_of_sessions_per_day",
    "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "No. of Sessions Day"
+   "label": "No. of Sessions Day",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
