@@ -631,7 +631,11 @@ let check_and_set_availability = function(frm) {
 							filters: formValues
 						},
 						callback: function(r) {
-							if (r.message && Array.isArray(r.message) && r.message.length > 0) {
+							if (r.message 
+								& Array.isArray(r.message) 
+								&& r.message.length > 0 
+								&& r.message.name != frm.doc.name) {
+								console.log(r.message)
 								show_block_booking_conflict_dialog(formValues, r.message);
 							} else {
 								create_block_appointment(formValues, frm);
