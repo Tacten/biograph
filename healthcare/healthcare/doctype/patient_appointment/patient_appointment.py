@@ -377,7 +377,6 @@ class PatientAppointment(Document):
 
 		elif appointment_date < today and self.status not in ["No Show", "Cancelled"]:
 			self.status = "No Show"
-		frappe.throw(str(self.status))
 
 	def validate_overlaps(self):
 		if self.appointment_based_on_check_in:
