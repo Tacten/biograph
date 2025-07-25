@@ -365,11 +365,11 @@ class PatientAppointment(Document):
 					self.status = "Confirmed"
 				return
 			return
-
 		old_doc = self.get_doc_before_save()
+
 		# If appointment is created for today set status as Open else Scheduled
 		if appointment_date == today:
-			if self.status not in ["Checked In", "Checked Out", "Open", "Confirmed", "Cancelled"]:
+			if self.status not in ["Checked In", "Checked Out" , "Confirmed", "Cancelled"]:
 				self.status = "Confirmed"
 		elif (appointment_date > today and self.status not in ["Cancelled"] and 
 			str(old_doc.appointment_datetime) != str(self.appointment_datetime)):
@@ -377,6 +377,7 @@ class PatientAppointment(Document):
 
 		elif appointment_date < today and self.status not in ["No Show", "Cancelled"]:
 			self.status = "No Show"
+		frappe.throw(str(self.status))
 
 	def validate_overlaps(self):
 		if self.appointment_based_on_check_in:
@@ -1558,7 +1559,7 @@ def update_appointment_status():
 				if appointment_date > today:
 					return "Scheduled"
 				elif appointment_date == today:
-					return "Open"
+					return "Confirmed"
 				return
 			return
 
