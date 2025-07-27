@@ -13,23 +13,20 @@
   "naming_series",
   "observation_template",
   "observation_category",
-  "appointment",
-  "service_unit",
   "column_break_7xu5",
   "company",
   "posting_date",
   "status",
   "medical_department",
-  "amended_from",
   "section_break_i70a",
   "patient",
   "patient_name",
   "column_break_qxq5",
-  "age",
   "gender",
+  "age",
+  "days",
   "section_break_zz5k",
   "healthcare_practitioner",
-  "column_break_uxbf",
   "practitioner_name",
   "template_details_section",
   "preferred_display_name",
@@ -47,14 +44,12 @@
   "sample_status",
   "sample_collection_time",
   "imaging_procedure_section",
+  "study_instance_uid",
+  "imaging_study",
+  "column_break_cgmc",
   "ups_appointment",
   "modality",
   "exam_status",
-  "column_break_cgmc",
-  "study_instance_uid",
-  "imaging_study",
-  "imaging_series",
-  "image_instance",
   "result_section",
   "result_template",
   "result_text",
@@ -94,8 +89,8 @@
   "disapproval_reason",
   "parent_observation",
   "observation_idx",
-  "days",
-  "invoiced"
+  "invoiced",
+  "amended_from"
  ],
  "fields": [
   {
@@ -517,8 +512,7 @@
   {
    "fieldname": "days",
    "fieldtype": "Int",
-   "hidden": 1,
-   "label": "Days",
+   "label": "Age in Days",
    "read_only": 1
   },
   {
@@ -623,24 +617,12 @@
    "fieldtype": "Data",
    "label": "Modality (Service Unit)",
    "read_only": 1
-  },
-  {
-   "fieldname": "imaging_series",
-   "fieldtype": "Link",
-   "label": "Imaging Series",
-   "options": "Imaging Study Series"
-  },
-  {
-   "fieldname": "image_instance",
-   "fieldtype": "Link",
-   "label": "Image Instance",
-   "options": "Imaging Study Series Instance"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-29 20:40:49.262493",
+ "modified": "2025-07-27 12:49:13.454873",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Observation",
