@@ -5,23 +5,22 @@ import Components from 'unplugin-vue-components/vite'
 import IconsResolver from 'unplugin-icons/resolver'
 
 export default defineConfig({
-    plugins: [
-        vue(),
-        Components({
-            resolvers: [IconsResolver({ prefix: "" })],
-        }),
-        Icons({
-            compiler: "vue3",
-        }),
-    ],
-    build: {
-        outDir: "../healthcare/public/dcmviewer",
-        sourcemap: true,
-    },
-    worker: {
-        format: "es",
-    },
-    server: {
-        port: 5173,
-    },
+	base: "/assets/healthcare/dcmviewer/",
+	plugins: [
+		vue(),
+		Components({
+			resolvers: [IconsResolver({ prefix: "" })],
+		}),
+		Icons({
+			compiler: "vue3",
+		}),
+	],
+	build: {
+		outDir: "../public/dcmviewer",
+		sourcemap: true,
+		assetsDir: ".",
+	},
+	worker: {
+		format: "es",
+	},
 })
