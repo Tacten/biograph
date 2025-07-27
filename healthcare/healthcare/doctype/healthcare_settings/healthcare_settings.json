@@ -36,14 +36,14 @@
   "employee_name_and_designation_in_print",
   "custom_signature_in_print",
   "radiology_section",
-  "pacs_base_url",
   "pacs_ae_title",
-  "username",
-  "password",
+  "pacs_username",
+  "pacs_password",
   "column_break_dbvh",
+  "pacs_base_url",
   "qido_rs_url",
-  "wado_rs_preview_url",
   "wado_rs_url",
+  "wado_rs_preview_url",
   "billing_accounts",
   "healthcare_service_items",
   "inpatient_visit_charge_item",
@@ -452,9 +452,10 @@
    "label": "Naming Series for Insurance Coverage Journal Entry"
   },
   {
+   "description": "Tested with Orthanc only",
    "fieldname": "radiology_section",
    "fieldtype": "Section Break",
-   "label": "Radiology "
+   "label": "Radiology - PACS Settings"
   },
   {
    "fieldname": "pacs_base_url",
@@ -466,11 +467,13 @@
    "fieldtype": "Column Break"
   },
   {
+   "description": "Query for a DICOM Series",
    "fieldname": "qido_rs_url",
    "fieldtype": "Data",
    "label": "QIDO-RS URL"
   },
   {
+   "description": "To access Image Instances",
    "fieldname": "wado_rs_url",
    "fieldtype": "Data",
    "label": "WADO-RS URL"
@@ -481,24 +484,25 @@
    "label": "PACS AE Title"
   },
   {
-   "fieldname": "password",
-   "fieldtype": "Password",
-   "label": "Password"
-  },
-  {
    "fieldname": "wado_rs_preview_url",
    "fieldtype": "Data",
-   "label": "WADO-RS Preview URL"
+   "label": "WADO-RS Preview URL",
+   "read_only": 1
   },
   {
-   "fieldname": "username",
+   "fieldname": "pacs_username",
    "fieldtype": "Data",
-   "label": "Username"
+   "label": "PACS Username"
+  },
+  {
+   "fieldname": "pacs_password",
+   "fieldtype": "Password",
+   "label": "PACS Password"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-07-09 16:40:58.350053",
+ "modified": "2025-07-27 14:05:13.595298",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Healthcare Settings",
