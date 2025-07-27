@@ -14,12 +14,12 @@ DICOM_TO_FRAPPE_MAP = {
 	"00100030": "date_of_birth",  # DOB
 	"00100040": "gender",  # Gender
 	"00400001": "scheduled_date",  # Scheduled Date
-	"00400002": "scheduled_date",  # Fallback required?
+	"00400002": "scheduled_date",  # Fallback Scheduled Date
 	"00400003": "scheduled_time",  # Scheduled Time
 	"00404010": "observation_template",  # Procedure Code
 	"00080050": "name",  # Accession Number
 	"00081030": "modality",  # Modality
-	"00404011": "scheduled_datetime",  # Scheduled DateTime
+	"0008005A": "station_ae",  # Scheduled Device
 }
 
 # supporting "like"
@@ -46,13 +46,85 @@ def dicom_to_frappe_value(tag, value):
 	return value
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def get_ups_tasks(filters=None):
 	"""Return DICOMWeb dataset for UPS-RS request"""
-	# curl -X POST http://v16:8000/api/method/healthcare.healthcare.api.ups_rs.get_ups_tasks \
+	# curl -X POST https://site_url/api/method/healthcare.healthcare.api.ups_rs.get_ups_tasks \
 	# -H "Content-Type: application/json" \
 	# --data '{"filters": {"00100010": "Jane^", "00400002__from": "20250601", "00400002__to": "20260630"}}'
 
+	frappe_filters = get_filters(filters)
+	worklist = frappe.get_all(
+		"Imaging Appointment",
+		filters=frappe_filters,
+		fields=[
+			"name",
+			"appointment",
+			"ups_instance_uid",
+			"patient",
+			"patient_name",
+			"gender",
+			"date_of_birth",
+			"observation_template",
+			"scheduled_date",
+			"scheduled_time",
+			"modality",
+			"station_ae",
+		],
+	)
+
+	result = []
+	for task in worklist:
+		uid = task.get("ups_instance_uid") or str(shortuuid.uuid())
+
+		if not task.get("ups_instance_uid"):
+			frappe.db.set_value("Imaging Appointment", task.name, "ups_instance_uid", uid)
+		try:
+
+			if task.get("scheduled_date") and task.get("scheduled_time"):
+				scheduled_date = task["scheduled_date"].strftime("%Y%m%d")
+				scheduled_time = "{:02d}{:02d}{:02d}".format(
+					task["scheduled_time"].seconds // 3600,
+					(task["scheduled_time"].seconds % 3600) // 60,
+					task["scheduled_time"].seconds % 60,
+				)
+
+			result.append(
+				{
+					"UPSInstanceUID": uid,
+					"00080050": {"vr": "SH", "Value": [task.get("name")]},
+					"00100020": {"vr": "LO", "Value": [task.get("patient").replace(" ", "-")]},
+					"00100010": {"vr": "PN", "Value": [task.get("patient_name").replace(" ", "^")]},
+					"00100040": {"vr": "CS", "Value": [dicomify_gender(task.get("gender"))]},
+					"00100030": {"vr": "DA", "Value": [task.get("date_of_birth").strftime("%Y%m%d")]},
+					"00404010": {
+						"vr": "SQ",
+						"Value": [
+							{
+								"00080100": {"vr": "SH", "Value": [task.get("observation_template")]},
+								"00081030": {"vr": "LO", "Value": [task.get("modality")]},
+							}
+						],
+					},
+					"0008005A": {"vr": "AE"},
+					"Value": [task.get("station_ae")],
+					"00400002": {"vr": "DA", "Value": [scheduled_date]},
+					"00404011": {
+						"vr": "DT",
+						"Value": [scheduled_date + scheduled_time],
+					},
+				}
+			)
+		except Exception as e:
+			frappe.log_error(
+				message=f"Appointment: {task}\nException: {e}",
+				title=f"UPS-RS failed for {task.get('ups_instance_uid')}",
+			)
+
+	return result
+
+
+def get_filters(filters=None):
 	if isinstance(filters, str):
 		try:
 			filters = json.loads(filters)
@@ -96,69 +168,5 @@ def get_ups_tasks(filters=None):
 			frappe_filters[frappe_field] = ["<=", to_val]
 
 	frappe_filters.setdefault("status", "Scheduled")
-	# frappe.log_error(frappe_filters)
-	worklist = frappe.get_all(
-		"UPS Appointment",
-		filters=frappe_filters,
-		fields=[
-			"name",
-			"appointment",
-			"ups_instance_uid",
-			"patient",
-			"patient_name",
-			"gender",
-			"date_of_birth",
-			"observation_template",
-			"scheduled_date",
-			"scheduled_time",
-			"modality",
-		],
-	)
 
-	result = []
-	for t in worklist:
-		uid = t.get("ups_instance_uid") or str(shortuuid.uuid())
-
-		if not t.get("ups_instance_uid"):
-			frappe.db.set_value("UPS Appointment", t.name, "ups_instance_uid", uid)
-		try:
-
-			if t.get("scheduled_date") and t.get("scheduled_time"):
-				scheduled_date = t["scheduled_date"].strftime("%Y%m%d")
-				scheduled_time = "{:02d}{:02d}{:02d}".format(
-					t["scheduled_time"].seconds // 3600,
-					(t["scheduled_time"].seconds % 3600) // 60,
-					t["scheduled_time"].seconds % 60,
-				)
-
-			result.append(
-				{
-					"UPSInstanceUID": uid,
-					"00080050": {"vr": "SH", "Value": [t.get("name")]},
-					"00100020": {"vr": "LO", "Value": [t.get("patient").replace(" ", "-")]},
-					"00100010": {"vr": "PN", "Value": [t.get("patient_name").replace(" ", "^")]},
-					"00100040": {"vr": "CS", "Value": [dicomify_gender(t.get("gender"))]},
-					"00100030": {"vr": "DA", "Value": [t.get("date_of_birth").strftime("%Y%m%d")]},
-					"00404010": {
-						"vr": "SQ",
-						"Value": [
-							{
-								"00080100": {"vr": "SH", "Value": [t.get("observation_template")]},
-								"00081030": {"vr": "LO", "Value": [f"{t.modality} Imaging Procedure"]},
-							}
-						],
-					},
-					"00400002": {"vr": "DA", "Value": [scheduled_date]},
-					"00404011": {
-						"vr": "DT",
-						"Value": [scheduled_date + scheduled_time],
-					},
-				}
-			)
-		except Exception as e:
-			frappe.log_error(
-				message=f"Appointment: {t}\nException: {e}",
-				title=f"UPS-RS failed for {t.get('ups_instance_uid')}",
-			)
-
-	return result
+	return frappe_filters

@@ -97,8 +97,8 @@
    "description": "Accession Number",
    "fieldname": "ups_appointment",
    "fieldtype": "Link",
-   "label": "UPS Appointment",
-   "options": "UPS Appointment"
+   "label": "Imaging Appointment",
+   "options": "Imaging Appointment"
   },
   {
    "fieldname": "study_section",
@@ -108,7 +108,7 @@
   {
    "fieldname": "imaging_series_tab",
    "fieldtype": "Tab Break",
-   "label": "Imaging Series"
+   "label": "Imaging Series / Instances"
   },
   {
    "fieldname": "series_instances_section",
@@ -169,7 +169,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-27 13:21:10.614416",
+ "modified": "2025-07-27 16:21:29.098757",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Imaging Study",

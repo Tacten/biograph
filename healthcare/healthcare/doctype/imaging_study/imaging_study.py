@@ -31,13 +31,14 @@ class ImagingStudy(Document):
 			return
 
 		config = self.get_pacs_config()
-		base_url = config.pacs_base_url.rstrip("/")
+		base_url = config.get("pacs_base_url")
+		base_url = base_url and base_url.rstrip("/")
 		auth = (
-			config.username,
-			get_decrypted_password("Healthcare Settings", "Healthcare Settings", raise_exception=False),
+			config.get("pacs_username"),
+			get_decrypted_password("Healthcare Settings", "Healthcare Settings", fieldname="pacs_password"),
 		)
-		qido_rs_url = config.qido_rs_url
-		wado_rs_url = config.wado_rs_url
+		qido_rs_url = config.get("qido_rs_url")
+		wado_rs_url = config.get("wado_rs_url")
 
 		preview_attached = False
 		structured_series = []

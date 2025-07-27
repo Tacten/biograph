@@ -577,8 +577,8 @@
    "description": "Accession Number",
    "fieldname": "ups_appointment",
    "fieldtype": "Link",
-   "label": "UPS Appointment",
-   "options": "UPS Appointment",
+   "label": "Imaging Appointment",
+   "options": "Imaging Appointment",
    "read_only": 1
   },
   {
@@ -622,7 +622,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-27 12:49:13.454873",
+ "modified": "2025-07-27 16:21:28.789577",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Observation",
