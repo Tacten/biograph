@@ -150,11 +150,12 @@
   {
    "fieldname": "preview_html",
    "fieldtype": "HTML",
-   "label": "Preview"
+   "label": "Series Preview"
   },
   {
    "fieldname": "series_json",
    "fieldtype": "Code",
+   "hidden": 1,
    "label": "Series JSON",
    "no_copy": 1,
    "read_only": 1
@@ -168,7 +169,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-09 18:39:49.603502",
+ "modified": "2025-07-27 13:21:10.614416",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Imaging Study",

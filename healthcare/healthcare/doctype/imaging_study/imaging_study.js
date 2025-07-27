@@ -4,7 +4,7 @@ frappe.ui.form.on("Imaging Study", {
 			const series_list = JSON.parse(frm.doc.series_json || "[]");
 
 			let html = `
-				<div class="series-container" style="display:flex; flex-wrap:wrap; gap:12px;">
+				<div class="series-container" style="display:flex; flex-wrap:wrap; gap:16px;">
 			`;
 
 			series_list.forEach((series, index) => {
@@ -12,11 +12,10 @@ frappe.ui.form.on("Imaging Study", {
 					<div class="series-card" data-series-index="${index}"
 						style="
 							text-align:center;
-							width:140px;
-							cursor:pointer;
+							width:18%;
 							border:1px solid #ccc;
 							border-radius:7px;
-							padding:8px;
+							padding:7px;
 							overflow:hidden;
 							max-height:220px;
 							display:flex;
@@ -24,10 +23,10 @@ frappe.ui.form.on("Imaging Study", {
 							justify-content:space-between;
 							box-shadow:0 2px 5px rgba(0,0,0,0.05);">
 						<img src="${series.series_preview}" style="width:100%; height:auto; border-radius:5px;" />
-						<!--<div style="font-size: 0.85rem; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${series.description || series.series_uid}">
+						<div style="font-size: 0.85rem; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${series.description || series.series_uid}">
 							${series.description || series.series_uid}
-						</div>-->
-						<div style="color: #888;">${series.instance_previews?.length || "-"} images</div>
+						</div>
+						<div style="color: #888888;">${series.instance_previews?.length || "-"} images</div>
 					</div>
 				`;
 			});
@@ -45,69 +44,45 @@ frappe.ui.form.on("Imaging Study", {
 
 			frm.fields_dict.preview_html.$wrapper.html(html);
 
-			setTimeout(() => {
-				const cards = frm.fields_dict.preview_html.$wrapper.find(".series-card");
+			// setTimeout(() => {
+			// 	const cards = frm.fields_dict.preview_html.$wrapper.find(".series-card");
 
-				cards.each(function () {
-					const card = $(this);
-					const index = card.data("series-index");
-					const series = series_list[index];
+			// 	cards.each(function () {
+			// 		const card = $(this);
+			// 		const index = card.data("series-index");
+			// 		const series = series_list[index];
 
-					card.on("click", function () {
-						cards.css("border", "1px solid #ccc");
-						card.css("border", "3px solid #ccc");
-						const d = new frappe.ui.Dialog({
-							title: `${series.series_uid}`,
-							size: "large",
-							fields: [
-								{
-								fieldname: "viewer_html",
-								fieldtype: "HTML",
-								options: `
-									<iframe
-									src="assets/index.html?seriesUID=${series.series_uid}&qidoRoot=http://localhost:8042/dicom-web&wadoRoot=http://localhost:8042/dicom-web"
-									width="100%"
-									height="600px"
-									frameborder="0"
-									></iframe>
-								`
-								}
-							]
-						});
-						d.show();
-					});
-				});
-			}, 50);
+			// 		card.on("click", function () {
+			// 			cards.css("border", "1px solid #ccc");
+			// 			card.css("border", "3px solid #ccc");
 
-			/*setTimeout(() => {
-				const cards = frm.fields_dict.preview_html.$wrapper.find(".series-card");
-				const previewContainer = frm.fields_dict.preview_html.$wrapper.find("#instance-previews");
-
-				cards.each(function () {
-					const card = $(this);
-					const index = card.data("series-index");
-					const series = series_list[index];
-
-					card.on("click", function () {
-						cards.css("border", "1px solid #ccc");
-						card.css("border", "3px solid #ccc");
-
-						previewContainer.empty().hide();
-						series.instance_previews.forEach(instance => {
-							const img = $(`<img src="${instance.file_url}"
-								style="
-									width:120px;
-									height:auto;
-									border:1px solid #aaa;
-									border-radius:7px;
-									margin:3px;"
-							/>`);
-							previewContainer.append(img);
-						});
-						previewContainer.show();
-					});
-				});
-			}, 50);*/
+			// 			const d = new frappe.ui.Dialog({
+			// 				title: `${series.series_uid}`,
+			// 				size: "large",
+			// 				fields: [
+			// 					{
+			// 					fieldname: "viewer_html",
+			// 					fieldtype: "HTML",
+			// 					options: `
+			// 						<iframe
+			// 							src="http://localhost:5173?studyUID=1.2.826.0.1.3680043.10.43.1753456010
+			// 							&seriesUID=1.2.826.0.1.3680043.8.498.86520435611506356480470154314530210093
+			// 							&sopUID=1.2.826.0.1.3680043.8.498.15683553860601812852607030574701453248
+			// 							&qidoRoot=/dicom-proxy
+			// 							&wadoRoot=/dicom-proxy"
+			// 							width="100%" height="600" frameborder="0"
+			// 						></iframe>
+			// 					`
+			// 					}
+			// 				]
+			// 			});
+			// 			d.show();
+			// 			// src="http://localhost:5173?seriesUID=${series.series_uid}&qidoRoot=/dicom-proxy&wadoRoot=/dicom-proxy"
+			// 			// src="/assets/healthcare/dcmviewer/index.html?seriesUID=${series.series_uid}&wadoRoot=http://localhost:8042/dicom-web&qidoRoot=http://localhost:8042/dicom-web"
+			// 			// src="http://localhost:5173?studyUID=1.2.826.0.1.3680043.10.43.1753456010&seriesUID=1.2.826.0.1.3680043.8.498.86520435611506356480470154314530210093&sopUID=1.2.826.0.1.3680043.8.498.15683553860601812852607030574701453248&qidoRoot=/dicom-proxZ&wadoRoot=/dicom-proxy"
+			// 		});
+			// 	});
+			// }, 50);
 		}
 	}
 });
