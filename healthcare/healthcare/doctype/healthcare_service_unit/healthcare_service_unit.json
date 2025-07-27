@@ -257,6 +257,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "AE Title",
+   "length": 16,
    "mandatory_depends_on": "eval:doc.is_modality",
    "no_copy": 1,
    "search_index": 1
@@ -264,7 +265,7 @@
  ],
  "is_tree": 1,
  "links": [],
- "modified": "2025-06-22 19:00:04.500827",
+ "modified": "2025-07-27 16:45:10.525144",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Healthcare Service Unit",
