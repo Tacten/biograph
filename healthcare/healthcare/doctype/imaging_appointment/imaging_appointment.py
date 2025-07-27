@@ -2,36 +2,17 @@
 # For license information, please see license.txt
 
 import json
-import os
 
 import shortuuid
-from pydicom.uid import UID
 
 import frappe
 from frappe.model.document import Document
 
-MPPS_SOP_CLASS = UID("1.2.840.10008.3.1.2.3.3")
-STORAGE_SOP_CLASS = UID("1.2.840.10008.5.1.4.1.1.2")
-CONFIG_PATH = os.path.expanduser("~/.marley_modality/config.yaml")
 
-DEFAULTS = {  # settings
-	"ae_title": "TEST_HARNESS",
-	"ris": {"ae_title": "MARLEY-RIS", "host": "127.0.0.1", "port": 104},
-	"pacs": {
-		"host": "localhost",
-		"port": 4242,
-		"ae_title": "ORTHANC",
-		"url": "http://localhost:8042/dicom-web/studies",
-		"username": "orthanc",
-		"password": "orthanc",
-	},
-	"sample_dicom": "./IMAGES/CT-1/ct-sample.dcm",
-}
-
-
-class UPSAppointment(Document):
+class ImagingAppointment(Document):
 	def before_insert(self):
-		self.ups_instance_uid = str(shortuuid.uuid())
+		self.name = str(shortuuid.uuid())  # 16 digit uuid
+		self.ups_instance_uid = self.name
 
 	def on_update(self):
 		if self.status == "In Progress":
@@ -48,7 +29,7 @@ class UPSAppointment(Document):
 			study = frappe.new_doc("Imaging Study")
 			study.patient = mpps_data.get("patient", self.patient)
 			study.study_instance_uid = mpps_data.get("study_instance_uid", self.study_instance_uid)
-			study.ups_appointment = mpps_data.get("accession_number", self.name)
+			study.imaging_appointment = mpps_data.get("accession_number", self.name)
 			study.station_ae = mpps_data.get("performed_station_ae", self.station_ae)
 			study.completed_on = mpps_data.get("end_time", frappe.utils.now())
 			study.performer = mpps_data.get("performer_name", "")

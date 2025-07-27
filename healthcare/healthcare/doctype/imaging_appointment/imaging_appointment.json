@@ -11,19 +11,22 @@
   "claimed_by",
   "details_section",
   "appointment",
+  "observation_template",
   "referred_to_practitioner",
-  "patient",
-  "patient_name",
-  "gender",
-  "date_of_birth",
+  "practitioner_name",
+  "referring_practitioner",
   "column_break_fszz",
   "status",
   "station_ae",
   "modality",
   "scheduled_date",
   "scheduled_time",
-  "observation_template",
-  "referring_practitioner",
+  "section_break_klcv",
+  "patient",
+  "patient_name",
+  "column_break_nypq",
+  "gender",
+  "date_of_birth",
   "section_break_xewj",
   "study_instance_uid",
   "imaging_study",
@@ -43,7 +46,7 @@
    "label": "Appointment",
    "link_filters": "[[\"Patient Appointment\",\"status\",\"not in\",[\"Closed\",\"Cancelled\",null]]]",
    "options": "Patient Appointment",
-   "reqd": 1,
+   "read_only": 1,
    "search_index": 1
   },
   {
@@ -169,7 +172,6 @@
    "fieldtype": "Link",
    "label": "Referred to Practitioner",
    "options": "Healthcare Practitioner",
-   "read_only": 1,
    "search_index": 1
   },
   {
@@ -251,15 +253,31 @@
    "options": "Healthcare Service Unit",
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fetch_from": "referred_to_practitioner.practitioner_name",
+   "fieldname": "practitioner_name",
+   "fieldtype": "Data",
+   "label": "Practitioner Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_klcv",
+   "fieldtype": "Section Break",
+   "label": "Patient"
+  },
+  {
+   "fieldname": "column_break_nypq",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-04 22:42:11.692457",
+ "modified": "2025-07-27 14:14:41.912744",
  "modified_by": "Administrator",
  "module": "Healthcare",
- "name": "UPS Appointment",
+ "name": "Imaging Appointment",
  "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [

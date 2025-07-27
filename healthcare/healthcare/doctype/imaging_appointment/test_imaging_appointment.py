@@ -11,9 +11,9 @@ EXTRA_TEST_RECORD_DEPENDENCIES = []  # eg. ["User"]
 IGNORE_TEST_RECORD_DEPENDENCIES = []  # eg. ["User"]
 
 
-class IntegrationTestUPSAppointment(IntegrationTestCase):
+class IntegrationTestImagingAppointment(IntegrationTestCase):
 	"""
-	Integration tests for UPSAppointment.
+	Integration tests for ImagingAppointment.
 	Use this class for testing interactions between multiple components.
 	"""
 
