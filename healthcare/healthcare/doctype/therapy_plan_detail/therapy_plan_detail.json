@@ -94,7 +94,7 @@
    "fieldname": "no_of_sessions_per_day",
    "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "No. of Sessions Day",
+   "label": "No. of Sessions Per Day",
    "read_only": 0
   }
  ],
