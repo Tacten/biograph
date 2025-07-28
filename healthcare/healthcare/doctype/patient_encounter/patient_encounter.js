@@ -61,10 +61,30 @@ frappe.ui.form.on('Patient Encounter', {
 	},
 
 	setup: function(frm) {
-		frm.get_field('therapies').grid.editable_fields = [
-			{fieldname: 'therapy_type', columns: 8},
-			{fieldname: 'no_of_sessions', columns: 2}
+		let value = [
+				{
+					"fieldname": "therapy_type",
+					"columns": 2
+				},
+				{
+					"fieldname": "no_of_days",
+					"columns": 2
+				},
+				{
+					"fieldname": "no_of_sessions_per_day",
+					"columns": 2
+				},
+				{
+					"fieldname": "no_of_sessions",
+					"columns": 2
+				},
 		];
+		frappe.model.user_settings.save("Therapy Plan Detail", "GridView", null).then((r) => {
+			frappe.model.user_settings["Therapy Plan Detail"] = r.message || r;
+		});
+		frappe.model.user_settings.save("Therapy Plan Detail", "GridView", value).then((r) => {
+			frappe.model.user_settings["Therapy Plan Detail"] = r.message || r;
+		});
 		frm.get_field('drug_prescription').grid.editable_fields = [
 			{fieldname: 'drug_code', columns: 2},
 			{fieldname: 'drug_name', columns: 2},
@@ -825,3 +845,32 @@ let create_patient_referral = function(frm) {
 
 	dialog.show();
 };
+
+frappe.ui.form.on('Therapy Plan Detail', {
+    no_of_days:(frm, cdt, cdn)=>{
+        let d = locals[cdt][cdn]
+		if(d.no_of_days < 1){
+			frappe.model.set_value(cdt, cdn, 'no_of_days', '')
+		}
+        if(d['no_of_days'] && d['no_of_sessions_per_day']){
+            frappe.model.set_value(cdt, cdn, 'no_of_sessions', d.no_of_days * d.no_of_sessions_per_day)
+            frm.refresh_field("therapies")
+        }else{
+			frappe.model.set_value(cdt, cdn, 'no_of_sessions','')
+            frm.refresh_field("therapies")	
+		}
+    },
+    no_of_sessions_per_day:(frm, cdt, cdn)=>{
+        let d = locals[cdt][cdn]
+		if(d.no_of_sessions_per_day < 1){
+			frappe.model.set_value(cdt, cdn, 'no_of_sessions_per_day', '')
+		}
+        if(d['no_of_days'] && d['no_of_sessions_per_day']){
+            frappe.model.set_value(cdt, cdn, 'no_of_sessions', d.no_of_days * d.no_of_sessions_per_day)
+            frm.refresh_field("therapies")
+        }else{
+			frappe.model.set_value(cdt, cdn, 'no_of_sessions', '')
+            frm.refresh_field("therapies")	
+		}
+    }
+}) 
