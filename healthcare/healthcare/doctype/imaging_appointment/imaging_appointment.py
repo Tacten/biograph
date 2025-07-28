@@ -7,12 +7,16 @@ import shortuuid
 
 import frappe
 from frappe.model.document import Document
-
+from frappe import _
 
 class ImagingAppointment(Document):
 	def before_insert(self):
 		self.name = str(shortuuid.uuid())  # 16 digit uuid
-		self.ups_instance_uid = self.name
+
+		settings = frappe.get_cached_doc("Healthcare Settings")
+		if not settings.uid_root:
+			frappe.throw(_("UPS Instance UID root is not configured in Healthcare Settings"))
+		self.ups_instance_uid =  f"{settings.uid_root}.{frappe.utils.now_datetime().strftime('%Y%m%d%H%M%S%f')}"
 
 	def on_update(self):
 		if self.status == "In Progress":

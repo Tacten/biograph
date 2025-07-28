@@ -8,6 +8,10 @@ import shortuuid
 import frappe
 from frappe import _
 
+from healthcare.healthcare.doctype.modality_message_log.modality_message_log import (
+	log_modality_message,
+)
+
 DICOM_TO_FRAPPE_MAP = {
 	"00100020": "patient",  # Patient ID
 	"00100010": "patient_name",  # Patient Name
@@ -29,30 +33,16 @@ PARTIAL_MATCH_FIELDS = {"00100010"}
 RANGE_FIELDS = {"00400002"}
 
 
-def dicomify_gender(value):
-	return {
-		"male": "M",
-		"female": "F",
-		"other": "O",
-		"unknown": "U",
-	}.get(str(value).strip().lower(), "U")
-
-
-def dicom_to_frappe_value(tag, value):
-	"""TODO: handle '*'"""
-	if isinstance(value, str):
-		if tag in {"00100010", "00081030"}:  # Patient Name, Modality
-			return value.replace("^", " ")
-	return value
-
-
-@frappe.whitelist()
 def get_ups_tasks(filters=None):
 	"""Return DICOMWeb dataset for UPS-RS request"""
 	# curl -X POST https://site_url/api/method/healthcare.healthcare.api.ups_rs.get_ups_tasks \
 	# -H "Content-Type: application/json" \
 	# --data '{"filters": {"00100010": "Jane^", "00400002__from": "20250601", "00400002__to": "20260630"}}'
 
+	log_modality_message(
+		type="UPS-RS",
+		request_payload=filters,
+	)
 	frappe_filters = get_filters(filters)
 	worklist = frappe.get_all(
 		"Imaging Appointment",
@@ -122,6 +112,60 @@ def get_ups_tasks(filters=None):
 			)
 
 	return result
+
+
+def process_ups_claim(uid, data, ae_title):
+	doc = frappe.get_doc("Imaging Appointment", {"ups_instance_uid": uid})
+	doc.status = "In Progress"
+	doc.claimed_by = ae_title
+	doc.transaction_uid = data.get("TransactionUID")
+	doc.modified_by = frappe.session.user
+	doc.save(ignore_permissions=True)
+	return {"Status": "Claimed", "UPSInstanceUID": uid}
+
+
+def cancel_ups(uid, ae_title):
+	doc = frappe.get_doc("Imaging Appointment", {"ups_instance_uid": uid})
+	doc.status = "Cancelled"
+	doc.cancelled_by = ae_title
+	doc.save(ignore_permissions=True)
+	return {"Status": "Cancelled", "UPSInstanceUID": uid}
+
+
+def handle_workitem_event(uid, data):
+	doc = frappe.get_doc("Imaging Appointment", {"ups_instance_uid": uid})
+	new_status = data.get("Status", "Completed")
+	if new_status not in ["In Progress", "Completed"]:
+		frappe.throw("Invalid workitem status")
+	doc.status = new_status
+	doc.save(ignore_permissions=True)
+	return {"Status": new_status, "UPSInstanceUID": uid}
+
+
+def update_from_modality(uid, update_data):
+	doc = frappe.get_doc("Imaging Appointment", {"ups_instance_uid": uid})
+	for key, val in update_data.items():
+		if hasattr(doc, key):
+			setattr(doc, key, val)
+	doc.save(ignore_permissions=True)
+	return {"Status": "Updated", "UPSInstanceUID": uid}
+
+
+def dicomify_gender(value):
+	return {
+		"male": "M",
+		"female": "F",
+		"other": "O",
+		"unknown": "U",
+	}.get(str(value).strip().lower(), "U")
+
+
+def dicom_to_frappe_value(tag, value):
+	"""TODO: handle '*'"""
+	if isinstance(value, str):
+		if tag in {"00100010", "00081030"}:  # Patient Name, Modality
+			return value.replace("^", " ")
+	return value
 
 
 def get_filters(filters=None):

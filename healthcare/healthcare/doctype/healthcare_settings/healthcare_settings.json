@@ -35,6 +35,9 @@
   "lab_test_approval_required",
   "employee_name_and_designation_in_print",
   "custom_signature_in_print",
+  "radiology_ups_rs_settings_section",
+  "uid_root",
+  "column_break_dgbu",
   "radiology_section",
   "pacs_ae_title",
   "pacs_username",
@@ -498,11 +501,26 @@
    "fieldname": "pacs_password",
    "fieldtype": "Password",
    "label": "PACS Password"
+  },
+  {
+   "fieldname": "radiology_ups_rs_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Radiology - UPS RS Settings"
+  },
+  {
+   "description": "Root for UPS Instance UID",
+   "fieldname": "uid_root",
+   "fieldtype": "Data",
+   "label": "Organisation UID Root"
+  },
+  {
+   "fieldname": "column_break_dgbu",
+   "fieldtype": "Column Break"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-07-27 14:05:13.595298",
+ "modified": "2025-07-29 13:31:59.317865",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Healthcare Settings",
