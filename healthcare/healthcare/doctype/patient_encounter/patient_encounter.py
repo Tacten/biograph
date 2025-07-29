@@ -789,6 +789,7 @@ def create_service_request_from_widget(encounter, data, medication_request=False
 def get_filtered_advice_template(doctype, txt, searchfield, start, page_len, filters):
 	filters["symptoms"] = filters.get("doc").get("symptoms")
 	filters["diagnosis"] = filters.get("doc").get("diagnosis")
+	filters["department"] = filters.get("doc").get("medical_department")
 	
 	symptoms, diagnosis = [], []
 
@@ -815,7 +816,12 @@ def get_filtered_advice_template(doctype, txt, searchfield, start, page_len, fil
 		txt_conditions.append(f"pes.complaint like '%{txt}%' ")
 		txt_conditions.append(f"dat.name like '%{txt}%' ")
 
-	where_clause = " OR ".join(conditions)
+	department_condition = ''
+	if filters.get("department"):
+		department_condition += f" dat.medical_department = '{filters.get('department')}' and "
+
+	where_clause = f"{department_condition}"
+	where_clause += " OR ".join(conditions)
 	where_sql = f"WHERE {where_clause}" if conditions else ""
 	if txt_conditions:
 		where_sql += f" and ({'OR '.join(txt_conditions)} )"
