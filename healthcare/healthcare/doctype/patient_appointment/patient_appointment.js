@@ -632,7 +632,7 @@ let check_and_set_availability = function(frm) {
 						},
 						callback: function(r) {
 							if (r.message 
-								& Array.isArray(r.message) 
+								&& Array.isArray(r.message) 
 								&& r.message.length > 0 
 								&& r.message.name != frm.doc.name) {
 								console.log(r.message)
