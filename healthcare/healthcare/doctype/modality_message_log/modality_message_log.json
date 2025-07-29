@@ -85,17 +85,14 @@
   {
    "fieldname": "status_text",
    "fieldtype": "Code",
-   "label": "Status Text"
+   "label": "Status Text",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
-<<<<<<< Updated upstream
- "modified": "2025-07-28 14:47:47.673350",
-=======
  "modified": "2025-07-29 22:24:53.775213",
->>>>>>> Stashed changes
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Modality Message Log",

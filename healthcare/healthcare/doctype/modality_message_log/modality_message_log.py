@@ -34,5 +34,6 @@ def log_modality_message(
 				"response_payload": frappe.as_json(response_payload, indent=2) if response_payload else None,
 			}
 		).insert(ignore_permissions=True)
+		frappe.db.commit()
 	except Exception as e:
 		frappe.log_error(f"Modality log failed: {e}", "Modality Message Logger")
