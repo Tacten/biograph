@@ -9,6 +9,7 @@
   "title",
   "diagnosis",
   "column_break_nfum",
+  "medical_department",
   "history_of_present_illness",
   "section_break_fkjn",
   "doctor_advice"
@@ -43,12 +44,20 @@
   {
    "fieldname": "doctor_advice",
    "fieldtype": "Text Editor"
+  },
+  {
+   "fieldname": "medical_department",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Medical Department",
+   "options": "Medical Department",
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-08 21:00:37.143086",
+ "modified": "2025-07-29 11:20:16.829892",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Doctor Advice Template",
