@@ -10,6 +10,8 @@ import json
 from healthcare.healthcare.utils import validate_nursing_tasks
 from erpnext.stock.get_item_details import get_item_details, get_pos_profile
 from frappe.model.mapper import get_mapped_doc
+from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import get_income_account
+
 
 
 class TherapyPlan(Document):
@@ -217,6 +219,7 @@ def make_sales_invoice(reference_name, patient, company, items, therapy_plan_tem
 			"price_list_currency": price_list_currency,
 			"plc_conversion_rate": 1.0,
 			"conversion_rate": 1.0,
+			"income_account": get_income_account(si.ref_practitioner, company)
 		}
 
 		item_details = get_item_details(args)
@@ -227,7 +230,8 @@ def make_sales_invoice(reference_name, patient, company, items, therapy_plan_tem
 			"amount" : flt(item_details.price_list_rate) * flt(row.get("sessions")),
 			"reference_dt" : "Therapy Plan",
 			"reference_dn" : reference_name,
-			"description" : item_details.description
+			"description" : item_details.description,
+			"income_account": get_income_account(si.ref_practitioner, company)
 		})
 		
 	si.set_missing_values(for_validate=True)
