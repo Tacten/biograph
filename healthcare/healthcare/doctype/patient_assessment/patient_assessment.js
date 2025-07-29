@@ -12,6 +12,7 @@ frappe.ui.form.on('Patient Assessment', {
 					message: __('Row #{0}: Score value is missing' , [e.idx]),
 					indicator: 'red'
 				});
+				return;
 			}
 		});
 	},
@@ -77,6 +78,7 @@ frappe.ui.form.on('Patient Assessment', {
 	},
 
 	show_patient_progress: function(frm) {
+		frm.dashboard.reset()
 		let bars = [];
 		let message = '';
 		let added_min = false;
