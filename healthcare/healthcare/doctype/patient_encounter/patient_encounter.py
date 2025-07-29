@@ -825,6 +825,10 @@ def get_filtered_advice_template(doctype, txt, searchfield, start, page_len, fil
 	where_sql = f"WHERE {where_clause}" if conditions else ""
 	if txt_conditions:
 		where_sql += f" and ({'OR '.join(txt_conditions)} )"
+	
+	if filters.get("department") and (not where_sql or where_sql == ""):
+		where_sql = f" WHERE dat.medical_department = '{filters.get('department')}' "
+
 
 	result = frappe.db.sql(
 		f"""
