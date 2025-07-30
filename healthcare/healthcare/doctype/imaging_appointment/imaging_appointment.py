@@ -3,20 +3,22 @@
 
 import json
 
-import shortuuid
-
 import frappe
+from frappe import _, generate_hash
 from frappe.model.document import Document
-from frappe import _
+
 
 class ImagingAppointment(Document):
-	def before_insert(self):
-		self.name = str(shortuuid.uuid())  # 16 digit uuid
+	def autoname(self):
+		self.name = generate_hash(length=16)  # accession number VR SH 16
 
+	def before_insert(self):
 		settings = frappe.get_cached_doc("Healthcare Settings")
 		if not settings.uid_root:
 			frappe.throw(_("UPS Instance UID root is not configured in Healthcare Settings"))
-		self.ups_instance_uid =  f"{settings.uid_root}.{frappe.utils.now_datetime().strftime('%Y%m%d%H%M%S%f')}"
+		self.ups_instance_uid = (
+			f"{settings.uid_root.rstrip('.')}.{frappe.utils.now_datetime().strftime('%Y%m%d%H%M%S%f')}"
+		)
 
 	def on_update(self):
 		if self.status == "In Progress":
