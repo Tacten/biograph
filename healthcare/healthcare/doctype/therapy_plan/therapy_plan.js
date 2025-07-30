@@ -3,11 +3,32 @@
 
 frappe.ui.form.on('Therapy Plan', {
 	setup: function(frm) {
-		frm.get_field('therapy_plan_details').grid.editable_fields = [
-			{fieldname: 'therapy_type', columns: 6},
-			{fieldname: 'no_of_sessions', columns: 2},
-			{fieldname: 'sessions_completed', columns: 2}
+        console.log("setup")
+		let value = [
+				{
+					"fieldname": "therapy_type",
+					"columns": 2
+				},
+				{
+					"fieldname": "no_of_days",
+					"columns": 2
+				},
+				{
+					"fieldname": "no_of_sessions_per_day",
+					"columns": 2
+				},
+				{
+					"fieldname": "no_of_sessions",
+					"columns": 2
+				},
+				{fieldname: 'sessions_completed', columns: 2}
 		];
+		frappe.model.user_settings.save("Therapy Plan Detail", "GridView", null).then((r) => {
+			frappe.model.user_settings["Therapy Plan Detail"] = r.message || r;
+		});
+		frappe.model.user_settings.save("Therapy Plan Detail", "GridView", value).then((r) => {
+			frappe.model.user_settings["Therapy Plan Detail"] = r.message || r;
+		});
 	},
 	onload:(frm)=>{
 		if(!frm.doc.__islocal){
