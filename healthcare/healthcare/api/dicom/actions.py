@@ -163,14 +163,9 @@ def handle_workitem_event(uid, data):
 
 def update_from_modality(uid, update_data):
 	doc = frappe.get_doc("Imaging Appointment", {"ups_instance_uid": uid})
-	if not doc:
+	if not doc:  # PUT, do not insert
 		frappe.log_error(f"Imaging Appointment with UID {uid} does not exist")
-		doc = frappe.get_doc(
-			{
-				"doctype": "Imaging Appointment",
-				"ups_instance_uid": uid,
-			}
-		).insert(ignore_permissions=True)
+		frappe.throw("Invalid UID, workitem not found")
 
 	for key, val in update_data.items():
 		if hasattr(doc, key):
