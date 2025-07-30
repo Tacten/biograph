@@ -2,7 +2,11 @@
 # For license information, please see license.txt
 
 import json
+
+from werkzeug.wrappers import Response
+
 import frappe
+from frappe.website.page_renderers.base_renderer import BaseRenderer
 
 from healthcare.healthcare.api.dicom.actions import (
 	cancel_ups,
@@ -15,9 +19,6 @@ from healthcare.healthcare.api.dicom.capabilities import (
 	get_conformance_statement,
 	get_dicomweb_verification,
 )
-from frappe.website.page_renderers.base_renderer import BaseRenderer
-from frappe.website.utils import build_response
-
 from healthcare.healthcare.doctype.modality_message_log.modality_message_log import (
 	log_modality_message,
 )
@@ -74,25 +75,25 @@ class DICOMWebRenderer(BaseRenderer):
 			elif method == "PUT":
 				return self.handle_update_workitem(uid)
 
-		elif path == "/dicom-web/echo":
+		elif path == "/dicom-web/echo":  # no auth
 			result = get_dicomweb_verification()
 			log_modality_message(
 				ae_title=frappe.get_request_header("X-AE-TITLE") or "Unknown",
-				type="Verification",
+				message_type="Verification",
 				response_payload=result,
 				status_code="0000H",
-				status_text="DICOMWeb Verification successful",
+				status_text="DICOMWeb Verification completed successfully",
 			)
 			return self.respond(200, result)
 
-		elif path == "/dicom-web/conformance":
+		elif path == "/dicom-web/conformance":  # no auth
 			result = get_conformance_statement()
 			log_modality_message(
 				ae_title=frappe.get_request_header("X-AE-TITLE") or "Unknown",
-				type="Conformance",
+				message_type="Conformance",
 				response_payload=result,
 				status_code="0000H",
-				status_text="Conformance served successfully",
+				status_text="DICOM Conformance served successfully",
 			)
 			return self.respond(200, result)
 
@@ -105,7 +106,7 @@ class DICOMWebRenderer(BaseRenderer):
 			result = get_ups_tasks(filters=filters)
 			log_modality_message(
 				ae_title=ae_title,
-				type="UPS RS",
+				message_type="UPS RS",
 				request_payload=filters,
 				response_payload=result,
 				status_code="0000H",
@@ -115,7 +116,7 @@ class DICOMWebRenderer(BaseRenderer):
 		except Exception as e:
 			log_modality_message(
 				ae_title=ae_title,
-				type="UPS Claim",
+				message_type="UPS Claim",
 				request_payload=filters,
 				status_code="0110H",
 				status_text=str(e),
@@ -133,7 +134,7 @@ class DICOMWebRenderer(BaseRenderer):
 
 			log_modality_message(
 				ae_title=ae_title,
-				type="UPS Claim",
+				message_type="UPS Claim",
 				request_payload=body,
 				response_payload=result,
 				status_code="0000H",
@@ -144,7 +145,7 @@ class DICOMWebRenderer(BaseRenderer):
 		except Exception as e:
 			log_modality_message(
 				ae_title=ae_title,
-				type="UPS Claim",
+				message_type="UPS Claim",
 				request_payload=body,
 				status_code="0110H",
 				status_text=str(e),
@@ -161,7 +162,7 @@ class DICOMWebRenderer(BaseRenderer):
 			result = cancel_ups(uid, ae_title)
 			log_modality_message(
 				ae_title=ae_title,
-				type="UPS Cancel",
+				message_type="UPS Cancel",
 				request_payload=None,
 				response_payload=result,
 				status_code="0000H",
@@ -172,7 +173,7 @@ class DICOMWebRenderer(BaseRenderer):
 		except Exception as e:
 			log_modality_message(
 				ae_title=ae_title,
-				type="UPS Cancel",
+				message_type="UPS Cancel",
 				request_payload=None,
 				status_code="0110H",
 				status_text=str(e),
@@ -191,7 +192,7 @@ class DICOMWebRenderer(BaseRenderer):
 
 			log_modality_message(
 				ae_title=ae_title,
-				type="UPS WorkitemEvent",
+				message_type="UPS WorkitemEvent",
 				request_payload=body,
 				response_payload=result,
 				status_code="0000H",
@@ -202,7 +203,7 @@ class DICOMWebRenderer(BaseRenderer):
 		except Exception as e:
 			log_modality_message(
 				ae_title=ae_title,
-				type="UPS WorkitemEvent",
+				message_type="UPS WorkitemEvent",
 				request_payload=body,
 				status_code="0110H",
 				status_text=str(e),
@@ -221,7 +222,7 @@ class DICOMWebRenderer(BaseRenderer):
 
 			log_modality_message(
 				ae_title=ae_title,
-				type="UPS Update",
+				message_type="UPS Update",
 				request_payload=body,
 				response_payload=result,
 				status_code="0000H",
@@ -232,7 +233,7 @@ class DICOMWebRenderer(BaseRenderer):
 		except Exception as e:
 			log_modality_message(
 				ae_title=ae_title,
-				type="UPS Update",
+				message_type="UPS Update",
 				request_payload=body,
 				status_code="0110H",
 				status_text=str(e),
@@ -240,10 +241,7 @@ class DICOMWebRenderer(BaseRenderer):
 			)
 			return self.respond(400, self.dicom_error("ProcessingFailure", f"Update failed: {e}"))
 
-
 	def respond(self, status, data, content_type="application/json"):
-		from werkzeug.wrappers import Response
-
 		return Response(
 			response=json.dumps(data, indent=2),
 			status=status,
