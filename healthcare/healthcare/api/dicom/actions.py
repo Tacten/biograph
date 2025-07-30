@@ -8,10 +8,6 @@ import shortuuid
 import frappe
 from frappe import _
 
-from healthcare.healthcare.doctype.modality_message_log.modality_message_log import (
-	log_modality_message,
-)
-
 DICOM_TO_FRAPPE_MAP = {
 	"00100020": "patient",  # Patient ID
 	"00100010": "patient_name",  # Patient Name
@@ -38,11 +34,6 @@ def get_ups_tasks(filters=None):
 	# curl -X POST https://site_url/api/method/healthcare.healthcare.api.ups_rs.get_ups_tasks \
 	# -H "Content-Type: application/json" \
 	# --data '{"filters": {"00100010": "Jane^", "00400002__from": "20250601", "00400002__to": "20260630"}}'
-
-	log_modality_message(
-		type="UPS-RS",
-		request_payload=filters,
-	)
 	frappe_filters = get_filters(filters)
 	worklist = frappe.get_all(
 		"Imaging Appointment",
@@ -116,6 +107,15 @@ def get_ups_tasks(filters=None):
 
 def process_ups_claim(uid, data, ae_title):
 	doc = frappe.get_doc("Imaging Appointment", {"ups_instance_uid": uid})
+	if not doc:
+		frappe.log_error(f"Imaging Appointment with UID {uid} does not exist")
+		doc = frappe.get_doc(
+			{
+				"doctype": "Imaging Appointment",
+				"ups_instance_uid": uid,
+			}
+		).insert(ignore_permissions=True)
+
 	doc.status = "In Progress"
 	doc.claimed_by = ae_title
 	doc.transaction_uid = data.get("TransactionUID")
@@ -126,14 +126,33 @@ def process_ups_claim(uid, data, ae_title):
 
 def cancel_ups(uid, ae_title):
 	doc = frappe.get_doc("Imaging Appointment", {"ups_instance_uid": uid})
+	if not doc:
+		frappe.log_error(f"Imaging Appointment with UID {uid} does not exist")
+		doc = frappe.get_doc(
+			{
+				"doctype": "Imaging Appointment",
+				"ups_instance_uid": uid,
+			}
+		).insert(ignore_permissions=True)
+
 	doc.status = "Cancelled"
 	doc.cancelled_by = ae_title
+	doc.modified_by = frappe.session.user
 	doc.save(ignore_permissions=True)
 	return {"Status": "Cancelled", "UPSInstanceUID": uid}
 
 
 def handle_workitem_event(uid, data):
 	doc = frappe.get_doc("Imaging Appointment", {"ups_instance_uid": uid})
+	if not doc:
+		frappe.log_error(f"Imaging Appointment with UID {uid} does not exist")
+		doc = frappe.get_doc(
+			{
+				"doctype": "Imaging Appointment",
+				"ups_instance_uid": uid,
+			}
+		).insert(ignore_permissions=True)
+
 	new_status = data.get("Status", "Completed")
 	if new_status not in ["In Progress", "Completed"]:
 		frappe.throw("Invalid workitem status")
@@ -144,6 +163,15 @@ def handle_workitem_event(uid, data):
 
 def update_from_modality(uid, update_data):
 	doc = frappe.get_doc("Imaging Appointment", {"ups_instance_uid": uid})
+	if not doc:
+		frappe.log_error(f"Imaging Appointment with UID {uid} does not exist")
+		doc = frappe.get_doc(
+			{
+				"doctype": "Imaging Appointment",
+				"ups_instance_uid": uid,
+			}
+		).insert(ignore_permissions=True)
+
 	for key, val in update_data.items():
 		if hasattr(doc, key):
 			setattr(doc, key, val)
@@ -172,10 +200,10 @@ def get_filters(filters=None):
 	if isinstance(filters, str):
 		try:
 			filters = json.loads(filters)
-		except Exception:
-			import traceback
-
-			frappe.log_error(traceback.format_exc(), "UPS RS JSON Decode Error")
+		except Exception as e:
+			frappe.log_error(
+				message=f"UPS RS JSON decode error building filters\n{e}", title="UPS RS JSON Decode Error"
+			)
 			frappe.throw(_("Invalid filters format. Must be valid JSON."))
 	elif isinstance(filters, dict):
 		pass
