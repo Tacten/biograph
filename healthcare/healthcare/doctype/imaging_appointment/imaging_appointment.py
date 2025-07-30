@@ -13,12 +13,13 @@ class ImagingAppointment(Document):
 		self.name = generate_hash(length=16)  # accession number VR SH 16
 
 	def before_insert(self):
-		settings = frappe.get_cached_doc("Healthcare Settings")
-		if not settings.uid_root:
-			frappe.throw(_("UPS Instance UID root is not configured in Healthcare Settings"))
-		self.ups_instance_uid = (
-			f"{settings.uid_root.rstrip('.')}.{frappe.utils.now_datetime().strftime('%Y%m%d%H%M%S%f')}"
-		)
+		if not self.ups_instance_uid:
+			settings = frappe.get_cached_doc("Healthcare Settings")
+			if not settings.uid_root:
+				frappe.throw(_("UPS Instance UID root is not configured in Healthcare Settings"))
+			self.ups_instance_uid = (
+				f"{settings.uid_root.rstrip('.')}.{frappe.utils.now_datetime().strftime('%Y%m%d%H%M%S%f')}"
+			)
 
 	def on_update(self):
 		if self.status == "In Progress":

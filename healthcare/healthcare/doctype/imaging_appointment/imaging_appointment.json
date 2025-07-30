@@ -34,6 +34,8 @@
   "column_break_decp",
   "study_start_time",
   "study_finish_time",
+  "modality_transaction_id",
+  "cancelled_by",
   "mpps_tab",
   "mpps_events_section",
   "n_create",
@@ -188,7 +190,6 @@
    "search_index": 1
   },
   {
-   "description": "Accession Number",
    "fieldname": "ups_instance_uid",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -267,12 +268,24 @@
   {
    "fieldname": "column_break_nypq",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "modality_transaction_id",
+   "fieldtype": "Data",
+   "label": "Modality Transaction ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cancelled_by",
+   "fieldtype": "Data",
+   "label": "Cancelled by AE",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-29 20:42:17.882019",
+ "modified": "2025-07-30 11:34:30.199428",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Imaging Appointment",
