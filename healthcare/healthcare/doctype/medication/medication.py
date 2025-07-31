@@ -50,6 +50,8 @@ class Medication(Document):
 						item_doc.manufacturer = item.manufacturer
 						item_doc.brand = item.brand
 						item_doc.disabled = 0
+						if item.get("gst_hsn_code"):
+							item_doc.gst_hsn_code = item.get("gst_hsn_code")
 						item_doc.save(ignore_permissions=True)
 						if item.rate:
 							if not frappe.db.exists("Item Price", {"item_code": item.item_code}):
@@ -60,7 +62,6 @@ class Medication(Document):
 								item_price.item_name = item.item_code
 								item_price.price_list_rate = item.rate
 								item_price.save()
-
 				else:
 					frappe.db.set_value("Item", item.item_code, "disabled", 1)
 
@@ -88,7 +89,7 @@ def insert_item(doc, item):
 				"disabled": 0 if item.is_billable and not doc.disabled else 1,
 				"stock_uom": item.stock_uom or frappe.db.get_single_value("Stock Settings", "stock_uom"),
 			}
-		).insert(ignore_permissions=True, ignore_mandatory=True)
+		)
 	else:
 		item_doc = frappe.get_doc("Item", item.item_code)
 		if item_doc.stock_uom != item.stock_uom:
@@ -100,7 +101,11 @@ def insert_item(doc, item):
 		item_doc.item_name = item.item_code  # also update the name and description of existing item
 		item_doc.description = item.description
 
-	make_item_price(item_doc.name, item.rate)
+	if item.get("gst_hsn_code"):
+		item_doc.gst_hsn_code = item.get("gst_hsn_code")
+	item_doc.save(ignore_permissions=True)
+
+	make_item_price(item_doc.name, item.rate, doc.price_list)
 	frappe.db.set_value("Medication Linked Item", item.name, "item", item.item_code)
 
 
