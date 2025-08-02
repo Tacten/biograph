@@ -30,16 +30,18 @@
   "section_break_xewj",
   "study_instance_uid",
   "imaging_study",
-  "performer",
+  "cancelled_by",
+  "modality_transaction_id",
   "column_break_decp",
   "study_start_time",
   "study_finish_time",
-  "modality_transaction_id",
-  "cancelled_by",
+  "performer",
   "mpps_tab",
   "mpps_events_section",
   "n_create",
-  "n_set"
+  "n_set",
+  "n_cancel",
+  "dataset"
  ],
  "fields": [
   {
@@ -217,7 +219,7 @@
   {
    "fieldname": "mpps_tab",
    "fieldtype": "Tab Break",
-   "label": "MPPS"
+   "label": "Study Events"
   },
   {
    "fieldname": "mpps_events_section",
@@ -234,13 +236,13 @@
   {
    "fieldname": "n_create",
    "fieldtype": "Code",
-   "label": "MPPS N-CREATE",
+   "label": "N-CREATE",
    "read_only": 1
   },
   {
    "fieldname": "n_set",
    "fieldtype": "Code",
-   "label": "MPPS N-SET",
+   "label": "N-SET",
    "read_only": 1
   },
   {
@@ -280,12 +282,24 @@
    "fieldtype": "Data",
    "label": "Cancelled by AE",
    "read_only": 1
+  },
+  {
+   "fieldname": "n_cancel",
+   "fieldtype": "Code",
+   "label": "N-CANCEL",
+   "read_only": 1
+  },
+  {
+   "fieldname": "dataset",
+   "fieldtype": "Code",
+   "label": "Dataset",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-30 11:34:30.199428",
+ "modified": "2025-08-02 14:35:49.577282",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Imaging Appointment",

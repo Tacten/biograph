@@ -7,6 +7,10 @@ import frappe
 from frappe import _, generate_hash
 from frappe.model.document import Document
 
+from healthcare.healthcare.doctype.imaging_study.imaging_study import (
+	build_dicom_hierarchy,
+)
+
 
 class ImagingAppointment(Document):
 	def autoname(self):
@@ -31,24 +35,30 @@ class ImagingAppointment(Document):
 			self.create_observation()
 
 	def create_imaging_study(self):
-		if not frappe.db.exists("Imaging Study", {"study_instance_uid": self.study_instance_uid}):
-			mpps_data = json.loads(self.n_set)
-			study = frappe.new_doc("Imaging Study")
-			study.patient = mpps_data.get("patient", self.patient)
-			study.study_instance_uid = mpps_data.get("study_instance_uid", self.study_instance_uid)
-			study.imaging_appointment = mpps_data.get("accession_number", self.name)
-			study.station_ae = mpps_data.get("performed_station_ae", self.station_ae)
-			study.completed_on = mpps_data.get("end_time", frappe.utils.now())
-			study.performer = mpps_data.get("performer_name", "")
-			study.status = "Pending Review"
+		if frappe.db.exists("Imaging Study", {"study_instance_uid": self.study_instance_uid}):
+			frappe.log_error(f"Imaging Study already exist for Study {self.study_instance_uid}")
+			return
 
-			study.series = json.dumps(mpps_data.get("series", []), indent=1)
-			study.instances = json.dumps(mpps_data.get("instances", []), indent=1)
-			study.dataset = json.dumps(mpps_data.get("raw_ds", []), indent=1)
-			study.save(ignore_permissions=True)
-			study.reload()
+		mpps_data = json.loads(self.dataset)
 
-			self.db_set("imaging_study", study.name)
+		study = frappe.new_doc("Imaging Study")
+		study.patient = self.patient
+		study.patient_name = self.patient_name
+		study.gender = self.gender
+		study.date_of_birth = self.date_of_birth
+		study.study_instance_uid = self.study_instance_uid
+		study.imaging_appointment = self.name
+		study.station_ae = self.claimed_by or self.station_ae
+		study.completed_on = mpps_data.get("end_time", frappe.utils.now())
+		study.performer = mpps_data.get("performer_name", "")
+		study.status = "Pending Review"
+
+		study.series = json.dumps(build_dicom_hierarchy(mpps_data), indent=1)  # for readability
+		study.dataset = json.dumps(mpps_data, indent=1)
+		study.save(ignore_permissions=True)
+		study.reload()
+
+		# self.db_set("imaging_study", study.name)
 
 	def create_observation(self):
 		if not frappe.db.exists("Observation", {"appointment": self.name}):
