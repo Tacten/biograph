@@ -6,6 +6,7 @@ import json
 from werkzeug.wrappers import Response
 
 import frappe
+from frappe.auth import validate_auth_via_api_keys
 from frappe.website.page_renderers.base_renderer import BaseRenderer
 
 from healthcare.healthcare.api.dicom.actions import (
@@ -76,6 +77,7 @@ class DICOMWebRenderer(BaseRenderer):
 				return self.handle_update_workitem(workitem_id)
 
 		elif path == "/dicom-web/echo":  # no auth
+			self.authenticate_request()
 			result = get_dicomweb_verification()
 			log_modality_message(
 				ae_title=frappe.get_request_header("X-AE-TITLE") or "Unknown",
@@ -87,6 +89,7 @@ class DICOMWebRenderer(BaseRenderer):
 			return self.respond(200, result)
 
 		elif path == "/dicom-web/conformance":  # no auth
+			self.authenticate_request()
 			result = get_conformance_statement()
 			log_modality_message(
 				ae_title=frappe.get_request_header("X-AE-TITLE") or "Unknown",
@@ -100,7 +103,7 @@ class DICOMWebRenderer(BaseRenderer):
 		return self.respond(404, self.dicom_error("NoSuchObjectInstance", "UPS task not found"))
 
 	def handle_get_workitems(self, filters):
-		# self.authenticate_request()
+		self.authenticate_request()
 		ae_title = frappe.get_request_header("X-AE-TITLE")
 		try:
 			result = get_ups_tasks(filters=filters)
@@ -124,7 +127,7 @@ class DICOMWebRenderer(BaseRenderer):
 			return self.respond(400, self.dicom_error("ProcessingFailure", f"UPS-RS failed: {e}"))
 
 	def handle_claim(self, workitem_id):
-		# self.authenticate_request()
+		self.authenticate_request()
 		ae_title = frappe.get_request_header("X-AE-TITLE")
 
 		try:
@@ -153,7 +156,7 @@ class DICOMWebRenderer(BaseRenderer):
 			return self.respond(400, self.dicom_error("ProcessingFailure", f"Claim failed: {e}"))
 
 	def handle_cancel(self, workitem_id):
-		# self.authenticate_request()
+		self.authenticate_request()
 		ae_title = frappe.get_request_header("X-AE-TITLE")
 
 		try:
@@ -181,7 +184,7 @@ class DICOMWebRenderer(BaseRenderer):
 			return self.respond(400, self.dicom_error("ProcessingFailure", f"Cancel failed: {e}"))
 
 	def handle_workitem_event(self, workitem_id):
-		# self.authenticate_request()
+		self.authenticate_request()
 		ae_title = frappe.get_request_header("X-AE-TITLE")
 
 		try:
@@ -210,7 +213,7 @@ class DICOMWebRenderer(BaseRenderer):
 			return self.respond(400, self.dicom_error("ProcessingFailure", f"Workitem event failed: {e}"))
 
 	def handle_update_workitem(self, workitem_id):
-		# self.authenticate_request()
+		self.authenticate_request()
 		ae_title = frappe.get_request_header("X-AE-TITLE")
 
 		try:
@@ -249,12 +252,5 @@ class DICOMWebRenderer(BaseRenderer):
 		return {"Status": DICOM_STATUS_CODES.get(code_key, "0110H"), "ErrorComment": message}
 
 	def authenticate_request(self):
-		ae_title = frappe.get_request_header("X-AE-TITLE")
-		token = frappe.get_request_header("X-AE-TOKEN")
-
-		if not ae_title or not token:
-			frappe.throw("Missing AE credentials", title="401 Unauthorized")
-
-		ae = frappe.get_value("DICOMWeb AE", {"ae_title": ae_title, "enabled": 1}, ["name", "token"])
-		if not ae or token != ae.token:
-			frappe.throw("Unauthorized DICOMWeb AE", title="401 Unauthorized")
+		auth_header = frappe.get_request_header("Authorization", "").split(" ")
+		validate_auth_via_api_keys(auth_header)
