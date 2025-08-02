@@ -8,6 +8,8 @@ import shortuuid
 import frappe
 from frappe import _
 
+from healthcare.healthcare.doctype.imaging_study.imaging_study import humanize_dicom_json
+
 DICOM_TO_FRAPPE_MAP = {
 	"00100020": "patient",  # Patient ID
 	"00100010": "patient_name",  # Patient Name
@@ -53,7 +55,6 @@ def get_ups_tasks(filters=None):
 			"station_ae",
 		],
 	)
-
 	result = []
 	for task in worklist:
 		uid = task.get("ups_instance_uid") or str(shortuuid.uuid())
@@ -72,7 +73,8 @@ def get_ups_tasks(filters=None):
 
 			result.append(
 				{
-					"UPSInstanceUID": uid,
+					"00080016": {"vr": "UI", "Value": ["1.2.840.10008.5.1.4.34.5"]},
+					"00080018": {"vr": "UI", "Value": [task.get("ups_instance_uid")]},
 					"00080050": {"vr": "SH", "Value": [task.get("name")]},
 					"00100020": {"vr": "LO", "Value": [task.get("patient").replace(" ", "-")]},
 					"00100010": {"vr": "PN", "Value": [task.get("patient_name").replace(" ", "^")]},
@@ -106,72 +108,82 @@ def get_ups_tasks(filters=None):
 
 
 def process_ups_claim(uid, data, ae_title):
-	doc = frappe.get_doc("Imaging Appointment", {"ups_instance_uid": uid})
-	if not doc:
-		frappe.log_error(f"Imaging Appointment with UID {uid} does not exist")
-		doc = frappe.get_doc(
-			{
-				"doctype": "Imaging Appointment",
-				"ups_instance_uid": uid,
-			}
-		).insert(ignore_permissions=True)
+	doc = get_imaging_appointment(uid)
 
-	doc.status = "In Progress"
-	doc.claimed_by = ae_title
-	doc.transaction_uid = data.get("TransactionUID")
-	doc.modified_by = frappe.session.user
+	doc.status = "In Progress"  # ds.get("00400275", {}).get("Value", ["In Progress"])[0]
+	doc.claimed_by = data.get("00400241", {}).get("Value", [None])[0] or ae_title
+	doc.study_instance_uid = data.get("0020000D", {}).get("Value", [None])[0]
+	doc.n_create = json.dumps(humanize_dicom_json(data), indent=1)
 	doc.save(ignore_permissions=True)
+
 	return {"Status": "Claimed", "UPSInstanceUID": uid}
 
 
-def cancel_ups(uid, ae_title):
-	doc = frappe.get_doc("Imaging Appointment", {"ups_instance_uid": uid})
-	if not doc:
-		frappe.log_error(f"Imaging Appointment with UID {uid} does not exist")
-		doc = frappe.get_doc(
-			{
-				"doctype": "Imaging Appointment",
-				"ups_instance_uid": uid,
-			}
-		).insert(ignore_permissions=True)
+def cancel_ups(uid, data, ae_title):
+	doc = get_imaging_appointment(uid)
 
 	doc.status = "Cancelled"
 	doc.cancelled_by = ae_title
-	doc.modified_by = frappe.session.user
+	doc.n_cancel = json.dumps(humanize_dicom_json(data), indent=1)
+	doc.dataset = json.dumps(data, indent=1)
 	doc.save(ignore_permissions=True)
+
 	return {"Status": "Cancelled", "UPSInstanceUID": uid}
 
 
-def handle_workitem_event(uid, data):
-	doc = frappe.get_doc("Imaging Appointment", {"ups_instance_uid": uid})
-	if not doc:
-		frappe.log_error(f"Imaging Appointment with UID {uid} does not exist")
-		doc = frappe.get_doc(
-			{
-				"doctype": "Imaging Appointment",
-				"ups_instance_uid": uid,
-			}
-		).insert(ignore_permissions=True)
+def handle_workitem_event(uid, data, ae_title):
+	doc = get_imaging_appointment(uid)
 
 	new_status = data.get("Status", "Completed")
 	if new_status not in ["In Progress", "Completed"]:
-		frappe.throw("Invalid workitem status")
+		frappe.throw(f"Invalid workitem status for Imaging Appointment ({uid})")
 	doc.status = new_status
+	doc.station_ae = ae_title
+	doc.n_set = json.dumps(humanize_dicom_json(data), indent=1)
+	doc.dataset = json.dumps(data, indent=1)
 	doc.save(ignore_permissions=True)
+
 	return {"Status": new_status, "UPSInstanceUID": uid}
 
 
-def update_from_modality(uid, update_data):
-	doc = frappe.get_doc("Imaging Appointment", {"ups_instance_uid": uid})
-	if not doc:  # PUT, do not insert
-		frappe.log_error(f"Imaging Appointment with UID {uid} does not exist")
-		frappe.throw("Invalid UID, workitem not found")
+def update_from_modality(uid, update_data, ae_title):
+	doc = get_existing_imaging_appointment()
+
+	if not doc:
+		frappe.throw("Invalid ID for Imaging Appointment, document does not exist")
 
 	for key, val in update_data.items():
 		if hasattr(doc, key):
 			setattr(doc, key, val)
 	doc.save(ignore_permissions=True)
+
 	return {"Status": "Updated", "UPSInstanceUID": uid}
+
+
+def get_existing_imaging_appointment(id):
+	result = frappe.db.get_all(
+		"Imaging Appointment",
+		or_filters=[
+			["ups_instance_uid", "=", id],
+			["study_instance_uid", "=", id],
+			["name", "=", id],
+		],
+	)
+	return frappe.get_doc("Imaging Appointment", result[0].name) if result and result[0] else None
+
+
+def get_imaging_appointment(id):
+	doc = get_existing_imaging_appointment(id)
+	if not doc:
+		doc = frappe.get_doc(
+			{
+				"doctype": "Imaging Appointment",
+				"ups_instance_uid": id,  # insert with ups instance id
+			}
+		).insert(ignore_permissions=True)
+		frappe.log_error(f"Imaging Appointment {id} does not exist, created a new one.")
+
+	return doc
 
 
 def dicomify_gender(value):

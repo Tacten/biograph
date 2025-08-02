@@ -61,19 +61,19 @@ class DICOMWebRenderer(BaseRenderer):
 				return self.handle_get_workitems(filters)
 
 		elif path.startswith("/dicom-web/workitems/"):
-			uid = path.split("/")[-1]
+			workitem_id = path.split("/")[-2]
 
 			if method == "POST" and path.endswith("/claim"):
-				return self.handle_claim(uid)
+				return self.handle_claim(workitem_id)
 
 			elif method == "POST" and path.endswith("/cancelrequest"):
-				return self.handle_cancel(uid)
+				return self.handle_cancel(workitem_id)
 
 			elif method == "POST" and path.endswith("/workitemevent"):
-				return self.handle_workitem_event(uid)
+				return self.handle_workitem_event(workitem_id)
 
 			elif method == "PUT":
-				return self.handle_update_workitem(uid)
+				return self.handle_update_workitem(workitem_id)
 
 		elif path == "/dicom-web/echo":  # no auth
 			result = get_dicomweb_verification()
@@ -100,7 +100,7 @@ class DICOMWebRenderer(BaseRenderer):
 		return self.respond(404, self.dicom_error("NoSuchObjectInstance", "UPS task not found"))
 
 	def handle_get_workitems(self, filters):
-		self.authenticate_request()
+		# self.authenticate_request()
 		ae_title = frappe.get_request_header("X-AE-TITLE")
 		try:
 			result = get_ups_tasks(filters=filters)
@@ -110,27 +110,26 @@ class DICOMWebRenderer(BaseRenderer):
 				request_payload=filters,
 				response_payload=result,
 				status_code="0000H",
-				status_text="Claim accepted",
+				status_text="UPS RS served",
 			)
 			return self.respond(200, result)
 		except Exception as e:
 			log_modality_message(
 				ae_title=ae_title,
-				message_type="UPS Claim",
+				message_type="UPS RS",
 				request_payload=filters,
 				status_code="0110H",
 				status_text=str(e),
 			)
 			return self.respond(400, self.dicom_error("ProcessingFailure", f"UPS-RS failed: {e}"))
 
-	def handle_claim(self, uid):
-		self.authenticate_request()
-		self.validate_uid(uid)
+	def handle_claim(self, workitem_id):
+		# self.authenticate_request()
 		ae_title = frappe.get_request_header("X-AE-TITLE")
 
 		try:
 			body = json.loads(frappe.request.get_data(as_text=True) or "{}")
-			result = process_ups_claim(uid, body, ae_title)
+			result = process_ups_claim(workitem_id, body, ae_title)
 
 			log_modality_message(
 				ae_title=ae_title,
@@ -139,7 +138,7 @@ class DICOMWebRenderer(BaseRenderer):
 				response_payload=result,
 				status_code="0000H",
 				status_text="Claim accepted",
-				reference=uid,
+				reference=workitem_id,
 			)
 			return self.respond(200, result)
 		except Exception as e:
@@ -149,17 +148,17 @@ class DICOMWebRenderer(BaseRenderer):
 				request_payload=body,
 				status_code="0110H",
 				status_text=str(e),
-				reference=uid,
+				reference=workitem_id,
 			)
 			return self.respond(400, self.dicom_error("ProcessingFailure", f"Claim failed: {e}"))
 
-	def handle_cancel(self, uid):
-		self.authenticate_request()
-		self.validate_uid(uid)
+	def handle_cancel(self, workitem_id):
+		# self.authenticate_request()
 		ae_title = frappe.get_request_header("X-AE-TITLE")
 
 		try:
-			result = cancel_ups(uid, ae_title)
+			body = json.loads(frappe.request.get_data(as_text=True) or "{}")
+			result = cancel_ups(workitem_id, body, ae_title)
 			log_modality_message(
 				ae_title=ae_title,
 				message_type="UPS Cancel",
@@ -167,7 +166,7 @@ class DICOMWebRenderer(BaseRenderer):
 				response_payload=result,
 				status_code="0000H",
 				status_text="Cancelled",
-				reference=uid,
+				reference=workitem_id,
 			)
 			return self.respond(200, result)
 		except Exception as e:
@@ -177,18 +176,17 @@ class DICOMWebRenderer(BaseRenderer):
 				request_payload=None,
 				status_code="0110H",
 				status_text=str(e),
-				reference=uid,
+				reference=workitem_id,
 			)
 			return self.respond(400, self.dicom_error("ProcessingFailure", f"Cancel failed: {e}"))
 
-	def handle_workitem_event(self, uid):
-		self.authenticate_request()
-		self.validate_uid(uid)
+	def handle_workitem_event(self, workitem_id):
+		# self.authenticate_request()
 		ae_title = frappe.get_request_header("X-AE-TITLE")
 
 		try:
 			body = json.loads(frappe.request.get_data(as_text=True) or "{}")
-			result = handle_workitem_event(uid, body)
+			result = handle_workitem_event(workitem_id, body, ae_title)
 
 			log_modality_message(
 				ae_title=ae_title,
@@ -197,7 +195,7 @@ class DICOMWebRenderer(BaseRenderer):
 				response_payload=result,
 				status_code="0000H",
 				status_text="Workitem updated",
-				reference=uid,
+				reference=workitem_id,
 			)
 			return self.respond(200, result)
 		except Exception as e:
@@ -207,18 +205,17 @@ class DICOMWebRenderer(BaseRenderer):
 				request_payload=body,
 				status_code="0110H",
 				status_text=str(e),
-				reference=uid,
+				reference=workitem_id,
 			)
 			return self.respond(400, self.dicom_error("ProcessingFailure", f"Workitem event failed: {e}"))
 
-	def handle_update_workitem(self, uid):
-		self.authenticate_request()
-		self.validate_uid(uid)
+	def handle_update_workitem(self, workitem_id):
+		# self.authenticate_request()
 		ae_title = frappe.get_request_header("X-AE-TITLE")
 
 		try:
 			body = json.loads(frappe.request.get_data(as_text=True) or "{}")
-			result = update_from_modality(uid, body)
+			result = update_from_modality(workitem_id, body, ae_title)
 
 			log_modality_message(
 				ae_title=ae_title,
@@ -227,7 +224,7 @@ class DICOMWebRenderer(BaseRenderer):
 				response_payload=result,
 				status_code="0000H",
 				status_text="Updated",
-				reference=uid,
+				reference=workitem_id,
 			)
 			return self.respond(200, result)
 		except Exception as e:
@@ -237,7 +234,7 @@ class DICOMWebRenderer(BaseRenderer):
 				request_payload=body,
 				status_code="0110H",
 				status_text=str(e),
-				reference=uid,
+				reference=workitem_id,
 			)
 			return self.respond(400, self.dicom_error("ProcessingFailure", f"Update failed: {e}"))
 
@@ -250,13 +247,6 @@ class DICOMWebRenderer(BaseRenderer):
 
 	def dicom_error(self, code_key, message):
 		return {"Status": DICOM_STATUS_CODES.get(code_key, "0110H"), "ErrorComment": message}
-
-	def validate_uid(self, uid):
-		if not uid or not isinstance(uid, str) or len(uid.split(".")) < 4:
-			frappe.throw("Invalid UPS UID format", title="UPS-RS Error")
-		exists = frappe.db.exists("Imaging Appointment", {"ups_instance_uid": uid})
-		if not exists:
-			frappe.throw("UPS instance not found", title="UPS-RS Error")
 
 	def authenticate_request(self):
 		ae_title = frappe.get_request_header("X-AE-TITLE")
