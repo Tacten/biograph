@@ -6,25 +6,30 @@
  "engine": "InnoDB",
  "field_order": [
   "study_section",
+  "ups_appointment",
   "study_instance_uid",
-  "patient",
-  "patient_name",
-  "station_ae",
-  "modality",
-  "completed_on",
   "column_break_hkud",
   "status",
-  "ups_appointment",
   "description",
+  "section_break_qfab",
+  "patient",
+  "patient_name",
+  "column_break_djtk",
+  "gender",
+  "date_of_birth",
+  "section_break_xsis",
+  "station_ae",
+  "modality",
+  "column_break_okrk",
   "performer",
+  "completed_on",
   "section_break_tlsm",
   "column_break_mxtv",
   "preview_html",
-  "series_json",
+  "preview_json",
   "imaging_series_tab",
   "series_instances_section",
   "series",
-  "instances",
   "dataset"
  ],
  "fields": [
@@ -40,11 +45,10 @@
   {
    "fetch_from": "station_ae.service_unit_type",
    "fieldname": "modality",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Modality",
-   "options": "Healthcare Service Unit Type",
    "read_only": 1,
    "search_index": 1
   },
@@ -108,24 +112,67 @@
   {
    "fieldname": "imaging_series_tab",
    "fieldtype": "Tab Break",
-   "label": "Imaging Series / Instances"
+   "label": "Study Details"
   },
   {
    "fieldname": "series_instances_section",
    "fieldtype": "Section Break",
-   "label": "Series / Instances"
+   "label": "Contents"
   },
   {
    "fieldname": "series",
    "fieldtype": "Code",
-   "label": "Series",
    "read_only": 1
   },
   {
-   "fieldname": "instances",
-   "fieldtype": "Code",
-   "label": "Instances",
+   "fieldname": "station_ae",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Station AE",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "section_break_tlsm",
+   "fieldtype": "Section Break",
+   "label": "Series Preview"
+  },
+  {
+   "fieldname": "preview_html",
+   "fieldtype": "HTML",
+   "label": "Series Preview"
+  },
+  {
+   "fieldname": "column_break_mxtv",
+   "fieldtype": "Column Break",
    "read_only": 1
+  },
+  {
+   "fieldname": "gender",
+   "fieldtype": "Data",
+   "label": "Gender"
+  },
+  {
+   "fieldname": "date_of_birth",
+   "fieldtype": "Date",
+   "label": "Date of Birth"
+  },
+  {
+   "fieldname": "section_break_xsis",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_okrk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_qfab",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_djtk",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "dataset",
@@ -134,42 +181,18 @@
    "read_only": 1
   },
   {
-   "fieldname": "station_ae",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Station AE",
-   "options": "Healthcare Service Unit",
-   "read_only": 1,
-   "search_index": 1
-  },
-  {
-   "fieldname": "section_break_tlsm",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "preview_html",
-   "fieldtype": "HTML",
-   "label": "Series Preview"
-  },
-  {
-   "fieldname": "series_json",
+   "fieldname": "preview_json",
    "fieldtype": "Code",
    "hidden": 1,
-   "label": "Series JSON",
+   "label": "Preview JSON",
    "no_copy": 1,
-   "read_only": 1
-  },
-  {
-   "fieldname": "column_break_mxtv",
-   "fieldtype": "Column Break",
    "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-27 19:39:44.171643",
+ "modified": "2025-08-02 14:35:01.216884",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Imaging Study",

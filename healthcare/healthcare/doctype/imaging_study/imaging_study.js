@@ -1,10 +1,10 @@
 frappe.ui.form.on("Imaging Study", {
 	refresh(frm) {
-		if (!frm.doc.__islocal && frm.doc.series_json) {
-			const series_list = JSON.parse(frm.doc.series_json || "[]");
+		if (!frm.doc.__islocal && frm.doc.preview_json) {
+			let series_list = JSON.parse(frm.doc.preview_json || "[]");
 
 			let html = `
-				<div class="series-container" style="display:flex; flex-wrap:wrap; gap:16px;">
+				<div class="series-container" style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:1em;">
 			`;
 
 			series_list.forEach((series, index) => {
@@ -12,6 +12,7 @@ frappe.ui.form.on("Imaging Study", {
 					<div class="series-card" data-series-index="${index}"
 						style="
 							text-align:center;
+							cursor:pointer;
 							width:18%;
 							border:1px solid #ccc;
 							border-radius:7px;
@@ -22,11 +23,11 @@ frappe.ui.form.on("Imaging Study", {
 							flex-direction:column;
 							justify-content:space-between;
 							box-shadow:0 2px 5px rgba(0,0,0,0.05);">
-						<img src="${series.series_preview}" style="width:100%; height:auto; border-radius:5px;" />
-						<div style="font-size: 0.85rem; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${series.description || series.series_uid}">
-							${series.description || series.series_uid}
+						<img src="${series.preview_url}" style="width:100%; height:auto; border-radius:5px;" />
+						<div style="font-size: 0.85rem; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${series.SeriesDescription || series.SeriesInstanceUID}">
+							${series.SeriesDescription || series.SeriesInstanceUID}
 						</div>
-						<div style="color: #888888;">${series.instance_previews?.length || "-"} images</div>
+						<div style="color: #888888;">${series.InstanceCount || "0"} ${series.Modality} images</div>
 					</div>
 				`;
 			});
@@ -57,7 +58,7 @@ frappe.ui.form.on("Imaging Study", {
 			// 			card.css("border", "3px solid #ccc");
 
 			// 			const d = new frappe.ui.Dialog({
-			// 				title: `${series.series_uid}`,
+			// 				title: `${series.SeriesInstanceUID}`,
 			// 				size: "large",
 			// 				fields: [
 			// 					{
