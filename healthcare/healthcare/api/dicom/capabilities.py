@@ -30,5 +30,6 @@ def get_conformance_statement():
 		],
 		"formats": ["application/dicom+json"],
 		"authentication": "Header-based: X-AE-TITLE + X-AE-TOKEN",
-		"note": "Only UPS-RS is supported at this endpoint.",
+		"note": "Only UPS-RS is supported at this endpoint.\n\
+			If UPS SOP Instance UID is not available, you can use Accession Number or Study Instance UID for workitem updates",
 	}
