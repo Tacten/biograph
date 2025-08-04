@@ -263,14 +263,14 @@ frappe.ui.form.on('Therapy Plan', {
 });
 
 frappe.ui.form.on('Therapy Plan Detail', {
-	no_of_sessions: function(frm) {
-		let total = 0;
-		$.each(frm.doc.therapy_plan_details, function(_i, e) {
-			total += e.no_of_sessions;
-		});
-		frm.set_value('total_sessions', total);
-		refresh_field('total_sessions');
-	},
+	// no_of_sessions: function(frm) {
+	// 	let total = 0;
+	// 	$.each(frm.doc.therapy_plan_details, function(_i, e) {
+	// 		total += e.no_of_sessions;
+	// 	});
+	// 	frm.set_value('total_sessions', total);
+	// 	refresh_field('total_sessions');
+	// },
 	no_of_days:(frm, cdt, cdn)=>{
         let d = locals[cdt][cdn]
         if(d['no_of_days'] && d['no_of_sessions_per_day']){
