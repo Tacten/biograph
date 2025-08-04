@@ -653,7 +653,12 @@ def create_therapy_plan(encounter):
 		for entry in encounter.therapies:
 			doc.append(
 				"therapy_plan_details",
-				{"therapy_type": entry.therapy_type, "no_of_sessions": entry.no_of_sessions},
+				{
+					"therapy_type": entry.therapy_type, 
+					"no_of_sessions": entry.no_of_sessions,
+					"no_of_days": entry.no_of_days,
+					"no_of_sessions_per_day": entry.no_of_sessions_per_day 
+				},
 			)
 		doc.save(ignore_permissions=True)
 		if doc.get("name"):
