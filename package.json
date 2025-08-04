@@ -1,0 +1,14 @@
+{
+  "name": "healthcare",
+  "version": "1.0.0",
+  "description": "<div align=\"center\"> <a href=\"https://marleyhealth.io\"> <img src=\"https://raw.githubusercontent.com/frappe/healthcare/develop/healthcare/public/images/healthcare.svg\" height=\"128\" alt=\"Marley Health Logo\"> </a>  <h2>Marley Health</h2>  <p align=\"center\"> <p>Open source & easy-to-use hospital information system(HIS) for all healthcare organisations.</p>   </p>",
+  "main": "commitlint.config.js",
+  "scripts": {
+    "postinstall": "cd viewer && yarn install",
+    "build": "cd viewer && yarn build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
