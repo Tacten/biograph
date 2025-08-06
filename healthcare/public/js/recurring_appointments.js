@@ -1,17 +1,17 @@
 frappe.provide("healthcare.appointment");
 
 
-window.show_recurring_dialog = function() {
-    healthcare.appointment.show_recurring_dialog();
+window.show_recurring_dialog = function(doc=null) {
+    healthcare.appointment.show_recurring_dialog(doc);
 };
 
-healthcare.appointment.show_recurring_dialog = function() {
-    open_repeat_dialog()
+healthcare.appointment.show_recurring_dialog = function(doc) {
+    open_repeat_dialog(doc)
 }
 
 
 
-function open_repeat_dialog() {
+function open_repeat_dialog(doc) {
     let repeat_on = ""
     let selected_practitioner = '';
     let d = new frappe.ui.Dialog({
@@ -46,7 +46,7 @@ function open_repeat_dialog() {
                     if (practitioner) {
                         frappe.db.get_value("Healthcare Practitioner", practitioner, "department")
                             .then(r => {
-                                console.log(r.message)
+
                                 if (r.message && r.message.department) {
                                     
                                     d.set_value("medical_department", r.message.department);
@@ -215,13 +215,15 @@ function open_repeat_dialog() {
                     data : data
                 },
                 callback:(r)=>{
-                    console.log(r.message)
+
                     if (!r.message){
                         frappe.dom.unfreeze();
                         return;
                     }
                     const result = r.message.dates;  // Assuming it's a list
+                    
                     let html = `<div style="display: flex; flex-wrap: wrap; gap: 10px;">`;
+                    
                     if(!r.message.available){
                         html += `<div style="padding: 16px; border: 1px solid #f0ad4e; background-color: #fff3cd; border-radius: 8px; font-family: Arial, sans-serif; color: #856404;">
                                     <p style="margin: 0; font-size: 16px;">
@@ -233,32 +235,46 @@ function open_repeat_dialog() {
                                 `
                         frappe.dom.unfreeze();
                     }
+                    let any_not_availability = true
+
                     result.forEach(slot => {
+                        if(slot.booking_flage){
+                            any_not_availability = false
+                        }
                         const color = slot.booking_flage  ? 'red' : 'green';
-                        
                         html += `
                         <div style="
-                        background-color: ${color}; 
+                        background-color: ${color === 'green' ? '#28a745' : '#dc3545'}; 
                         color: white;
-                        padding: 5px 5px 5px 5px;
-                        border-radius: 6px;
-                        font-size: 12px;
+                        padding: 10px;
+                        border-radius: 8px;
+                        font-family: Arial, sans-serif;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                         text-align: center;
-                        " data-action="${slot.date}">
-                        <strong>${frappe.datetime.str_to_user(slot.date)}</strong><br/>
-                        ${slot.from_time} - ${slot.to_time}<br/>${slot.days}
+                        transition: transform 0.2s;
+                        margin-bottom: 10px;
+                    ">
+                        <strong style="font-size: 14px;">${frappe.datetime.str_to_user(slot.date)}</strong>
+                        <hr style="border-top: 1px solid rgba(255,255,255,0.3); margin: 1px 0;">
+                        <div style="font-size: 12px; margin-bottom: 2px;">
+                            ${slot.from_time} - ${slot.to_time}
                         </div>
+                        <div style="font-size: 11px;">
+                            <b>${slot.days}</b>
+                        </div>
+                    </div>
                         `;
+                        
                     });
                 
                     html += `</div>`;
+
                     // Set HTML content into the dialog field
+                    
                     d.fields_dict.available_slots.$wrapper.html(html);
-
-                    d.fields_dict.available_slots.$wrapper.find(`[data-action="${slot.date}"]`).on('click', function() {
-                        console.log("Exit")
-                    });
-
+                    if(!any_not_availability){
+                        d.get_primary_btn().hide()
+                    }
                 },
                 freeze: true,
                 freeze_message: __('Loading Slots...'),
@@ -419,6 +435,14 @@ function open_repeat_dialog() {
 			};
 		};
     d.get_primary_btn().hide()
+
+    if(doc){
+        d.set_value("patient", doc.patient)
+        d.set_value("practitioner", doc.practitioner)
+        d.set_value("medical_department", doc.medical_department)
+        d.set_value("therapy_plan", doc.name)
+        d.set_value("from_date", doc.start_date)
+    }
     d.show();
 }
 
@@ -439,7 +463,7 @@ function validate_data(data){
     if((data.from_time > data.to_time) || (data.from_time == data.to_time)) {
         frappe.throw("<b>From Time must be before To Time and it should not be same.</b>")
     }
-    console.log(data.from_date)
+
     const dateStr = data.from_date; // Format: YYYY-MM-DD
     const timeStr = data.from_time   // Format: HH:MM:SS
 
@@ -451,11 +475,9 @@ function validate_data(data){
 
     // Get the current date and time
     const now = new Date();
-    console.log(inputDateTime)
+
     // Check if the input date-time is in the past
     if (inputDateTime < now) {
         frappe.throw(`Oops! The selected date and time <b>${data.from_date} ${data.from_time}</b> is in the past. Please pick a future slot.`)
-    } else {
-    console.log("Valid future date-time.");
     }
 }
