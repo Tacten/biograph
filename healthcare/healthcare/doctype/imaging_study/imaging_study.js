@@ -24,7 +24,13 @@ frappe.ui.form.on("Imaging Study", {
 							justify-content:space-between;
 							box-shadow:0 2px 5px rgba(0,0,0,0.05);">
 						<img src="${series.preview_url}" style="width:100%; height:auto; border-radius:5px;" />
-						<div style="font-size: 0.85rem; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${series.SeriesDescription || series.SeriesInstanceUID}">
+						<div style="
+							font-size: 0.85rem;
+							margin-top: 6px;
+							white-space: nowrap;
+							overflow: hidden;
+							text-overflow: ellipsis;" title="${series.SeriesDescription || series.SeriesInstanceUID}
+						">
 							${series.SeriesDescription || series.SeriesInstanceUID}
 						</div>
 						<div style="color: #888888;">${series.InstanceCount || "0"} ${series.Modality} images</div>
@@ -61,8 +67,8 @@ frappe.ui.form.on("Imaging Study", {
 						const url = new URL(site, window.location.origin);
 						url.searchParams.set("seriesUID", series.SeriesInstanceUID);
 						// url.searchParams.set("studyUID", frm.doc.study_instance_uid);
-						url.searchParams.set("wadoRoot", "http://localhost:8042/dicom-web");
-						url.searchParams.set("qidoRoot", "http://localhost:8042/dicom-web");
+						url.searchParams.set("wadoRoot", "http://localhost:8080/dicom-web");
+						url.searchParams.set("qidoRoot", "http://localhost:8080/dicom-web");
 
 						console.log(url.toString());
 

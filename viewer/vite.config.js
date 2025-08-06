@@ -35,6 +35,13 @@ export default defineConfig({
 		target: "es2015",
 		sourcemap: true,
 	},
+	optimizeDeps: {
+		include: [
+			'@cornerstonejs/dicom-image-loader',
+			'@cornerstonejs/core',
+			'@cornerstonejs/tools',
+		],
+	},
 	worker: {
 		format: "es",
 	},

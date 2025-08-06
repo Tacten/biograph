@@ -1,8 +1,17 @@
-import { createApp } from "vue"
-import App from "./App.vue"
-import "./index.css"
-import DicomViewer from "./components/DICOMViewer.vue"
+import { createApp } from 'vue'
+import DICOMViewer from './components/DICOMViewer.vue'
+import './index.css'
+import { init as cornerstoneInit } from '@cornerstonejs/core'
+import { init as initDicomImageLoader } from '@cornerstonejs/dicom-image-loader'
 
-createApp(DicomViewer).mount("#app")
-const app = createApp(App)
-app.mount("#app")
+async function bootstrap() {
+  await cornerstoneInit()
+  await initDicomImageLoader()
+
+  const app = createApp(DICOMViewer)
+  app.mount('#app')
+
+  console.log("Vue app is booting")
+}
+
+bootstrap()
