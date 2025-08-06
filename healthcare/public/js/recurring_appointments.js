@@ -46,7 +46,7 @@ function open_repeat_dialog() {
                     if (practitioner) {
                         frappe.db.get_value("Healthcare Practitioner", practitioner, "department")
                             .then(r => {
-                                console.log(r.message)
+
                                 if (r.message && r.message.department) {
                                     
                                     d.set_value("medical_department", r.message.department);
@@ -215,7 +215,7 @@ function open_repeat_dialog() {
                     data : data
                 },
                 callback:(r)=>{
-                    console.log(r.message)
+
                     if (!r.message){
                         frappe.dom.unfreeze();
                         return;
@@ -244,7 +244,7 @@ function open_repeat_dialog() {
                         border-radius: 6px;
                         font-size: 12px;
                         text-align: center;
-                        " data-action="${slot.date}">
+                        >
                         <strong>${frappe.datetime.str_to_user(slot.date)}</strong><br/>
                         ${slot.from_time} - ${slot.to_time}<br/>${slot.days}
                         </div>
@@ -254,10 +254,6 @@ function open_repeat_dialog() {
                     html += `</div>`;
                     // Set HTML content into the dialog field
                     d.fields_dict.available_slots.$wrapper.html(html);
-
-                    d.fields_dict.available_slots.$wrapper.find(`[data-action="${slot.date}"]`).on('click', function() {
-                        console.log("Exit")
-                    });
 
                 },
                 freeze: true,
@@ -439,7 +435,7 @@ function validate_data(data){
     if((data.from_time > data.to_time) || (data.from_time == data.to_time)) {
         frappe.throw("<b>From Time must be before To Time and it should not be same.</b>")
     }
-    console.log(data.from_date)
+
     const dateStr = data.from_date; // Format: YYYY-MM-DD
     const timeStr = data.from_time   // Format: HH:MM:SS
 
@@ -451,11 +447,8 @@ function validate_data(data){
 
     // Get the current date and time
     const now = new Date();
-    console.log(inputDateTime)
+
     // Check if the input date-time is in the past
     if (inputDateTime < now) {
         frappe.throw(`Oops! The selected date and time <b>${data.from_date} ${data.from_time}</b> is in the past. Please pick a future slot.`)
-    } else {
-    console.log("Valid future date-time.");
     }
-}
