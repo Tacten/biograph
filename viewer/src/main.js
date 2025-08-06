@@ -1,9 +1,8 @@
 import { createApp } from "vue"
 import App from "./App.vue"
 import "./index.css"
+import DicomViewer from "./components/DICOMViewer.vue"
 
-// import { createUI } from "frappe-ui"
-
+createApp(DicomViewer).mount("#app")
 const app = createApp(App)
-// app.use(createUI())
 app.mount("#app")

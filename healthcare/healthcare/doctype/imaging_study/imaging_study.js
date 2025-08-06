@@ -45,45 +45,47 @@ frappe.ui.form.on("Imaging Study", {
 
 			frm.fields_dict.preview_html.$wrapper.html(html);
 
-			// setTimeout(() => {
-			// 	const cards = frm.fields_dict.preview_html.$wrapper.find(".series-card");
+			setTimeout(() => {
+				const cards = frm.fields_dict.preview_html.$wrapper.find(".series-card");
 
-			// 	cards.each(function () {
-			// 		const card = $(this);
-			// 		const index = card.data("series-index");
-			// 		const series = series_list[index];
+				cards.each(function () {
+					const card = $(this);
+					const index = card.data("series-index");
+					const series = series_list[index];
 
-			// 		card.on("click", function () {
-			// 			cards.css("border", "1px solid #ccc");
-			// 			card.css("border", "3px solid #ccc");
+					card.on("click", function () {
+						cards.css("border", "1px solid #ccc");
+						card.css("border", "3px solid #ccc");
 
-			// 			const d = new frappe.ui.Dialog({
-			// 				title: `${series.SeriesInstanceUID}`,
-			// 				size: "large",
-			// 				fields: [
-			// 					{
-			// 					fieldname: "viewer_html",
-			// 					fieldtype: "HTML",
-			// 					options: `
-			// 						<iframe
-			// 							src="http://localhost:5173?studyUID=1.2.826.0.1.3680043.10.43.1753456010
-			// 							&seriesUID=1.2.826.0.1.3680043.8.498.86520435611506356480470154314530210093
-			// 							&sopUID=1.2.826.0.1.3680043.8.498.15683553860601812852607030574701453248
-			// 							&qidoRoot=/dicom-proxy
-			// 							&wadoRoot=/dicom-proxy"
-			// 							width="100%" height="600" frameborder="0"
-			// 						></iframe>
-			// 					`
-			// 					}
-			// 				]
-			// 			});
-			// 			d.show();
-			// 			// src="http://localhost:5173?seriesUID=${series.series_uid}&qidoRoot=/dicom-proxy&wadoRoot=/dicom-proxy"
-			// 			// src="/assets/healthcare/dcmviewer/index.html?seriesUID=${series.series_uid}&wadoRoot=http://localhost:8042/dicom-web&qidoRoot=http://localhost:8042/dicom-web"
-			// 			// src="http://localhost:5173?studyUID=1.2.826.0.1.3680043.10.43.1753456010&seriesUID=1.2.826.0.1.3680043.8.498.86520435611506356480470154314530210093&sopUID=1.2.826.0.1.3680043.8.498.15683553860601812852607030574701453248&qidoRoot=/dicom-proxZ&wadoRoot=/dicom-proxy"
-			// 		});
-			// 	});
-			// }, 50);
+						const site = frappe.boot.developer_mode ?  "/viewer" : "/viewer" // "http://localhost:5173";
+						const url = new URL(site, window.location.origin);
+						url.searchParams.set("seriesUID", series.SeriesInstanceUID);
+						// url.searchParams.set("studyUID", frm.doc.study_instance_uid);
+						url.searchParams.set("wadoRoot", "http://localhost:8042/dicom-web");
+						url.searchParams.set("qidoRoot", "http://localhost:8042/dicom-web");
+
+						console.log(url.toString());
+
+						const d = new frappe.ui.Dialog({
+							title: `${series.SeriesInstanceUID}`,
+							size: "large",
+							fields: [
+								{
+								fieldname: "viewer_html",
+								fieldtype: "HTML",
+								options: `
+									<iframe
+										src="${url.toString()}
+										width="100%" height="600" frameborder="0"
+									></iframe>
+								`
+								}
+							]
+						});
+						d.show();
+					});
+				});
+			}, 50);
 		}
 	}
 });
