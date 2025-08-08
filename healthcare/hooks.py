@@ -80,6 +80,7 @@ after_install = "healthcare.setup.setup_healthcare"
 
 before_uninstall = "healthcare.uninstall.before_uninstall"
 after_uninstall = "healthcare.uninstall.after_uninstall"
+after_migrate = "healthcare.after_migrate.execute_migrate"
 
 # Desk Notifications
 # ------------------
