@@ -30,6 +30,13 @@
   "consume_stock",
   "warehouse",
   "items",
+  "consumption_status",
+  "section_break_24",
+  "invoice_separately_as_consumables",
+  "consumption_invoiced",
+  "consumable_total_amount",
+  "column_break_27",
+  "consumption_details",
   "exercises_section",
   "exercises",
   "section_break_23",
@@ -274,6 +281,53 @@
    "fieldtype": "Table",
    "label": "Consumables",
    "options": "Clinical Procedure Item"
+  },
+  {
+   "fieldname": "section_break_24",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "invoice_separately_as_consumables",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Invoice Consumables Separately",
+   "read_only": 1
+  },
+  {
+   "depends_on": "invoice_separately_as_consumables",
+   "fieldname": "consumable_total_amount",
+   "fieldtype": "Currency",
+   "label": "Consumable Total Amount",
+   "read_only": 1
+  },
+  {
+   "depends_on": "invoice_separately_as_consumables",
+   "fieldname": "consumption_details",
+   "fieldtype": "Small Text",
+   "label": "Consumption Details",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "depends_on": "invoice_separately_as_consumables",
+   "fieldname": "consumption_invoiced",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Consumption Invoiced",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_27",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Consumption Pending",
+   "fieldname": "consumption_status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Consumption Status",
+   "options": "Consumption Pending\nInsufficient Stock\nConsumption Completed"
   }
  ],
  "grid_page_length": 50,
@@ -288,8 +342,8 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2025-07-17 10:24:21.897494",
- "modified_by": "abhijeet.mohanty@happiestminds.com",
+ "modified": "2025-08-08 07:46:54.088874",
+ "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Therapy Session",
  "naming_rule": "By \"Naming Series\" field",
