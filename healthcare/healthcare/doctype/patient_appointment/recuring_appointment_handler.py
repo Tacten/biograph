@@ -86,7 +86,7 @@ def prepare_payload_for_email(self, doc, context):
 
 @frappe.whitelist()
 def book_appointments(data):
-    frappe.enqpayloadueue(
+    frappe.enqueue(
 					create_recurring_appointments,
                     data=data,
 					queue="long",
