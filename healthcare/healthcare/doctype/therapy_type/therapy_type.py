@@ -131,3 +131,26 @@ def change_item_code_from_therapy(item_code, doc):
 		rename_doc("Item", doc.item, item_code, ignore_permissions=True)
 		frappe.db.set_value("Therapy Type", doc.name, "item_code", item_code)
 	return
+
+@frappe.whitelist()
+def get_item_details(args=None):
+	if not isinstance(args, dict):
+		args = json.loads(args)
+
+	item = frappe.db.get_all(
+		"Item", filters={"disabled": 0, "name": args.get("item_code")}, fields=["stock_uom", "item_name"]
+	)
+
+	if not item:
+		frappe.throw(_("Item {0} is not active").format(args.get("item_code")))
+
+	item = item[0]
+	ret = {
+		"uom": item.stock_uom,
+		"stock_uom": item.stock_uom,
+		"item_name": item.item_name,
+		"qty": 1,
+		"transfer_qty": 0,
+		"conversion_factor": 1,
+	}
+	return ret
