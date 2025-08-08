@@ -70,6 +70,7 @@ def send_notification(data, schedule_details):
     for row in notifications:
         notification_doc = frappe.get_doc("Notification", row)
         payload = prepare_payload_for_email(notification_doc, doc, context)
+
         frappe.sendmail(
             recipients=recipients,
             subject=notification_doc.subject,
@@ -82,7 +83,7 @@ def prepare_payload_for_email(self, doc, context):
     payload_template = self.message
     rendered_payload = frappe.render_template(payload_template, context)
     payload = rendered_payload
-    return 
+    return payload
 
 @frappe.whitelist()
 def book_appointments(data):
