@@ -11,6 +11,7 @@ from healthcare.healthcare.doctype.patient_appointment.patient_appointment impor
 )
 from datetime import datetime, timedelta
 from happiest_frappe.happiest_frappe.api.api import get_available_slots
+from frappe.email.doctype.notification.notification import Notification, get_context
 
 
 @frappe.whitelist()
@@ -50,12 +51,42 @@ def create_recurring_appointments(data):
                         "no_of_sessions" : d.no_of_sessions
                     })
             doc.insert(ignore_permissions=True)
+    if data and schedule_details:
+        send_notification(data, schedule_details)
 
     return True
 
+def send_notification(data, schedule_details):
+    doc = { "data" : data, "schedule_details" : schedule_details }
+    context = get_context(doc)
+    context["frappe"] = frappe
+    recipients = frappe.db.get_value("Patient", data.patient, "email")
+    
+    if not recipients:
+        frappe.throw("Patient email id not found")
+    
+    notifications = frappe.db.get_list("Notification", {"is_recurring_appointment" : 1, "enabled": 1}, pluck="name")
+    
+    for row in notifications:
+        notification_doc = frappe.get_doc("Notification", row)
+        payload = prepare_payload_for_email(notification_doc, doc, context)
+        frappe.sendmail(
+            recipients=recipients,
+            subject=notification_doc.subject,
+            message=payload
+        )
+
+    
+def prepare_payload_for_email(self, doc, context):
+    """Prepare and render the WhatsApp message payload."""
+    payload_template = self.message
+    rendered_payload = frappe.render_template(payload_template, context)
+    payload = rendered_payload
+    return 
+
 @frappe.whitelist()
 def book_appointments(data):
-    frappe.enqueue(
+    frappe.enqpayloadueue(
 					create_recurring_appointments,
                     data=data,
 					queue="long",
