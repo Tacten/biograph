@@ -123,133 +123,104 @@ frappe.ui.form.on('Therapy Session', {
 			});
 		}
 		if (frm.doc.consume_stock) {
-			frm.set_indicator_formatter('item_code',
-				function(doc) { return (doc.qty<=doc.actual_qty) ? 'green' : 'orange' ; });
+			frm.set_indicator_formatter('item_code', function(doc) {
+				return (doc.qty <= doc.actual_qty) ? 'green' : 'orange';
+			});
 		}
 
-		if (frm.doc.docstatus == 1 && frm.doc.items && frm.doc.items.length > 0){
-			if(frm.doc.consumption_status=="Consumption Pending"){
-				frm.add_custom_button(__('Start Consumption'), function() {
-					frappe.call({
-						doc: frm.doc,
-						method: 'check_item_stock',
-						callback: function(r) {
-							if (!r.exc) {
-								if (r.message == 'insufficient stock') {
-									frappe.call({
-										doc: frm.doc,
-										method: "update_consumption_status",
-										args: {
-											status: "Insufficient Stock"
-										},
-										callback: function() {
-											frm.reload_doc();
-										}
-									});
-								} else {
-									frm.trigger('consume_stocks');
-								}
-							}
-						}
-					});
-				}).addClass("btn-primary");
-			}
-			if(frm.doc.consumption_status=="Insufficient Stock"){
-				frm.add_custom_button(__('Add Stock'), function() {
-					frm.trigger('make_material_receipt');
+		if (frm.doc.docstatus === 1 && frm.doc.items?.length > 0) {
+			if (frm.doc.consumption_status === "Consumption Pending") {
+				frm.add_custom_button(__('Start Consumption'), async function () {
+					await handleStockCheck(frm,
+						() => frm.trigger('consume_stocks'),
+						() => frappe.call({
+							doc: frm.doc,
+							method: "update_consumption_status",
+							args: { status: "Insufficient Stock" },
+							callback: () => frm.reload_doc()
+						})
+					);
 				}).addClass("btn-primary");
 			}
 
+			if (frm.doc.consumption_status === "Insufficient Stock") {
+				frm.add_custom_button(__('Verify & Add Stock'), async function () {
+					await handleStockCheck(frm,
+						() => {
+							frappe.call({
+								doc: frm.doc,
+								method: "update_consumption_status",
+								args: { status: "Consumption Pending" },
+								callback: () => frm.reload_doc()
+							});
+						},
+						() => frm.trigger('make_material_receipt')
+					);
+				}).addClass("btn-primary");
+			}
 		}
 
-		frappe.after_ajax(() => {
-			// Remove existing if already added
-			const existing = document.querySelector('.custom-form-indicator');
-			if (existing) existing.remove();
+		add_consumption_status_headline(frm);
+	},
 
-			if (frm.doc.docstatus === 1 && frm.doc.consumption_status && frm.doc.items?.length) {
-				// Get the status pill
-				const indicatorPill = document.querySelector('.title-area .indicator-pill');
-
-				if (indicatorPill && indicatorPill.parentNode) {
-					const pill = document.createElement('span');
-					pill.className = 'indicator-pill no-indicator-dot custom-form-indicator';
-					pill.style.marginLeft = '10px';
-					pill.style.borderRadius = '3px';
-					pill.style.padding = '3px 8px';
-					pill.style.fontSize = '13px';
-					pill.style.whiteSpace = 'nowrap';   // disables line wrapping
-
-					if (frm.doc.consumption_status === 'Consumption Pending' || frm.doc.consumption_status === 'Insufficient Stock') {
-						pill.style.backgroundColor = '#fff1e7ff';  // light orange background
-						pill.style.color = '#bd3e0cff'; // dark orange text
-					}else{
-						pill.style.backgroundColor = '#dff0d8';  // light green background
-						pill.style.color = '#3c763d'; // dark green text
+	verify_stock: function (frm) {
+		return new Promise((resolve, reject) => {
+			frappe.call({
+				doc: frm.doc,
+				method: 'verify_stock',
+				freeze: true,
+				callback: function (r) {
+					if (r.message !== undefined) {
+						resolve(r.message);
+					} else {
+						reject(__('Error verifying stock'));
 					}
-
-					pill.innerHTML = frm.doc.consumption_status;
-
-					// Append next to the original indicator pill
-					indicatorPill.parentNode.appendChild(pill);
 				}
-			}
+			});
 		});
-
 	},
 
 	make_material_receipt: function(frm) {
 		let msg = __('Stock quantity to start the Session is not available in the Warehouse {0}. Do you want to record a Stock Entry?', [frm.doc.warehouse.bold()]);
-		frappe.confirm(
-			msg,
-			function() {
-				frappe.call({
-					doc: frm.doc,
-					method: 'make_material_receipt',
-					freeze: true,
-					callback: function(r) {
-						if (!r.exc) {
-							frappe.call({
-								doc: frm.doc,
-								method: "update_consumption_status",
-								args: {
-									status: "Consumption Pending"
-								},
-								callback: function() {
-									frm.reload_doc();
-								}
-							});
-							frm.reload_doc();
-							let doclist = frappe.model.sync(r.message);
-							frappe.set_route('Form', doclist[0].doctype, doclist[0].name);
-						}
+		frappe.confirm(msg, function () {
+			frappe.call({
+				doc: frm.doc,
+				method: 'make_material_receipt',
+				freeze: true,
+				callback: function (r) {
+					if (!r.exc) {
+						frappe.call({
+							doc: frm.doc,
+							method: "update_consumption_status",
+							args: { status: "Consumption Pending" },
+							callback: () => frm.reload_doc()
+						});
+						let doclist = frappe.model.sync(r.message);
+						frappe.set_route('Form', doclist[0].doctype, doclist[0].name);
 					}
-				});
-			}
-		);
+				}
+			});
+		});
 	},
 
 	consume_stocks: function(frm) {
-		msg = __('Complete {0} and Consume Stock?', [frm.doc.name]);
-		frappe.confirm(
-			msg,
-			function() {
-				frappe.call({
-					method: 'consume_stocks',
-					doc: frm.doc,
-					freeze: true,
-					callback: function(r) {
-						if (r.message) {
-							frappe.show_alert({
-								message: __('Stock Entry {0} created', ['<a class="bold" href="/app/stock-entry/'+ r.message + '">' + r.message + '</a>']),
-								indicator: 'green'
-							});
-						}
-						frm.reload_doc();
+		let msg = __('Complete {0} and Consume Stock?', [frm.doc.name]);
+		frappe.confirm(msg, function () {
+			frappe.call({
+				method: 'consume_stocks',
+				doc: frm.doc,
+				freeze: true,
+				callback: function (r) {
+					if (r.message) {
+						frappe.show_alert({
+							message: __('Stock Entry {0} created', ['<a class="bold" href="/app/stock-entry/' + r.message + '">' + r.message + '</a>']),
+							indicator: 'green'
+						});
 					}
-				});
-			}
-		);
+					frm.reload_doc();
+				}
+			});
+		});
 	},
 
 	therapy_plan: function(frm) {
@@ -477,3 +448,26 @@ let calculate_age = function(birth) {
 	let years =  age.getFullYear() - 1970;
 	return `${years} ${__('Years(s)')} ${age.getMonth()} ${__('Month(s)')} ${age.getDate()} ${__('Day(s)')}`;
 };
+
+async function handleStockCheck(frm, onAvailable, onUnavailable) {
+	let has_stock = await frm.trigger('verify_stock');
+	if (has_stock) {
+		frappe.show_alert({ message: __('Required stock is available'), indicator: 'green' });
+		onAvailable();
+	} else {
+		frappe.show_alert({ message: __('Required stock is not available'), indicator: 'blue' });
+		onUnavailable();
+	}
+}
+
+function add_consumption_status_headline(frm) {
+	if (frm.doc.docstatus === 1 && frm.doc.consumption_status && frm.doc.items?.length) {
+		if (frm.doc.consumption_status === 'Consumption Pending') {
+			frm.dashboard.set_headline(__('Consumption Pending'), 'blue', true);
+		} else if (frm.doc.consumption_status === 'Consumption Completed') {
+			frm.dashboard.set_headline(__('Consumption Completed'), 'green', true);
+		} else if (frm.doc.consumption_status === 'Insufficient Stock') {
+			frm.dashboard.set_headline(__('Insufficient Stock'), 'orange', true);
+		}
+	}
+}
