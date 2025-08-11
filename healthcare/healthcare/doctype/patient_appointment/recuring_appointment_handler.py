@@ -146,7 +146,15 @@ def get_recurring_appointment_dates(data):
     
     total_day_of_booking = len(repeat_week_days)
     available_any = False
+
+    max_iterations = 365  
+    iteration_count = 0
+    
     while True:
+        iteration_count += 1
+        if iteration_count > max_iterations:
+            break  
+            
         if next_date == getdate() and from_time:
             datetime_str = f"{next_date} {from_time}"
             dt = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M:%S")
