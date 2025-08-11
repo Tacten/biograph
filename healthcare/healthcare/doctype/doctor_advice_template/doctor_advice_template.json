@@ -19,7 +19,8 @@
    "fieldname": "title",
    "fieldtype": "Data",
    "label": "Title",
-   "unique": 1
+   "unique": 1,
+   "reqd": 1
   },
   {
    "fieldname": "diagnosis",
