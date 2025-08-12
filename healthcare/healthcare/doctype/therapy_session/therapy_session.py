@@ -223,27 +223,20 @@ class TherapySession(Document):
 		if self.consume_stock and self.items:
 			return stock_entry
 
-	@frappe.whitelist()
-	def check_item_stock(self):
-		allow_start = self.set_actual_qty()
-
-		if allow_start:
-			return "success"
-
-		return "insufficient stock"
 
 	def set_actual_qty(self):
-		allow_negative_stock = frappe.db.get_single_value("Stock Settings", "allow_negative_stock")
-
-		allow_start = True
 		for d in self.get("items"):
 			d.actual_qty = get_stock_qty(d.item_code, self.warehouse)
-			# validate qty
-			if not allow_negative_stock and d.actual_qty < d.qty:
-				allow_start = False
-				break
+	
+	@frappe.whitelist()
+	def verify_stock(self):
+		allow_negative_stock = frappe.db.get_single_value("Stock Settings", "allow_negative_stock")
+		self.set_actual_qty()
 
-		return allow_start
+		for d in self.get("items"):
+			if not allow_negative_stock and d.actual_qty < d.qty:
+				return False
+		return True
 
 	@frappe.whitelist()
 	def make_material_receipt(self, submit=False):
