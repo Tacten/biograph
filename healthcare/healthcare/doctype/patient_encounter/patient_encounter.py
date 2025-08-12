@@ -844,6 +844,16 @@ def get_filtered_advice_template(doctype, txt, searchfield, start, page_len, fil
 		{where_sql}
 		""", as_dict=1
 	)
+	if filters.get("department"):
+		md_wise_data = frappe.db.sql(f"""
+			Select name
+			From `tabDoctor Advice Template` AS dat
+			Where dat.strictly_based_on_medical_department = 1 and dat.medical_department = '{filters.get("department")}'
+		""", as_dict=1)
+
+		if md_wise_data:
+			result = md_wise_data + result 
+
 
 	result = tuple((row.name, row.diagnosis, row.complaint) for row in result)
 
