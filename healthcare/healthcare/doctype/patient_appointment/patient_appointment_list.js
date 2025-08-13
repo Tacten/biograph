@@ -25,6 +25,9 @@ frappe.listview_settings["Patient Appointment"] = {
 	onload: function(listview) {
 		// Add "Mark Unavailable" button to the toolbar
 		console.log("Adding Mark Unavailable button to list view");
+		listview.page.add_inner_button(__("Repeat Appointments"), function() {
+			window.show_recurring_dialog()
+		})
 		listview.page.add_inner_button(__("Mark Unavailable"), function() {
 			if (typeof window.show_unavailability_dialog === 'function') {
 				window.show_unavailability_dialog();

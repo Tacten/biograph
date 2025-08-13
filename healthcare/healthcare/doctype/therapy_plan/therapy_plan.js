@@ -128,8 +128,21 @@ frappe.ui.form.on('Therapy Plan', {
 				'no_of_sessions', 'read_only', 1
 			);
 		}
+		if(!frm.is_new() && !frm.__islocal){
+			frm.trigger("create_reurring_appointments")
+		}
 	},
-
+	create_reurring_appointments: function(frm){
+		if(!frm.is_new() && !frm.__islocal){
+			frm.add_custom_button(__("Repeat Appointment"), ()=>{
+				if(frm.doc.__unsaved){
+					frappe.msgprint("First save the document")
+					return
+				}
+				window.show_recurring_dialog(frm.doc)
+			})
+		}
+	},
 	make_sales_invoice: function(frm) {
 		let fields_ = [
 			{
