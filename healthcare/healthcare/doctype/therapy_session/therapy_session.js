@@ -160,6 +160,21 @@ frappe.ui.form.on('Therapy Session', {
 			}
 		}
 
+		if (frm.doc.therapy_type && frm.is_new()) {
+			frappe.call({
+				'method': 'frappe.client.get',
+				args: {
+					doctype: 'Therapy Type',
+					name: frm.doc.therapy_type
+				},
+				callback: function(data) {
+					frm.set_value('consume_stock', data.message.consume_stock);
+					frm.events.set_warehouse(frm);
+					frm.events.set_therapy_consumables(frm);
+				}
+			});
+		}
+
 		add_consumption_status_headline(frm);
 	},
 
