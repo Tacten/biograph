@@ -214,6 +214,8 @@ def get_recurring_appointment_dates(data):
                 occurrences[weekday_name] += 1
             elif not repeat_till and max_occurrences:
                 scheduled_dates.append(str(next_date))
+                if total_day_of_booking == len(repeat_week_days):
+                    first_week_date = next_date
                 total_day_of_booking -= 1
                 occurrences[weekday_name] += 1
 
