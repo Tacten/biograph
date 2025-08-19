@@ -405,8 +405,7 @@ def check_observation_sample_exist(service_request):
 		)
 		if exist_observation:
 			return exist_observation, "Observation"
-
-
+		
 @frappe.whitelist()
 def make_appointment(source_name, target_doc=None, ignore_permissions=False):
 	def postprocess(source, target):

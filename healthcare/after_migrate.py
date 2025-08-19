@@ -12,6 +12,14 @@ def execute_migrate():
 				"fieldtype": "Check",
 				"insert_after": "channel",
 			},
+		],
+		"Patient Appointment" : [
+			{
+				"fieldname": "recurring_appointments",
+				"label": "Recurring Appointments",
+				"fieldtype": "Check",
+				"hidden" : 1
+			}
 		]
     }
 

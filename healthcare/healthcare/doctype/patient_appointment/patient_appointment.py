@@ -1010,7 +1010,6 @@ def cancel_appointment(appointment_id):
 		frappe.db.set_value(
 			"Service Request", appointment.service_request, "status", "active-Request Status"
 		)
-
 	if appointment.invoiced:
 		sales_invoice = check_sales_invoice_exists(appointment)
 		if sales_invoice and cancel_sales_invoice(sales_invoice):
