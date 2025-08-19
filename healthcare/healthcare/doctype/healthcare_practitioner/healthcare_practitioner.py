@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2015, ESS LLP and contributors
 # For license information, please see license.txt
-
+#incoming
 
 import frappe
 from frappe import _
@@ -110,25 +110,25 @@ class HealthcarePractitioner(Document):
                     frappe.bold(practitioner_schedule.schedule)
                 ))
 
-    def validate_user_id(self):
-        if not frappe.db.exists("User", self.user_id):
-            frappe.throw(_("User {0} does not exist").format(self.user_id))
-        elif not frappe.db.exists("User", self.user_id, "enabled"):
-            frappe.throw(_("User {0} is disabled").format(self.user_id))
+	def validate_user_id(self):
+		if not frappe.db.exists("User", self.user_id):
+			frappe.throw(_("User {0} does not exist").format(self.user_id))
+		elif not frappe.db.exists("User", self.user_id, "enabled"):
+			frappe.throw(_("User {0} is disabled").format(self.user_id))
 
-        # check duplicate
-        practitioner = frappe.db.exists(
-            "Healthcare Practitioner", {"user_id": self.user_id, "name": ("!=", self.name)}
-        )
-        if practitioner:
-            frappe.throw(
-                _("User {0} is already assigned to Healthcare Practitioner {1}").format(
-                    self.user_id, practitioner
-                )
-            )
+		# check duplicate
+		practitioner = frappe.db.exists(
+			"Healthcare Practitioner", {"user_id": self.user_id, "name": ("!=", self.name)}
+		)
+		if practitioner:
+			frappe.throw(
+				_("User {0} is already assigned to Healthcare Practitioner {1}").format(
+					self.user_id, practitioner
+				)
+			)
 
-    def on_trash(self):
-        delete_contact_and_address("Healthcare Practitioner", self.name)
+	def on_trash(self):
+		delete_contact_and_address("Healthcare Practitioner", self.name)
 
 
 def validate_service_item(item, msg):
@@ -144,9 +144,9 @@ def get_practitioner_list(doctype, txt, searchfield, start, page_len, filters=No
 
     filters = {**active_filter, **filters} if filters else active_filter
 
-    fields = ["name", "practitioner_name", "mobile_phone", "department"]
+	fields = ["name", "practitioner_name", "mobile_phone", "department"]
 
-    text_in = {"name": ("like", "%%%s%%" % txt), "practitioner_name": ("like", "%%%s%%" % txt), "department": ("like", "%%%s%%" % txt)}
+	text_in = {"name": ("like", "%%%s%%" % txt), "practitioner_name": ("like", "%%%s%%" % txt), "department": ("like", "%%%s%%" % txt)}
 
     return frappe.get_all(
         "Healthcare Practitioner",

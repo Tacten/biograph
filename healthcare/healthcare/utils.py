@@ -488,7 +488,7 @@ def get_appointment_billing_item_and_rate(doc):
 	if not service_item:
 		throw_config_service_item(is_inpatient)
 
-	if not practitioner_charge and doc.get("practitioner"):
+	if not practitioner_charge and frappe.db.exists("Healthcare Practitioner", doc.get("practitioner")):
 		throw_config_practitioner_charge(is_inpatient, doc.practitioner)
 
 	if not practitioner_charge and not doc.get("practitioner"):
