@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-utils
 # Copyright (c) 2018, earthians and contributors
 # For license information, please see license.txt
 
@@ -42,6 +42,7 @@ def get_healthcare_services_to_invoice(patient, customer, company, link_customer
 		items_to_invoice += get_therapy_sessions_to_invoice(patient, company)
 		items_to_invoice += get_service_requests_to_invoice(patient, company)
 		items_to_invoice += get_observations_to_invoice(patient, company)
+		items_to_invoice += get_package_subscriptions_to_invoice(patient, company)
 		validate_customer_created(patient, customer, link_customer)
 		return items_to_invoice
 
@@ -117,6 +118,36 @@ def get_appointments_to_invoice(patient, company):
 
 	return appointments_to_invoice
 
+def get_package_subscriptions_to_invoice(patient, company):
+	subscriptions_to_invoice = []
+	subscriptions = frappe.db.get_all(
+		"Package Subscription",
+		fields=["name", "healthcare_package", "valid_to"],
+		filters={
+			"patient": patient.name,
+			"company": company,
+			"invoiced": False,
+			"docstatus": 1,
+		},
+		order_by="valid_to desc",
+	)
+	for sub in subscriptions:
+		subscription_doc = frappe.get_doc("Package Subscription", sub.name)
+		item, item_wise_invoicing = frappe.get_cached_value(
+			"Healthcare Package", sub.healthcare_package, ["item", "item_wise_invoicing"]
+		)
+		if not item_wise_invoicing:
+			subscriptions_to_invoice.append(
+				{"reference_type": "Package Subscription", "reference_name": sub.name, "service": item, "date" : sub.valid_to}
+			)
+		else:
+			for item in subscription_doc.package_details:
+				if not item.invoiced:
+					subscriptions_to_invoice.append(
+						{"reference_type": item.doctype, "reference_name": item.name, "service": item.item_code , "date": sub.valid_to}
+					)
+
+	return subscriptions_to_invoice
 
 def get_encounters_to_invoice(patient, company):
 	if not isinstance(patient, str):

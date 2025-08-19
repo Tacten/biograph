@@ -1010,7 +1010,6 @@ def cancel_appointment(appointment_id):
 		frappe.db.set_value(
 			"Service Request", appointment.service_request, "status", "active-Request Status"
 		)
-		
 	if appointment.invoiced:
 		sales_invoice = check_sales_invoice_exists(appointment)
 		if sales_invoice and cancel_sales_invoice(sales_invoice):
@@ -1564,8 +1563,7 @@ def update_appointment_status():
 
 		# If appointment is created for today set status as Open else Scheduled
 		if appointment_date == today:
-			if appointment_doc.status not in ["Checked In", "Checked Out", "Open", "Confirmed", "Cancelled"]:
-				return "Open"
+			return "Confirmed"
 
 		elif appointment_date > today and appointment_doc.status not in ["Scheduled", "Confirmed", "Cancelled"]:
 			return "Scheduled"
