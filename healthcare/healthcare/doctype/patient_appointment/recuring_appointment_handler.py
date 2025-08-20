@@ -263,7 +263,8 @@ def get_recurring_appointment_dates(data):
 
     for row in scheduled_details:
         row.update({'days': getdate(row.get('date')).strftime("%A") })
-  
+    if not scheduled_details:
+        available_any = False
     return {
         "total": len(scheduled_details),
         "dates": scheduled_details,
