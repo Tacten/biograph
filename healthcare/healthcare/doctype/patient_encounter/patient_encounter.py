@@ -864,7 +864,7 @@ def get_filtered_advice_template(doctype, txt, searchfield, start, page_len, fil
 
 	result = frappe.db.sql(
 		f"""
-		SELECT DISTINCT dat.name, ped.diagnosis, pes.complaint
+		SELECT DISTINCT dat.name
 		FROM `tabDoctor Advice Template` AS dat
 		LEFT JOIN `tabPatient Encounter Diagnosis` AS ped ON ped.parent = dat.name
 		LEFT JOIN `tabPatient Encounter Symptom` AS pes ON pes.parent = dat.name
