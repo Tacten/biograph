@@ -7,3 +7,5 @@ healthcare/docs/current
 __pycache__/
 dist/
 node_modules/
+frontend/
+healthcare/www/viewer.html
