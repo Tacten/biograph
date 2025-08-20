@@ -864,7 +864,7 @@ def get_filtered_advice_template(doctype, txt, searchfield, start, page_len, fil
 
 	result = frappe.db.sql(
 		f"""
-		SELECT DISTINCT dat.name
+		SELECT DISTINCT dat.name, dat.medical_department, ped.diagnosis, pes.complaint
 		FROM `tabDoctor Advice Template` AS dat
 		LEFT JOIN `tabPatient Encounter Diagnosis` AS ped ON ped.parent = dat.name
 		LEFT JOIN `tabPatient Encounter Symptom` AS pes ON pes.parent = dat.name
@@ -873,7 +873,7 @@ def get_filtered_advice_template(doctype, txt, searchfield, start, page_len, fil
 	)
 	if filters.get("department"):
 		md_wise_data = frappe.db.sql(f"""
-			Select name
+			Select dat.name, dat.medical_department
 			From `tabDoctor Advice Template` AS dat
 			Where dat.strictly_based_on_medical_department = 1 and dat.medical_department = '{filters.get("department")}'
 		""", as_dict=1)
@@ -881,7 +881,28 @@ def get_filtered_advice_template(doctype, txt, searchfield, start, page_len, fil
 		if md_wise_data:
 			result = md_wise_data + result 
 
+	result_map = {}
+	DAT_LIST = []
+	for row in result:
+		if not result_map.get(row.name):
+			result_map[row.name] = row
+			DAT_LIST.append(row.name)
+		else:
+			result_map[row.name].update(row)
 
-	result = tuple((row.name, row.diagnosis, row.complaint) for row in result)
+	parent_list = []
+	for row in DAT_LIST:
+		child_list = []
+		if result_map.get(row):
+			if result_map.get(row).get("name"):
+				child_list.append(result_map.get(row).get("name"))
+			if result_map.get(row).get("medical_department"):
+				child_list.append(result_map.get(row).get("medical_department"))
+			if result_map.get(row).get("diagnosis"):
+				child_list.append(result_map.get(row).get("diagnosis"))
+			if result_map.get(row).get("complaint"):
+				child_list.append(result_map.get(row).get("complaint"))
+			parent_list.append(tuple(child_list))
+		result = tuple(parent_list)
 
 	return result
