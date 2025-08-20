@@ -225,6 +225,7 @@ function open_repeat_dialog(doc) {
                     let html = `<div style="display: flex; flex-wrap: wrap; gap: 10px;">`;
                     
                     if(!r.message.available){
+                        d.get_primary_btn().hide()
                         html += `<div style="padding: 16px; border: 1px solid #f0ad4e; background-color: #fff3cd; border-radius: 8px; font-family: Arial, sans-serif; color: #856404;">
                                     <p style="margin: 0; font-size: 16px;">
                                         <strong>Practitioner ${data.practitioner}</strong> is unavailable during the selected time slot.
