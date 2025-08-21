@@ -37,6 +37,8 @@
   "get_procedure_from_encounter",
   "procedure_prescription",
   "therapy_plan",
+  "template_dt",
+  "template_dn",
   "column_break_17",
   "appointment_time",
   "end_time",
@@ -467,6 +469,22 @@
    "label": "Reference Docname",
    "options": "reference_doctype",
    "read_only": 1
+  },
+  {
+   "fieldname": "template_dt",
+   "fieldtype": "Link",
+   "label": "Template DocType",
+   "options": "DocType",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "template_dn",
+   "fieldtype": "Dynamic Link",
+   "label": "Template DocName",
+   "options": "template_dt",
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "grid_page_length": 50,
