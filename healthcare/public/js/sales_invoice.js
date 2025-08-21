@@ -352,14 +352,14 @@ var list_row_data_items = function(head, $row, result, invoice_healthcare_servic
 var add_to_item_line = function(frm, checked_values, invoice_healthcare_services){
 	if(invoice_healthcare_services){
 		frappe.call({
-			doc: frm.doc,
-			method: "set_healthcare_services",
+			method: "healthcare.healthcare.custom_doctype.sales_invoice.set_healthcare_services",
 			args:{
+				self : frm.doc,
 				checked_values: checked_values
 			},
-			callback: function() {
-				frm.trigger("validate");
-				frm.refresh_fields();
+			callback: function(r) {
+				frm.set_value(r.message)
+				frm.reload_doc()
 			}
 		});
 	}
