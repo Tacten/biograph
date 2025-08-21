@@ -311,6 +311,12 @@ function open_repeat_dialog(doc) {
         }
 
     });
+    d.fields_dict.repeat_till.datepicker?.update({
+        minDate : frappe.datetime.str_to_obj(frappe.datetime.get_today())
+    })
+    d.fields_dict.from_date.datepicker?.update({
+        minDate : frappe.datetime.str_to_obj(frappe.datetime.get_today())
+    })
     d.fields_dict['repeat_till'].df.onchange =()=>{
         html=`<div></div>`
         d.fields_dict.available_slots.$wrapper.html(html);
