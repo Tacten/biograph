@@ -1,9 +1,9 @@
 <template>
-	<div class="flex items-center justify-center min-h-screen bg-gray-100">
-		<DICOMViewer />
-	</div>
+  <div class="flex items-center justify-center min-h-screen bg-gray-100">
+    <router-view></router-view>
+  </div>
 </template>
 
-<script setup lang="ts">
-import DICOMViewer from './components/DICOMViewer.vue'
+<script setup>
+// This is a layout component that will render the matched route's component
 </script>

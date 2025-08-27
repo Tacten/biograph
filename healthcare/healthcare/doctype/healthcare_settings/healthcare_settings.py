@@ -103,3 +103,13 @@ def get_account(parent_type, parent_field, parent, company):
 		return frappe.db.get_value(
 			"Party Account", {"parentfield": parent_field, "parent": parent, "company": company}, "account"
 		)
+
+# @frappe.whitelist()
+# def get_pacs_password():
+# 	"""Get decrypted PACS password"""
+# 	if not frappe.has_permission("Healthcare Settings", "read"):
+# 		frappe.throw(_("Not allowed to access PACS credentials"), frappe.PermissionError)
+	
+# 	return frappe.utils.password.get_decrypted_password(
+# 		"Healthcare Settings", "Healthcare Settings", "pacs_password"
+# 	)
