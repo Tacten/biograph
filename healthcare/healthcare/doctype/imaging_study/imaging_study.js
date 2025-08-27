@@ -1,6 +1,9 @@
 frappe.ui.form.on("Imaging Study", {
-	refresh(frm) {
+	async refresh(frm) {
 		if (!frm.doc.__islocal && frm.doc.preview_json) {
+			const [pacs_base_url] = await Promise.all([
+				frappe.db.get_single_value('Healthcare Settings', 'pacs_base_url'),
+			]);
 			let series_list = JSON.parse(frm.doc.preview_json || "[]");
 
 			let html = `
@@ -63,26 +66,23 @@ frappe.ui.form.on("Imaging Study", {
 						cards.css("border", "1px solid #ccc");
 						card.css("border", "3px solid #ccc");
 
-						const site = frappe.boot.developer_mode ?  "/viewer" : "/viewer" // "http://localhost:5173";
+						const site = `${pacs_base_url}/ohif/viewer?StudyInstanceUIDs=${frm.doc.study_instance_uid}`
 						const url = new URL(site, window.location.origin);
-						url.searchParams.set("seriesUID", series.SeriesInstanceUID);
-						// url.searchParams.set("studyUID", frm.doc.study_instance_uid);
-						url.searchParams.set("wadoRoot", "http://localhost:8080/dicom-web");
-						url.searchParams.set("qidoRoot", "http://localhost:8080/dicom-web");
 
 						console.log(url.toString());
 
 						const d = new frappe.ui.Dialog({
 							title: `${series.SeriesInstanceUID}`,
-							size: "large",
+							size: "extra-large",
 							fields: [
 								{
 								fieldname: "viewer_html",
 								fieldtype: "HTML",
 								options: `
 									<iframe
-										src="${url.toString()}
-										width="100%" height="600" frameborder="0"
+										src="${url.toString()}"
+										frameborder="0"
+										style="display: block; height: 85vh; width: 100%"
 									></iframe>
 								`
 								}
