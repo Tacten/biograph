@@ -1,5 +1,7 @@
 import frappe
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import SalesInvoice
+import json
+from erpnext.stock.get_item_details import get_item_details
 
 
 @frappe.whitelist()
