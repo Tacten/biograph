@@ -104,10 +104,6 @@ after_migrate = "healthcare.after_migrate.execute_migrate"
 # ---------------
 # Override standard doctype classes
 
-override_doctype_class = {
-	"Sales Invoice": "healthcare.healthcare.custom_doctype.sales_invoice.HealthcareSalesInvoice",
-}
-
 # Document Events
 # ---------------
 # Hook on document methods and events
