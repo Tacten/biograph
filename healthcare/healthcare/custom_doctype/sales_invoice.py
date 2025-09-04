@@ -24,7 +24,7 @@ def set_healthcare_services(self, checked_values):
         price_list, price_list_currency = frappe.db.get_value(
             "Price List", {"selling": 1}, ["name", "currency"]
         )
-
+        price_list = self.selling_price_list
         args = {
             "doctype": "Sales Invoice",
             "item_code": checked_item.get("item"),
@@ -62,5 +62,6 @@ def set_healthcare_services(self, checked_values):
 
     # fill defaults & save
     self.set_missing_values(for_validate=True)
-
+    self.selling_price_list = price_list
+    self.calculate_taxes_and_totals()
     return self
