@@ -21,7 +21,7 @@
 									{{ strip_html(clinical_notes[i].added_by) }}
 								</div>
 								<div class="time small text-muted">
-									{{ frappe.datetime.global_date_format(clinical_notes[i].posting_date) }}<br>
+									{{ frappe.datetime.global_date_format(clinical_notes[i].modified) }}<br>
 									{{ clinical_notes[i].practitioner }}<br>
 									<div class="note-type">
 										{{ clinical_notes[i].clinical_note_type }}

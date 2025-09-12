@@ -317,6 +317,11 @@ class PatientAppointment(Document):
 		self.db_set("google_meet_link", event.google_meet_link)
 		self.notify_update()
 
+		if self.service_request:
+			frappe.db.set_value(
+				"Service Request", self.service_request, "status", "completed-Request Status"
+			)
+
 	def set_title(self):
 		if self.is_unavailability:
 			# For unavailability appointments, use patient_name as title
@@ -360,12 +365,12 @@ class PatientAppointment(Document):
 					self.status = "Confirmed"
 				return
 			return
-
 		old_doc = self.get_doc_before_save()
+
 		# If appointment is created for today set status as Open else Scheduled
 		if appointment_date == today:
-			if self.status not in ["Checked In", "Checked Out", "Open", "Confirmed", "Cancelled"]:
-				self.status = "Open"
+			if self.status not in ["Checked In", "Checked Out" , "Confirmed", "Cancelled"]:
+				self.status = "Confirmed"
 		elif (appointment_date > today and self.status not in ["Cancelled"] and 
 			str(old_doc.appointment_datetime) != str(self.appointment_datetime)):
 			self.status = "Scheduled"
@@ -862,9 +867,11 @@ class PatientAppointment(Document):
 	
 	@frappe.whitelist()
 	def get_service_unit_values(self,selected_practitioner):
-		doc=frappe.get_doc("Healthcare Practitioner", selected_practitioner)
-		return [item.service_unit for item in doc.practitioner_schedules]
+		query=frappe.db.sql(
+			"Select service_unit from `tabPractitioner Service Unit Schedule` where parent='{0}'".format(selected_practitioner),as_dict=1
+		)
 
+		return [item.service_unit for item in query]
 
 
 @frappe.whitelist()
@@ -999,6 +1006,11 @@ def get_appointment_item(appointment_doc, item):
 
 def cancel_appointment(appointment_id):
 	appointment = frappe.get_doc("Patient Appointment", appointment_id)
+	if appointment.service_request:
+		frappe.db.set_value(
+			"Service Request", appointment.service_request, "status", "active-Request Status"
+		)
+		
 	if appointment.invoiced:
 		sales_invoice = check_sales_invoice_exists(appointment)
 		if sales_invoice and cancel_sales_invoice(sales_invoice):
@@ -1546,7 +1558,7 @@ def update_appointment_status():
 				if appointment_date > today:
 					return "Scheduled"
 				elif appointment_date == today:
-					return "Open"
+					return "Confirmed"
 				return
 			return
 

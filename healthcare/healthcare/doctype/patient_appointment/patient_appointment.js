@@ -282,7 +282,7 @@ frappe.ui.form.on('Patient Appointment', {
 				frappe.utils.scroll_to(frm.get_field("therapy_plan").$wrapper, true, 30);
 				frappe.msgprint({
 					title: __('Not Allowed'),
-					message: __('Please select Therapy Session first'),
+					message: __('Please select Therapy Plan first'),
 					indicator: 'red'
 				});
 			} else {
@@ -631,7 +631,11 @@ let check_and_set_availability = function(frm) {
 							filters: formValues
 						},
 						callback: function(r) {
-							if (r.message && Array.isArray(r.message) && r.message.length > 0) {
+							if (r.message 
+								&& Array.isArray(r.message) 
+								&& r.message.length > 0 
+								&& r.message[0].name != frm.doc.name) {
+
 								show_block_booking_conflict_dialog(formValues, r.message);
 							} else {
 								create_block_appointment(formValues, frm);

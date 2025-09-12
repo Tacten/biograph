@@ -3,11 +3,32 @@
 
 frappe.ui.form.on('Therapy Plan', {
 	setup: function(frm) {
-		frm.get_field('therapy_plan_details').grid.editable_fields = [
-			{fieldname: 'therapy_type', columns: 6},
-			{fieldname: 'no_of_sessions', columns: 2},
-			{fieldname: 'sessions_completed', columns: 2}
+        console.log("setup")
+		let value = [
+				{
+					"fieldname": "therapy_type",
+					"columns": 2
+				},
+				{
+					"fieldname": "no_of_days",
+					"columns": 2
+				},
+				{
+					"fieldname": "no_of_sessions_per_day",
+					"columns": 2
+				},
+				{
+					"fieldname": "no_of_sessions",
+					"columns": 2
+				},
+				{fieldname: 'sessions_completed', columns: 2}
 		];
+		frappe.model.user_settings.save("Therapy Plan Detail", "GridView", null).then((r) => {
+			frappe.model.user_settings["Therapy Plan Detail"] = r.message || r;
+		});
+		frappe.model.user_settings.save("Therapy Plan Detail", "GridView", value).then((r) => {
+			frappe.model.user_settings["Therapy Plan Detail"] = r.message || r;
+		});
 	},
 	onload:(frm)=>{
 		if(!frm.doc.__islocal){
@@ -77,6 +98,15 @@ frappe.ui.form.on('Therapy Plan', {
 					frm.trigger('make_patient_appointment');
 				}, __('Create'));
 			}
+			frm.add_custom_button(__("Clinical Note"), function() {
+				frappe.route_options = {
+					"patient": frm.doc.patient,
+					"reference_doc": "Therapy Plan",
+					"reference_name": frm.doc.name,
+					"practitioner": frm.doc.practitioner
+				}
+				frappe.new_doc("Clinical Note");
+			},__('Create'));
 			
 			document.querySelectorAll('button[data-doctype="Therapy Session"]').forEach(btn => {
 				btn.style.display = 'none';
@@ -98,8 +128,21 @@ frappe.ui.form.on('Therapy Plan', {
 				'no_of_sessions', 'read_only', 1
 			);
 		}
+		if(!frm.is_new() && !frm.__islocal){
+			frm.trigger("create_reurring_appointments")
+		}
 	},
-
+	create_reurring_appointments: function(frm){
+		if(!frm.is_new() && !frm.__islocal){
+			frm.add_custom_button(__("Repeat Appointment"), ()=>{
+				if(frm.doc.__unsaved){
+					frappe.msgprint("First save the document")
+					return
+				}
+				window.show_recurring_dialog(frm.doc)
+			})
+		}
+	},
 	make_sales_invoice: function(frm) {
 		let fields_ = [
 			{
@@ -233,16 +276,42 @@ frappe.ui.form.on('Therapy Plan', {
 });
 
 frappe.ui.form.on('Therapy Plan Detail', {
-	no_of_sessions: function(frm) {
-		let total = 0;
-		$.each(frm.doc.therapy_plan_details, function(_i, e) {
-			total += e.no_of_sessions;
-		});
-		frm.set_value('total_sessions', total);
-		refresh_field('total_sessions');
-	}
+	// no_of_sessions: function(frm) {
+	// 	let total = 0;
+	// 	$.each(frm.doc.therapy_plan_details, function(_i, e) {
+	// 		total += e.no_of_sessions;
+	// 	});
+	// 	frm.set_value('total_sessions', total);
+	// 	refresh_field('total_sessions');
+	// },
+	no_of_days:(frm, cdt, cdn)=>{
+        let d = locals[cdt][cdn]
+		if(d.no_of_days < 1){
+			frappe.model.set_value(cdt, cdn, 'no_of_days', '')
+		}
+        if(d['no_of_days'] && d['no_of_sessions_per_day']){
+            frappe.model.set_value(cdt, cdn, 'no_of_sessions', d.no_of_days * d.no_of_sessions_per_day)
+            frm.refresh_field("therapies")
+        }else{
+			frappe.model.set_value(cdt, cdn, 'no_of_sessions','')
+            frm.refresh_field("therapies")	
+		}
+    },
+    no_of_sessions_per_day:(frm, cdt, cdn)=>{
+        let d = locals[cdt][cdn]
+		if(d.no_of_sessions_per_day < 1){
+			frappe.model.set_value(cdt, cdn, 'no_of_sessions_per_day', '')
+		}
+        if(d['no_of_days'] && d['no_of_sessions_per_day']){
+            frappe.model.set_value(cdt, cdn, 'no_of_sessions', d.no_of_days * d.no_of_sessions_per_day)
+            frm.refresh_field("therapies")
+        }else{
+			frappe.model.set_value(cdt, cdn, 'no_of_sessions', '')
+            frm.refresh_field("therapies")	
+		}
+    }
 });
 
 function callback(r){
 	return r.message
-}
+} 

@@ -321,7 +321,7 @@ class PatientEncounter(Document):
 			{
 				"patient": patient,
 			},
-			["posting_date", "note", "name", "practitioner", "user", "clinical_note_type"],
+			["modified","posting_date", "note", "name", "practitioner", "user", "clinical_note_type"],
 		)
 
 	@frappe.whitelist()
@@ -653,7 +653,12 @@ def create_therapy_plan(encounter):
 		for entry in encounter.therapies:
 			doc.append(
 				"therapy_plan_details",
-				{"therapy_type": entry.therapy_type, "no_of_sessions": entry.no_of_sessions},
+				{
+					"therapy_type": entry.therapy_type, 
+					"no_of_sessions": entry.no_of_sessions,
+					"no_of_days": entry.no_of_days,
+					"no_of_sessions_per_day": entry.no_of_sessions_per_day 
+				},
 			)
 		doc.save(ignore_permissions=True)
 		if doc.get("name"):
@@ -781,3 +786,123 @@ def create_service_request_from_widget(encounter, data, medication_request=False
 		order = encounter_doc.get_order_details(template, data)
 	order.insert(ignore_permissions=True, ignore_mandatory=True)
 	order.submit()
+
+
+@frappe.whitelist()
+def create_patient_referral(encounter, references):
+	if isinstance(references, str):
+		references = json.loads(references)
+
+	encounter_doc = frappe.get_doc("Patient Encounter", encounter)
+	for ref in references:
+		order = frappe.get_doc(
+			{
+				"doctype": "Service Request",
+				"order_date": encounter_doc.get("encounter_date"),
+				"order_time": encounter_doc.get("encounter_time"),
+				"company": encounter_doc.get("company"),
+				"status": "draft-Request Status",
+				"source_doc": "Patient Encounter",
+				"order_group": encounter,
+				"patient": encounter_doc.get("patient"),
+				"practitioner": encounter_doc.get("practitioner"),
+				"template_dt": "Appointment Type",
+				"template_dn": "Consultation",
+				"quantity": 1,
+				"order_description": ref.get("referral_note"),
+				"referred_to_practitioner": ref.get("refer_to"),
+			}
+		)
+		order.insert(ignore_permissions=True, ignore_mandatory=True)
+		order.submit()
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_filtered_advice_template(doctype, txt, searchfield, start, page_len, filters):
+	filters["symptoms"] = filters.get("doc").get("symptoms")
+	filters["diagnosis"] = filters.get("doc").get("diagnosis")
+	filters["department"] = filters.get("doc").get("medical_department")
+	
+	symptoms, diagnosis = [], []
+
+	if filters.get("symptoms"):
+		symptoms = [row["complaint"] for row in filters.get("symptoms")]
+
+	if filters.get("diagnosis"):
+		diagnosis = [row["diagnosis"] for row in filters.get("diagnosis")]
+
+	conditions = []
+
+	if symptoms:
+		formatted_symptoms = ", ".join([f'"{s}"' for s in symptoms])
+		symptoms_condition = f"pes.complaint in ({formatted_symptoms})"
+		conditions.append(symptoms_condition)
+
+	if diagnosis:
+		formatted_diagnosis = ", ".join([f'"{d}"' for d in diagnosis])
+		diagnosis_condition = f"ped.diagnosis in ({formatted_diagnosis})"
+		conditions.append(diagnosis_condition)
+	txt_conditions = []
+	if txt:
+		txt_conditions.append(f"ped.diagnosis like '%{txt}%' ")
+		txt_conditions.append(f"pes.complaint like '%{txt}%' ")
+		txt_conditions.append(f"dat.name like '%{txt}%' ")
+
+	department_condition = ''
+	if filters.get("department"):
+		department_condition += f" dat.medical_department = '{filters.get('department')}' and "
+
+	where_clause = f"{department_condition}"
+	where_clause += " OR ".join(conditions)
+	where_sql = f"WHERE {where_clause}" if conditions else ""
+	if txt_conditions:
+		where_sql += f" and ({'OR '.join(txt_conditions)} )"
+	
+	if filters.get("department") and (not where_sql or where_sql == ""):
+		where_sql = f" WHERE dat.medical_department = '{filters.get('department')}' "
+
+
+	result = frappe.db.sql(
+		f"""
+		SELECT DISTINCT dat.name, dat.medical_department, ped.diagnosis, pes.complaint
+		FROM `tabDoctor Advice Template` AS dat
+		LEFT JOIN `tabPatient Encounter Diagnosis` AS ped ON ped.parent = dat.name
+		LEFT JOIN `tabPatient Encounter Symptom` AS pes ON pes.parent = dat.name
+		{where_sql}
+		""", as_dict=1
+	)
+	if filters.get("department"):
+		md_wise_data = frappe.db.sql(f"""
+			Select dat.name, dat.medical_department
+			From `tabDoctor Advice Template` AS dat
+			Where dat.strictly_based_on_medical_department = 1 and dat.medical_department = '{filters.get("department")}'
+		""", as_dict=1)
+
+		if md_wise_data:
+			result = md_wise_data + result 
+
+	result_map = {}
+	DAT_LIST = []
+	for row in result:
+		if not result_map.get(row.name):
+			result_map[row.name] = row
+			DAT_LIST.append(row.name)
+		else:
+			result_map[row.name].update(row)
+
+	parent_list = []
+	for row in DAT_LIST:
+		child_list = []
+		if result_map.get(row):
+			if result_map.get(row).get("name"):
+				child_list.append(result_map.get(row).get("name"))
+			if result_map.get(row).get("medical_department"):
+				child_list.append(result_map.get(row).get("medical_department"))
+			if result_map.get(row).get("diagnosis"):
+				child_list.append(result_map.get(row).get("diagnosis"))
+			if result_map.get(row).get("complaint"):
+				child_list.append(result_map.get(row).get("complaint"))
+			parent_list.append(tuple(child_list))
+		result = tuple(parent_list)
+
+	return result

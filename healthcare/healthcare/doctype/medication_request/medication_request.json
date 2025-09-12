@@ -40,6 +40,7 @@
   "column_break_10",
   "reason_reference_doctype",
   "reason_reference",
+  "source_doc",
   "order_group",
   "sequence",
   "request_details_section",
@@ -95,10 +96,10 @@
   },
   {
    "fieldname": "order_group",
-   "fieldtype": "Link",
+   "fieldtype": "Dynamic Link",
    "in_standard_filter": 1,
    "label": "Order Group (Encounter)",
-   "options": "Patient Encounter"
+   "options": "source_doc"
   },
   {
    "fieldname": "column_break_91",
@@ -458,8 +459,15 @@
    "label": "Medication Item",
    "options": "Item",
    "reqd": 1
+  },
+  {
+   "fieldname": "source_doc",
+   "fieldtype": "Link",
+   "label": "Source Doc",
+   "options": "DocType"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
@@ -516,6 +524,7 @@
   }
  ],
  "restrict_to_domain": "Healthcare",
+ "row_format": "Dynamic",
  "search_fields": "title,patient,order_group,inpatient_record,practitioner,patient_email,patient_mobile",
  "sort_field": "modified",
  "sort_order": "DESC",

@@ -3,6 +3,9 @@ frappe.ui.form.on('Sales Invoice', {
 	refresh(frm) {
 		if (frm.doc.docstatus === 0 && !frm.doc.is_return) {
 			frm.add_custom_button(__('Healthcare Services'), function() {
+				if(!frm.doc.patient){
+					frappe.throw("Patient is not selected, Please select a patient first.")
+				}
 				frappe.db.get_value("Patient", frm.doc.patient, "customer")
 				.then(r => {
 					let link_customer = null;
@@ -69,12 +72,6 @@ frappe.ui.form.on('Sales Invoice', {
 
 	items_add: function (frm) {
 		set_service_unit(frm);
-	},
-
-	paid_amount : (frm) =>{
-		if(frm.doc.paid_amount != frm.doc.grand_total){
-			frappe.throw(`Paid Amount should be a same as invoice amount<br><b>Paid Amount = ${format_currency(frm.doc.grand_total)}</b>`)
-		}
 	}
 });
 
@@ -93,6 +90,7 @@ var get_healthcare_services_to_invoice = function(frm, link_customer) {
 	let selected_patient = '';
 	var dialog = new frappe.ui.Dialog({
 		title: __("Get Items from Healthcare Services"),
+		size: 'large',
 		fields:[
 			{
 				fieldtype: 'Link',
@@ -117,7 +115,7 @@ var get_healthcare_services_to_invoice = function(frm, link_customer) {
 			selected_patient = patient;
 			var method = "healthcare.healthcare.utils.get_healthcare_services_to_invoice";
 			var args = {patient: patient, customer: frm.doc.customer, company: frm.doc.company, link_customer: link_customer};
-			var columns = (["service", "reference_name", "reference_type"]);
+			var columns = (["date", "service", "reference_name", "reference_type"]);
 			get_healthcare_items(frm, true, $results, $placeholder, method, args, columns);
 		}
 		else if(!patient){
@@ -225,6 +223,12 @@ var get_checked_values= function($results) {
 			else{
 				checked_values['rate'] = false;
 			}
+			if($(this).attr('data-practitioner') != 'undefined'){
+				checked_values['practitioner'] = $(this).attr('data-practitioner');
+			}
+			else{
+				checked_values['practitioner'] = false;
+			}
 			if($(this).attr('data-income-account') != 'undefined'){
 				checked_values['income_account'] = $(this).attr('data-income-account');
 			}
@@ -253,6 +257,7 @@ var get_drugs_to_invoice = function(frm, link_customer) {
 	let selected_encounter = '';
 	var dialog = new frappe.ui.Dialog({
 		title: __("Get Items from Medication Requests"),
+		size: 'large',
 		fields:[
 			{ fieldtype: 'Link', options: 'Patient', label: 'Patient', fieldname: "patient", reqd: true },
 			{ fieldtype: 'Link', options: 'Patient Encounter', label: 'Patient Encounter', fieldname: "encounter", reqd: true,
@@ -318,6 +323,7 @@ var list_row_data_items = function(head, $row, result, invoice_healthcare_servic
 				data-rate = ${result.rate}
 				data-income-account = "${result.income_account}"
 				data-qty = ${result.qty}
+				data-practitioner = ${result.practitioner}
 				data-description = "${result.description}">
 				</div>`).append($row);
 	}
@@ -328,6 +334,7 @@ var list_row_data_items = function(head, $row, result, invoice_healthcare_servic
 				data-qty = ${result.quantity}
 				data-dn= "${result.reference_name}"
 				data-dt= "${result.reference_type}"
+				data-practitioner= "${result.practitioner}"
 				data-rate = ${result.rate}
 				data-description = "${result.description}">
 				</div>`).append($row);
@@ -338,20 +345,24 @@ var list_row_data_items = function(head, $row, result, invoice_healthcare_servic
 var add_to_item_line = function(frm, checked_values, invoice_healthcare_services){
 	if(invoice_healthcare_services){
 		frappe.call({
-			doc: frm.doc,
-			method: "set_healthcare_services",
+			method: "healthcare.healthcare.custom_doctype.sales_invoice.set_healthcare_services",
 			args:{
+				self : frm.doc,
 				checked_values: checked_values
 			},
-			callback: function() {
-				frm.trigger("validate");
-				frm.refresh_fields();
+			callback: function(r) {
+				frm.set_value(r.message)
+				frm.reload_doc()
 			}
 		});
 	}
 	else{
 		for(let i=0; i<checked_values.length; i++){
+			console.log(checked_values[i].practitioner)
 			var si_item = frappe.model.add_child(frm.doc, 'Sales Invoice Item', 'items');
+			if(checked_values[i]['dt'] !== 'Medication Request'){
+				frm.set_value("ref_practitioner", checked_values[i].practitioner)
+			}
 			frappe.model.set_value(si_item.doctype, si_item.name, 'item_code', checked_values[i]['item']);
 			frappe.model.set_value(si_item.doctype, si_item.name, 'qty', 1);
 			frappe.model.set_value(si_item.doctype, si_item.name, 'reference_dn', checked_values[i]['dn']);

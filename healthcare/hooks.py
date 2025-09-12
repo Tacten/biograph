@@ -80,6 +80,7 @@ after_install = "healthcare.setup.setup_healthcare"
 
 before_uninstall = "healthcare.uninstall.before_uninstall"
 after_uninstall = "healthcare.uninstall.after_uninstall"
+after_migrate = "healthcare.after_migrate.execute_migrate"
 
 # Desk Notifications
 # ------------------
@@ -102,10 +103,6 @@ after_uninstall = "healthcare.uninstall.after_uninstall"
 # DocType Class
 # ---------------
 # Override standard doctype classes
-
-override_doctype_class = {
-	"Sales Invoice": "healthcare.healthcare.custom_doctype.sales_invoice.HealthcareSalesInvoice",
-}
 
 # Document Events
 # ---------------

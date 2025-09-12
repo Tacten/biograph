@@ -61,10 +61,30 @@ frappe.ui.form.on('Patient Encounter', {
 	},
 
 	setup: function(frm) {
-		frm.get_field('therapies').grid.editable_fields = [
-			{fieldname: 'therapy_type', columns: 8},
-			{fieldname: 'no_of_sessions', columns: 2}
+		let value = [
+				{
+					"fieldname": "therapy_type",
+					"columns": 2
+				},
+				{
+					"fieldname": "no_of_days",
+					"columns": 2
+				},
+				{
+					"fieldname": "no_of_sessions_per_day",
+					"columns": 2
+				},
+				{
+					"fieldname": "no_of_sessions",
+					"columns": 2
+				},
 		];
+		frappe.model.user_settings.save("Therapy Plan Detail", "GridView", null).then((r) => {
+			frappe.model.user_settings["Therapy Plan Detail"] = r.message || r;
+		});
+		frappe.model.user_settings.save("Therapy Plan Detail", "GridView", value).then((r) => {
+			frappe.model.user_settings["Therapy Plan Detail"] = r.message || r;
+		});
 		frm.get_field('drug_prescription').grid.editable_fields = [
 			{fieldname: 'drug_code', columns: 2},
 			{fieldname: 'drug_name', columns: 2},
@@ -90,6 +110,10 @@ frappe.ui.form.on('Patient Encounter', {
 					});
 				}
 			}
+
+			frm.add_custom_button(__("Refer Patient"), function() {
+				create_patient_referral(frm);
+			},__("Create"));
 
 			frm.add_custom_button(__('Patient History'), function() {
 				if (frm.doc.patient) {
@@ -228,6 +252,15 @@ frappe.ui.form.on('Patient Encounter', {
 		var table_list =  ["drug_prescription", "lab_test_prescription", "procedure_prescription", "therapies"]
 		apply_code_sm_filter_to_child(frm, "priority", table_list, "Priority")
 		apply_code_sm_filter_to_child(frm, "intent", table_list, "Intent")
+
+		frm.fields_dict['doctor_advice_template'].get_query = function(){
+			return {
+				query: "healthcare.healthcare.doctype.patient_encounter.patient_encounter.get_filtered_advice_template",
+				filters: {
+					doc: frm.doc,
+				}
+			};
+		}
 	},
 
 	appointment: function(frm) {
@@ -275,6 +308,13 @@ frappe.ui.form.on('Patient Encounter', {
 			};
 			frm.set_value(values);
 			frm.set_df_property('patient', 'read_only', 0);
+		}
+	},
+	
+	doctor_advice_template: function(frm){
+		if (frm.doc.doctor_advice_template){
+			frm.add_fetch("doctor_advice_template", "doctor_advice", "doctor_advice");
+			frm.refresh_field("doctor_advice_template")
 		}
 	},
 
@@ -714,7 +754,7 @@ var apply_code_sm_filter_to_child = function(frm, field, table_list, code_system
 };
 
 var show_clinical_notes = async function(frm) {
-	if (frm.doc.docstatus == 0 && frm.doc.patient) {
+	if (frm.doc.patient) {
 		const clinical_notes = new healthcare.ClinicalNotes({
 			frm: frm,
 			notes_wrapper: $(frm.fields_dict.clinical_notes.wrapper),
@@ -734,3 +774,119 @@ var show_orders = async function(frm) {
 		orders.refresh();
 	}
 }
+
+let create_patient_referral = function(frm) {
+	var dialog = new frappe.ui.Dialog ({
+		title: "Patient Referral",
+		size: "large",
+		fields: [
+			{
+				label: "References",
+				fieldname: "references",
+				fieldtype: "Table",
+				is_editable_grid: true,
+				data: [],
+				fields: [
+					{
+						"fieldname": "refer_to",
+						"fieldtype": "Link",
+						"label": "Refer To",
+						"options": "Healthcare Practitioner",
+						"in_list_view": 1,
+						"reqd": 1,
+						get_query: function () {
+							return {
+								filters: {
+									name: ["!=", frm.doc.practitioner]
+								},
+							};
+						},
+					},
+					{
+						"fieldname": "referral_note",
+						"fieldtype": "Long Text",
+						"label": "Referral Note",
+						"in_list_view": 1,
+					},
+				],
+			},
+		],
+		primary_action_label: __("Refer"),
+		primary_action: function () {
+			const references = dialog.get_value("references");
+
+			if (references.length > 0) {
+				// Check for duplicate 'refer_to'
+				const referToSet = new Set();
+				let hasDuplicate = false;
+
+				for (let row of references) {
+					if (referToSet.has(row.refer_to)) {
+						hasDuplicate = true;
+						break;
+					}
+					referToSet.add(row.refer_to);
+				}
+
+				if (hasDuplicate) {
+					frappe.msgprint(__('Duplicate "Refer To" entries are not allowed.'));
+					return;
+				}
+
+				// Proceed with server call if no duplicates
+				frappe.call({
+					method: "healthcare.healthcare.doctype.patient_encounter.patient_encounter.create_patient_referral",
+					freeze: true,
+					args: {
+						encounter: frm.doc.name,
+						references: references,
+					},
+					callback: function (r) {
+						if (r && !r.exc) {
+							dialog.hide();
+							frm.reload_doc();
+							frappe.show_alert({
+								message: __("Patient referral requests created successfully"),
+								indicator: "success"
+							});
+						}
+					}
+				});
+
+				frm.refresh_fields();
+			}
+		}
+
+	});
+
+	dialog.show();
+};
+
+frappe.ui.form.on('Therapy Plan Detail', {
+    no_of_days:(frm, cdt, cdn)=>{
+        let d = locals[cdt][cdn]
+		if(d.no_of_days < 1){
+			frappe.model.set_value(cdt, cdn, 'no_of_days', '')
+		}
+        if(d['no_of_days'] && d['no_of_sessions_per_day']){
+            frappe.model.set_value(cdt, cdn, 'no_of_sessions', d.no_of_days * d.no_of_sessions_per_day)
+            frm.refresh_field("therapies")
+        }else{
+			frappe.model.set_value(cdt, cdn, 'no_of_sessions','')
+            frm.refresh_field("therapies")	
+		}
+    },
+    no_of_sessions_per_day:(frm, cdt, cdn)=>{
+        let d = locals[cdt][cdn]
+		if(d.no_of_sessions_per_day < 1){
+			frappe.model.set_value(cdt, cdn, 'no_of_sessions_per_day', '')
+		}
+        if(d['no_of_days'] && d['no_of_sessions_per_day']){
+            frappe.model.set_value(cdt, cdn, 'no_of_sessions', d.no_of_days * d.no_of_sessions_per_day)
+            frm.refresh_field("therapies")
+        }else{
+			frappe.model.set_value(cdt, cdn, 'no_of_sessions', '')
+            frm.refresh_field("therapies")	
+		}
+    }
+}) 
