@@ -23,6 +23,7 @@ class InsurancePayorContract(Document):
 			contract = frappe.db.exists(
 				"Insurance Payor Contract",
 				{
+					"company": self.company,
 					"insurance_payor": self.insurance_payor,
 					"start_date": ("<=", self.end_date),
 					"end_date": (">=", self.start_date),
