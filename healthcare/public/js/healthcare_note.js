@@ -187,34 +187,30 @@ healthcare.Orders = class Orders {
 
 					$(activities_html).appendTo(me.open_activities_wrapper);
 
-					$(".service-request").find(".service-request-onhold").on("click", function() {
-						me.update_status(this, "Service Request", "On Hold");
+					$(".service-request").find(".service-request-on-hold").on("click", function() {
+						me.update_status(this, "Service Request", "on-hold-Request Status");
 					});
 					$(".service-request").find(".service-request-active").on("click", function() {
-						me.update_status(this, "Service Request", "Active");
+						me.update_status(this, "Service Request", "active-Request Status");
 					});
 
-					$(".service-request").find(".order-cancel").on("click", function() {
-						me.update_status(this, "Service Request", "Cancel");
+					$(".service-request").find(".service-request-revoke").on("click", function() {
+						me.update_status(this, "Service Request", "revoked-Request Status");
+						me.create_service_request();
+					});
+					$(".medication-request").find(".medication-request-on-hold").on("click", function() {
+						me.update_status(this, "Medication Request", "on-hold-Medication Request Status");
+					});
+					$(".medication-request").find(".medication-request-active").on("click", function() {
+						me.update_status(this, "Medication Request", "active-Medication Request Status");
 					});
 
-					$(".service-request").find(".service-request-replace").on("click", function() {
-						me.update_status(this, "Service Request", "Replaced");
+					$(".medication-request").find(".medication-request-cancel").on("click", function() {
+						me.update_status(this, "Medication Request", "cancelled-Medication Request Status");
 					});
 
-					$(".medication-request").find(".service-request-onhold").on("click", function() {
-						me.update_status(this, "Medication Request", "On Hold");
-					});
-					$(".medication-request").find(".service-request-active").on("click", function() {
-						me.update_status(this, "Medication Request", "Active");
-					});
-
-					$(".medication-request").find(".order-cancel").on("click", function() {
-						me.update_status(this, "Medication Request", "Cancel");
-					});
-
-					$(".medication-request").find(".service-request-replace").on("click", function() {
-						me.update_status(this, "Medication Request", "Replaced");
+					$(".medication-request").find(".medication-request-stop").on("click", function() {
+						me.update_status(this, "Medication Request", "stopped-Medication Request Status");
 						me.create_medication_request();
 					});
 
@@ -275,11 +271,6 @@ healthcare.Orders = class Orders {
 						"options": "Medical Department",
 						"depends_on": "eval: doc.order_template",
 						"read_only": 1,
-					},
-					{
-						"fieldname": "column_break_4",
-						"fieldtype": "Column Break",
-						"depends_on": "eval:doc.order_template_type=='Lab Test Template';",
 					},
 					{
 						"fieldname": "practitioner",
@@ -420,10 +411,6 @@ healthcare.Orders = class Orders {
 						"label": "Dosage",
 						"mandatory_depends_on": "eval:!doc.dosage_by_interval",
 						"options": "Prescription Dosage"
-					},
-					{
-						"fieldname": "column_break_7",
-						"fieldtype": "Column Break"
 					},
 					{
 						"fieldname": "description",

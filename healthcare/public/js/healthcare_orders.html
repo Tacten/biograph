@@ -48,14 +48,13 @@
 								<ul class="dropdown-menu dropdown-menu-right"
 									style="position: absolute; will-change: transform; top: 0px; left: 0px; transform: translate3d(-172px, 26px, 0px);"
 									x-placement="bottom-end">
-									{% if(service_requests[i].status == "Active") { %}
-									<li><a class="dropdown-item service-request-onhold" data-action="on-hold">{{ __("On Hold") }}</a></li>
-									<li><a class="dropdown-item service-request-replace" data-action="replace">{{ __("Replace") }}</a></li>
-									{% } else if (service_requests[i].status == "On Hold") { %}
-									<li><a class="dropdown-item service-request-active" data-action="active">{{ __("Active") }}</a></li>
-									{% } %}
-									{% if(service_requests[i].docstatus == 1 && service_requests[i].status == "Active") { %}
-									<li><a class="dropdown-item order-cancel" data-action="cancel">{{ __("Cancel") }}</a></li>
+									{% if(service_requests[i].status == "active-Request Status") { %}
+										<li><a class="dropdown-item service-request-on-hold" data-action="on-hold">{{ __("On Hold") }}</a></li>
+										<li><a class="dropdown-item service-request-revoke" data-action="revoke">{{ __("Revoke") }}</a></li>
+									{% } else if (service_requests[i].status == "on-hold-Request Status") { %}
+										<li><a class="dropdown-item service-request-active" data-action="active">{{ __("Active") }}</a></li>
+									{% } else if (service_requests[i].status == "revoked-Request Status") { %}
+										<li><a class="dropdown-item service-request-active" data-action="active">{{ __("Active") }}</a></li>
 									{% } %}
 								</ul>
 								</div>
@@ -127,19 +126,21 @@
 									</div>
 								{% } %}
 								<button data-toggle="dropdown" aria-haspopup="true" aria-expanded="true" class="btn btn-xs btn-secondary order-btn">
-									{%= status_code_map[service_requests[i].status] %}
+									{%= status_code_map[medication_requests[i].status] %}
 									</button>
 									<ul class="dropdown-menu dropdown-menu-right"
 									style="position: absolute; will-change: transform; top: 0px; left: 0px; transform: translate3d(-172px, 26px, 0px);"
 									x-placement="bottom-end">
-									{% if(medication_requests[i].status == "Active") { %}
-									<li><a class="dropdown-item service-request-onhold" data-action="on-hold">{{ __("On Hold") }}</a></li>
-									<li><a class="dropdown-item service-request-replace" data-action="replace">{{ __("Replace") }}</a></li>
-									{% } else if (medication_requests[i].status == "On Hold") { %}
-									<li><a class="dropdown-item service-request-active" data-action="active">{{ __("Active") }}</a></li>
+									{% if(medication_requests[i].status == "active-Medication Request Status") { %}
+										<li><a class="dropdown-item medication-request-on-hold" data-action="on-hold">{{ __("On Hold") }}</a></li>
+										<li><a class="dropdown-item medication-request-stop" data-action="stop">{{ __("Stop") }}</a></li>
+									{% } else if (medication_requests[i].status == "on-hold-Medication Request Status") { %}
+										<li><a class="dropdown-item medication-request-active" data-action="active">{{ __("Active") }}</a></li>
+									{% } else if (medication_requests[i].status == "stopped-Medication Request Status") { %}
+										<li><a class="dropdown-item medication-request-active" data-action="active">{{ __("Active") }}</a></li>
 									{% } %}
-									{% if(medication_requests[i].docstatus == 1 && medication_requests[i].status == "Active") { %}
-									<li><a class="dropdown-item order-cancel" data-action="cancel">{{ __("Cancel") }}</a></li>
+									{% if(medication_requests[i].docstatus == 1 && medication_requests[i].status == "active-Medication Request Status") { %}
+										<li><a class="dropdown-item medication-request-cancel" data-action="cancel">{{ __("Cancel") }}</a></li>
 									{% } %}
 								</ul>
 								</div>
