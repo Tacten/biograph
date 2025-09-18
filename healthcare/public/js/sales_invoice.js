@@ -354,7 +354,7 @@ var add_to_item_line = function(frm, checked_values, invoice_healthcare_services
 				frm.set_value(r.message);
 				frm.refresh_fields()
 				setTimeout(() => {
-						cur_frm.cscript.set_total_amount_to_default_mop();
+					cur_frm.cscript.calculate_taxes_and_totals();
 						}, 300);
 				}
 	});
