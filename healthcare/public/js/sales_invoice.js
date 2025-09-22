@@ -346,15 +346,19 @@ var add_to_item_line = function(frm, checked_values, invoice_healthcare_services
 	if(invoice_healthcare_services){
 		frappe.call({
 			method: "healthcare.healthcare.custom_doctype.sales_invoice.set_healthcare_services",
-			args:{
-				self : frm.doc,
+			args: {
+				self: frm.doc,
 				checked_values: checked_values
 			},
 			callback: function(r) {
-				frm.set_value(r.message)
-				frm.reload_doc()
-			}
-		});
+				frm.set_value(r.message);
+				frm.refresh_fields()
+				setTimeout(() => {
+					cur_frm.cscript.calculate_taxes_and_totals();
+						}, 300);
+				}
+	});
+
 	}
 	else{
 		for(let i=0; i<checked_values.length; i++){

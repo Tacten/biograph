@@ -57,17 +57,23 @@ class TherapyPlan(Document):
 				total_charges += doc.rate * no_of_sessions
 		self.total_plan_amount = total_charges
 
-		invoices = frappe.db.sql(f"""
-				Select si.name, si.grand_total
-				From `tabSales Invoice` as si
-				Left Join `tabSales Invoice Item` as sii ON sii.parent = si.name
-				Where sii.reference_dt = "Therapy Plan" and sii.reference_dn =  '{self.name}'
-				Group by si.name
-		""" , as_dict = 1)
+		invoices = frappe.db.sql("""
+			SELECT 
+				si.name, 
+				COALESCE(SUM(sii.amount), 0) AS therapy_amount
+			FROM `tabSales Invoice` si
+			LEFT JOIN `tabSales Invoice Item` sii 
+				ON sii.parent = si.name
+			WHERE 
+				si.docstatus = 1
+				AND sii.reference_dt = 'Therapy Plan'
+				AND sii.reference_dn = %(therapy_plan)s
+			GROUP BY si.name
+		""", {"therapy_plan": self.name}, as_dict=1)
 
 		paid_amount = 0
 		for row in invoices:
-			paid_amount += row.grand_total
+			paid_amount += row.therapy_amount
 		self.invoiced_amount = paid_amount
 
 	@frappe.whitelist()
@@ -98,15 +104,20 @@ def get_invoiced_details(self, on_referesh = False):
 		Group By sii.item_code
 	""", as_dict=1)
 
-	total_amount = frappe.db.sql(f"""
-		Select si.name, si.grand_total as grand_total
-		From `tabSales Invoice` as si
-		Left Join `tabSales Invoice Item` as sii ON sii.parent = si.name
-		Where si.docstatus = 1 and sii.reference_dt = 'Therapy Plan' and sii.reference_dn = '{self.name}'
-		Group By si.name
-	""", as_dict=1)
+	total_amount = frappe.db.sql("""
+		SELECT 
+			si.name,
+			COALESCE(SUM(sii.amount), 0) AS therapy_amount
+		FROM `tabSales Invoice` si
+		LEFT JOIN `tabSales Invoice Item` sii ON sii.parent = si.name
+		WHERE 
+			si.docstatus = 1
+			AND sii.reference_dt = 'Therapy Plan'
+			AND sii.reference_dn = %(therapy_plan)s
+		GROUP BY si.name
+	""", {"therapy_plan": self.name}, as_dict=1)
 
-	grand_total = sum([row.grand_total for row in total_amount])
+	grand_total = sum([row.therapy_amount for row in total_amount])
 
 	htmls = """
 		<h3>No of Invoiced Therapy Session</h3>
@@ -239,17 +250,20 @@ def make_sales_invoice(reference_name, patient, company, items, therapy_plan_tem
 
 @frappe.whitelist()
 def get_invoice_details(therapy_plan):
-	invoices = frappe.db.sql(f"""
-					Select  si.grand_total as total_invoiced , si.outstanding_amount as unpaid_amount, (si.grand_total - si.outstanding_amount) as paid_amount
-					From `tabSales Invoice` si
-					Left Join `tabSales Invoice Item` sii ON sii.parent = si.name
-					Where si.docstatus = 1 and sii.reference_dt = 'Therapy Plan' and sii.reference_dn = '{therapy_plan}'
-					Group By si.name
-				""", as_dict=1)
-	total_invoiced = sum([ row.total_invoiced for row in invoices ])
-	unpaid_amount = sum([ row.unpaid_amount for row in invoices ])
-	paid_amount = sum([ row.paid_amount for row in invoices ])
-	return {'total_invoiced': total_invoiced, 'unpaid_amount': unpaid_amount, 'paid_amount': paid_amount }
+	invoices = frappe.db.sql("""
+		SELECT
+			COALESCE(SUM(sii.amount), 0) AS paid_amount
+		FROM `tabSales Invoice` si
+		LEFT JOIN `tabSales Invoice Item` sii 
+			ON sii.parent = si.name
+		WHERE 
+			si.docstatus = 1
+			AND sii.reference_dt = 'Therapy Plan'
+			AND sii.reference_dn = %(therapy_plan)s
+	""", {"therapy_plan": therapy_plan}, as_dict=1)
+	
+	paid_amount = sum([row.paid_amount for row in invoices])
+	return {'total_invoiced': paid_amount, 'unpaid_amount': 0, 'paid_amount': paid_amount }
 
 @frappe.whitelist()
 def make_patient_appointment(source_name, target_doc=None):
