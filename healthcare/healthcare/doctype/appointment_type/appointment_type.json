@@ -93,8 +93,14 @@
   }
  ],
  "grid_page_length": 50,
- "links": [],
- "modified": "2025-09-04 14:05:10.548547",
+ "links": [
+  {
+   "group": "Appointments",
+   "link_doctype": "Patient Appointment",
+   "link_fieldname": "appointment_type"
+  }
+ ],
+ "modified": "2025-09-25 12:21:24.681228",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Appointment Type",

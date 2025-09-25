@@ -154,8 +154,14 @@
   }
  ],
  "grid_page_length": 50,
- "links": [],
- "modified": "2025-05-13 17:46:15.837432",
+ "links": [
+  {
+   "group": "Therapy Sessions",
+   "link_doctype": "Therapy Session",
+   "link_fieldname": "therapy_plan"
+  }
+ ],
+ "modified": "2025-09-25 13:44:57.440831",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Therapy Plan",
