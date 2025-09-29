@@ -122,7 +122,7 @@ var get_healthcare_services_to_invoice = function(frm, link_customer) {
 			selected_patient = patient;
 			var method = "healthcare.healthcare.utils.get_healthcare_services_to_invoice";
 			var args = {patient: patient, customer: frm.doc.customer, company: frm.doc.company, link_customer: link_customer};
-			var columns = (["date", "service_name", "reference_name", "reference_type"]);
+			var columns = (["date", "service", "reference_name", "reference_type"]);
 			get_healthcare_items(frm, true, $results, $placeholder, method, args, columns);
 		}
 		else if(!patient){
