@@ -643,7 +643,8 @@ def update_therapy_plan(self, method):
 		if row.reference_dt == "Therapy Plan":
 			doc = frappe.get_doc(row.reference_dt, row.reference_dn)
 			data = get_invoiced_details(doc)
-			
+			doc.set_totals()
+			doc.save(ignore_permissions=True)
 			total_paid_amount = data.get("grand_total")
 			no_of_session = data.get("no_of_session") 
 		

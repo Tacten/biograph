@@ -93,6 +93,7 @@
    "fieldname": "total_sessions",
    "fieldtype": "Int",
    "label": "Total Sessions",
+   "no_copy": 1,
    "read_only": 1
   },
   {
@@ -103,6 +104,7 @@
    "fieldname": "total_sessions_completed",
    "fieldtype": "Int",
    "label": "Total Sessions Completed",
+   "no_copy": 1,
    "read_only": 1
   },
   {
@@ -168,18 +170,21 @@
    "fieldname": "total_plan_amount",
    "fieldtype": "Currency",
    "label": "Total Plan Amount",
+   "no_copy": 1,
    "read_only": 1
   },
   {
    "fieldname": "invoiced_amount",
    "fieldtype": "Currency",
    "label": "Invoiced Amount",
+   "no_copy": 1,
    "read_only": 1
   },
   {
    "fieldname": "total_invoiced_session",
    "fieldtype": "Int",
    "label": "Total Invoiced Session",
+   "no_copy": 1,
    "read_only": 1
   }
  ],
@@ -189,7 +194,7 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2025-06-16 08:37:41.491560",
+ "modified": "2025-09-27 21:14:22.974335",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Therapy Plan",

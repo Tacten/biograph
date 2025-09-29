@@ -106,7 +106,9 @@ class TherapySession(Document):
 	def on_submit(self):
 		validate_nursing_tasks(self)
 		self.update_sessions_count_in_therapy_plan()
-
+		if(self.therapy_plan):
+			doc = frappe.get_doc("Therapy Plan", self.therapy_plan)
+			doc.set_totals()
 		if self.service_request:
 			frappe.db.set_value("Service Request", self.service_request, "status", "Completed")
 
