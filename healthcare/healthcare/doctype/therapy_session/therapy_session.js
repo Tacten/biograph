@@ -112,6 +112,7 @@ frappe.ui.form.on('Therapy Session', {
 			}, 'Create');
 
 			frappe.db.get_value('Therapy Plan', {'name': frm.doc.therapy_plan}, 'therapy_plan_template', (r) => {
+				console.log(r)
 				if (r && !r.therapy_plan_template) {
 					frm.add_custom_button(__('Sales Invoice'), function() {
 						frappe.model.open_mapped_doc({
