@@ -102,8 +102,7 @@ def get_appointments_to_invoice(patient, company):
 			if appointment.practitioner:
 				details = get_appointment_billing_item_and_rate(appointment)
 				service_item = details.get("service_item")
-				item_doc=frappe.get_doc("Item",service_item)
-				service_name=item_doc.item_name
+				service_name=frappe.db.get_value("Item",service_item,"item_name")
 				practitioner_charge = details.get("practitioner_charge")
 				income_account = get_income_account(appointment.practitioner, appointment.company)
 			appointments_to_invoice.append(
