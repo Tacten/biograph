@@ -637,7 +637,7 @@ def manage_invoice_submit_cancel(doc, method):
 						},
 					)
 
-def update_therapy_plan(self, method=None):
+def update_therapy_plan(self, method):
 	from healthcare.healthcare.doctype.therapy_plan.therapy_plan import get_invoiced_details
 	for row in self.items:
 		if row.reference_dt == "Therapy Plan":
