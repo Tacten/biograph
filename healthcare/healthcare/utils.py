@@ -643,13 +643,30 @@ def update_therapy_plan(self, method):
 		if row.reference_dt == "Therapy Plan":
 			doc = frappe.get_doc(row.reference_dt, row.reference_dn)
 			data = get_invoiced_details(doc)
-			
+			doc.set_totals()
+			doc.flags.ignore_permissions = True
+			doc.save()
 			total_paid_amount = data.get("grand_total")
 			no_of_session = data.get("no_of_session") 
-		
+
 			frappe.db.set_value("Therapy Plan", row.reference_dn, "invoiced_amount", total_paid_amount)
 			frappe.db.set_value("Therapy Plan", row.reference_dn, "invoice_json", data.get("data"))
 			frappe.db.set_value("Therapy Plan", row.reference_dn, "total_invoiced_session", no_of_session)
+		if row.reference_dt == "Therapy Session":
+			if therapy_plan := frappe.db.get_value("Therapy Session", row.reference_dn, "therapy_plan"):
+				doc = frappe.get_doc("Therapy Plan", therapy_plan)
+				doc.set_totals()
+				doc.flags.ignore_permissions = True
+				doc.save()
+				data = get_invoiced_details(doc)
+				no_of_session = data.get("no_of_session")
+
+				total_paid_amount = data.get("grand_total")
+				no_of_session = data.get("no_of_session") 
+
+				frappe.db.set_value("Therapy Plan", therapy_plan, "invoice_json", data.get("data"))
+				frappe.db.set_value("Therapy Plan", therapy_plan, "total_invoiced_session", no_of_session)
+
 
 def set_invoiced(item, method, ref_invoice=None):
 	invoiced = False

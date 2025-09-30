@@ -70,7 +70,6 @@ frappe.ui.form.on('Therapy Session', {
 				},
 				callback:(r)=>{
 					if(r.message){
-						console.log(r.message)
 						frappe.throw(`Maximum number of sessions ${r.message[1]} already created for this Therapy Plan.`)
 					}
 				}
