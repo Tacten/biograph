@@ -26,6 +26,17 @@
   "service_unit",
   "start_date",
   "start_time",
+  "consumables_section",
+  "consume_stock",
+  "warehouse",
+  "items",
+  "consumption_status",
+  "section_break_24",
+  "invoice_separately_as_consumables",
+  "consumption_invoiced",
+  "consumable_total_amount",
+  "column_break_27",
+  "consumption_details",
   "exercises_section",
   "exercises",
   "section_break_23",
@@ -245,6 +256,78 @@
    "fieldname": "more_information_section",
    "fieldtype": "Section Break",
    "label": "More Information"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "consumables_section",
+   "fieldtype": "Section Break",
+   "label": "Consumables"
+  },
+  {
+   "default": "0",
+   "fieldname": "consume_stock",
+   "fieldtype": "Check",
+   "label": "Consume Stock"
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Warehouse",
+   "mandatory_depends_on": "eval: doc.consume_stock == 1",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Consumables",
+   "options": "Clinical Procedure Item"
+  },
+  {
+   "fieldname": "section_break_24",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "invoice_separately_as_consumables",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Invoice Consumables Separately",
+   "read_only": 1
+  },
+  {
+   "depends_on": "invoice_separately_as_consumables",
+   "fieldname": "consumable_total_amount",
+   "fieldtype": "Currency",
+   "label": "Consumable Total Amount",
+   "read_only": 1
+  },
+  {
+   "depends_on": "invoice_separately_as_consumables",
+   "fieldname": "consumption_details",
+   "fieldtype": "Small Text",
+   "label": "Consumption Details",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "depends_on": "invoice_separately_as_consumables",
+   "fieldname": "consumption_invoiced",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Consumption Invoiced",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_27",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Consumption Pending",
+   "fieldname": "consumption_status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Consumption Status",
+   "options": "Consumption Pending\nInsufficient Stock\nConsumption Completed"
   }
  ],
  "grid_page_length": 50,
@@ -259,7 +342,7 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2025-04-16 18:16:44.299045",
+ "modified": "2025-08-08 07:46:54.088874",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Therapy Session",

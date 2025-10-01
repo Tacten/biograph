@@ -9,11 +9,15 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils import flt, get_link_to_form, get_time, getdate, today
+from frappe.utils import flt, get_link_to_form, get_time, getdate, today, nowdate, nowtime
+
+from erpnext.stock.get_item_details import get_item_details
+from erpnext.stock.stock_ledger import get_previous_sle
 
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import (
 	get_income_account,
 	get_receivable_account,
+	get_account
 )
 from healthcare.healthcare.doctype.nursing_task.nursing_task import NursingTask
 from healthcare.healthcare.doctype.service_request.service_request import (
@@ -27,6 +31,14 @@ class TherapySession(Document):
 		self.set_exercises_from_therapy_type()
 		self.validate_duplicate()
 		self.set_total_counts()
+		if self.consume_stock:
+			self.set_actual_qty()
+
+		if self.items:
+			self.invoice_separately_as_consumables = False
+			for item in self.items:
+				if item.invoice_separately_as_consumables:
+					self.invoice_separately_as_consumables = True
 
 		if(self.therapy_plan):
 			therapy_plan = frappe.get_doc("Therapy Plan", self.therapy_plan)
@@ -94,7 +106,9 @@ class TherapySession(Document):
 	def on_submit(self):
 		validate_nursing_tasks(self)
 		self.update_sessions_count_in_therapy_plan()
-
+		if(self.therapy_plan):
+			doc = frappe.get_doc("Therapy Plan", self.therapy_plan)
+			doc.set_totals()
 		if self.service_request:
 			frappe.db.set_value("Service Request", self.service_request, "status", "Completed")
 
@@ -141,6 +155,9 @@ class TherapySession(Document):
 					)
 
 	def before_insert(self):
+		if self.consume_stock:
+			self.set_actual_qty()
+
 		if self.service_request:
 			therapy_session = frappe.db.exists(
 				"Therapy Session",
@@ -154,6 +171,113 @@ class TherapySession(Document):
 					),
 					title=_("Already Exist"),
 				)
+
+	@frappe.whitelist()
+	def consume_stocks(self):
+		if self.consume_stock and self.items:
+			stock_entry = make_stock_entry(self)
+
+		if self.items:
+			consumable_total_amount = 0
+			consumption_details = False
+			customer = frappe.db.get_value("Patient", self.patient, "customer")
+			if customer:
+				for item in self.items:
+					if item.invoice_separately_as_consumables:
+						price_list, price_list_currency = frappe.db.get_values(
+							"Price List", {"selling": 1}, ["name", "currency"]
+						)[0]
+						args = {
+							"doctype": "Sales Invoice",
+							"item_code": item.item_code,
+							"company": self.company,
+							"warehouse": self.warehouse,
+							"customer": customer,
+							"selling_price_list": price_list,
+							"price_list_currency": price_list_currency,
+							"plc_conversion_rate": 1.0,
+							"conversion_rate": 1.0,
+						}
+						item_details = get_item_details(args)
+						item_price = item_details.price_list_rate * item.qty
+						item_consumption_details = (
+							item_details.item_name + " " + str(item.qty) + " " + item.uom + " " + str(item_price)
+						)
+						consumable_total_amount += item_price
+						if not consumption_details:
+							consumption_details = _("Therapy Session ({0}):").format(self.name)
+						consumption_details += "\n\t" + item_consumption_details
+
+				if consumable_total_amount > 0:
+					frappe.db.set_value(
+						"Therapy Session", self.name, "consumable_total_amount", consumable_total_amount
+					)
+					frappe.db.set_value(
+						"Therapy Session", self.name, "consumption_details", consumption_details
+					)
+			else:
+				frappe.throw(
+					_("Please set Customer in Patient {0}").format(frappe.bold(self.patient)),
+					title=_("Customer Not Found"),
+				)
+		self.update_consumption_status("Consumption Completed")
+
+		if self.consume_stock and self.items:
+			return stock_entry
+
+
+	def set_actual_qty(self):
+		for d in self.get("items"):
+			d.actual_qty = get_stock_qty(d.item_code, self.warehouse)
+	
+	@frappe.whitelist()
+	def verify_stock(self):
+		allow_negative_stock = frappe.db.get_single_value("Stock Settings", "allow_negative_stock")
+		self.set_actual_qty()
+
+		for d in self.get("items"):
+			if not allow_negative_stock and d.actual_qty < d.qty:
+				return False
+		return True
+
+	@frappe.whitelist()
+	def make_material_receipt(self, submit=False):
+		stock_entry = frappe.new_doc("Stock Entry")
+
+		stock_entry.stock_entry_type = "Material Receipt"
+		stock_entry.to_warehouse = self.warehouse
+		stock_entry.company = self.company
+		expense_account = get_account(None, "expense_account", "Healthcare Settings", self.company)
+		for item in self.items:
+			if item.qty > item.actual_qty:
+				se_child = stock_entry.append("items")
+				se_child.item_code = item.item_code
+				se_child.item_name = item.item_name
+				se_child.uom = item.uom
+				se_child.stock_uom = item.stock_uom
+				se_child.qty = flt(item.qty - item.actual_qty)
+				se_child.t_warehouse = self.warehouse
+				# in stock uom
+				se_child.transfer_qty = flt(item.transfer_qty)
+				se_child.conversion_factor = flt(item.conversion_factor)
+				cost_center = frappe.get_cached_value("Company", self.company, "cost_center")
+				se_child.cost_center = cost_center
+				se_child.expense_account = expense_account
+		if submit:
+			stock_entry.submit()
+			return stock_entry
+		return stock_entry.as_dict()
+	
+	@frappe.whitelist()
+	def update_consumption_status(self, status):
+		"""
+		Update the consumption status of the therapy session.
+		:param status: New status to set for the consumption.
+		"""
+		if status not in ["Consumption Completed", "Insufficient Stock", "Consumption Pending"]:
+			frappe.throw(_("Invalid consumption status: {0}").format(status), title=_("Invalid Status"))
+		
+		self.db_set("consumption_status", status)
 
 
 @frappe.whitelist()
@@ -269,3 +393,65 @@ def get_appointment_query(doctype, txt, searchfield, start, page_len, filters, a
 
 	return data
 
+@frappe.whitelist()
+def get_therapy_consumables(therapy_type):
+	return get_items("Clinical Procedure Item", therapy_type, "Therapy Type")
+
+def get_items(table, parent, parenttype):
+	items = frappe.db.get_all(
+		table, filters={"parent": parent, "parenttype": parenttype}, fields=["*"]
+	)
+
+	return items
+
+def get_stock_qty(item_code, warehouse):
+	return (
+		get_previous_sle(
+			{
+				"item_code": item_code,
+				"warehouse": warehouse,
+				"posting_date": nowdate(),
+				"posting_time": nowtime(),
+			}
+		).get("qty_after_transaction")
+		or 0
+	)
+
+@frappe.whitelist()
+def make_stock_entry(doc):
+	stock_entry = frappe.new_doc("Stock Entry")
+	stock_entry = set_stock_items(stock_entry, doc.name, "Therapy Session")
+	stock_entry.stock_entry_type = "Material Issue"
+	stock_entry.from_warehouse = doc.warehouse
+	stock_entry.company = doc.company
+	expense_account = get_account(None, "expense_account", "Healthcare Settings", doc.company)
+
+	for item_line in stock_entry.items:
+		cost_center = frappe.get_cached_value("Company", doc.company, "cost_center")
+		item_line.cost_center = cost_center
+		item_line.expense_account = expense_account
+
+	stock_entry.save(ignore_permissions=True)
+	stock_entry.submit()
+	return stock_entry.name
+
+@frappe.whitelist()
+def set_stock_items(doc, stock_detail_parent, parenttype):
+	items = get_items("Clinical Procedure Item", stock_detail_parent, parenttype)
+
+	for item in items:
+		se_child = doc.append("items")
+		se_child.item_code = item.item_code
+		se_child.item_name = item.item_name
+		se_child.uom = item.uom
+		se_child.stock_uom = item.stock_uom
+		se_child.qty = flt(item.qty)
+		# in stock uom
+		se_child.transfer_qty = flt(item.transfer_qty)
+		se_child.conversion_factor = flt(item.conversion_factor)
+		if item.batch_no:
+			se_child.batch_no = item.batch_no
+		if parenttype == "Therapy Type":
+			se_child.invoice_separately_as_consumables = item.invoice_separately_as_consumables
+
+	return doc
