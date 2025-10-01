@@ -1436,10 +1436,21 @@ class PatientDuplicateChecker:
 		filters = {}
 		
 		# Build filters based on rule fields
-		for field_config in rule.duplicate_fields:
-			field_name = field_config.field_name
-			if hasattr(self.patient, field_name) and self.patient.get(field_name):
-				filters[field_name] = self.patient.get(field_name)
+		filters = {}
+
+		# Collect all field values
+		field_values = {
+			f.field_name: self.patient.get(f.field_name)
+			for f in rule.duplicate_fields
+		}
+
+		# Check if all required fields have values
+		if all(value not in (None, "") for value in field_values.values()):
+			filters.update(field_values)
+		else:
+			# If any field is missing, skip filters or handle accordingly
+			filters = {}
+
 		
 		if not filters:
 			return {"status": "allow", "matches": []}
@@ -1454,7 +1465,7 @@ class PatientDuplicateChecker:
 			filters=filters, 
 			fields=["name", "patient_name", "sex", "dob", "mobile", "email"]
 		)
-		
+
 		if matches:
 			return {
 				"status": rule.action.lower(),
