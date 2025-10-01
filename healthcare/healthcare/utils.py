@@ -98,6 +98,7 @@ def get_appointments_to_invoice(patient, company):
 			practitioner_charge = 0
 			income_account = None
 			service_item = None
+			service_name=None
 			if appointment.practitioner:
 				details = get_appointment_billing_item_and_rate(appointment)
 				service_item = details.get("service_item")
