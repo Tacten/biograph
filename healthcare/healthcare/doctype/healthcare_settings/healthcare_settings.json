@@ -46,6 +46,7 @@
   "receivable_account",
   "order_details_section",
   "process_service_request_only_if_paid",
+  "validate_medication_quantity_in_invoice",
   "patient_duplicate_check_tab",
   "duplicate_check_section",
   "enable_patient_duplicate_check",
@@ -425,10 +426,10 @@
    "label": "Enable Patient Duplicate Check"
   },
   {
+   "depends_on": "eval:doc.enable_patient_duplicate_check",
    "fieldname": "duplicate_check_rules_section",
    "fieldtype": "Section Break",
-   "label": "Rules",
-   "depends_on": "eval:doc.enable_patient_duplicate_check"
+   "label": "Rules"
   },
   {
    "depends_on": "eval:doc.enable_patient_duplicate_check",
@@ -436,11 +437,17 @@
    "fieldtype": "Table",
    "label": "Patient Duplicate Check Rules",
    "options": "Patient Duplicate Check Rule Link"
+  },
+  {
+   "default": "0",
+   "fieldname": "validate_medication_quantity_in_invoice",
+   "fieldtype": "Check",
+   "label": "Validate Medication Quantity In invoice"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2023-11-06 14:20:22.424895",
+ "modified": "2025-10-08 09:06:09.173901",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Healthcare Settings",
@@ -459,6 +466,8 @@
  ],
  "quick_entry": 1,
  "restrict_to_domain": "Healthcare",
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
