@@ -130,7 +130,7 @@ def get_invoiced_details(self, on_referesh = False):
 		)
 
 	data = frappe.db.sql(f"""
-		Select si.name, si.grand_total, sum(sii.qty) as no_of_session, sii.item_code as service
+		Select si.name, si.grand_total, sum(sii.qty) as no_of_session, sii.item_code as service, si.paid_amount
 		From `tabSales Invoice` as si
 		Left Join `tabSales Invoice Item` as sii ON sii.parent = si.name
 		Where si.docstatus = 1 
@@ -142,9 +142,15 @@ def get_invoiced_details(self, on_referesh = False):
 	total_amount = frappe.db.sql(f"""
 		SELECT 
 			si.name,
-			COALESCE(SUM(sii.amount), 0) AS therapy_amount
+			SUM(
+				CASE 
+					WHEN si.paid_amount IS NOT NULL AND si.paid_amount > 0 THEN si.paid_amount
+					ELSE sii.amount
+				END
+			) AS therapy_amount
 		FROM `tabSales Invoice` si
-		LEFT JOIN `tabSales Invoice Item` sii ON sii.parent = si.name
+		LEFT JOIN `tabSales Invoice Item` sii 
+			ON sii.parent = si.name
 		WHERE 
 			si.docstatus = 1 
 			AND (( sii.reference_dt = 'Therapy Plan' AND sii.reference_dn = %(therapy_plan)s )
@@ -287,7 +293,7 @@ def make_sales_invoice(reference_name, patient, company, items, therapy_plan_tem
 def get_invoice_details(therapy_plan):
 	invoices = frappe.db.sql("""
 		SELECT
-			COALESCE(SUM(sii.amount), 0) AS paid_amount
+			(si.grand_total - si.outstanding_amount) as paid_amount
 		FROM `tabSales Invoice` si
 		LEFT JOIN `tabSales Invoice Item` sii 
 			ON sii.parent = si.name

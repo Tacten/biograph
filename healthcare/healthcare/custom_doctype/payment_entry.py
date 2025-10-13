@@ -5,9 +5,9 @@ import frappe
 def set_paid_amount_in_healthcare_docs(doc, method):
 	if doc.paid_amount:
 		on_cancel = True if method == "on_cancel" else False
-		if doc.treatment_counselling:
+		if doc.get("treatment_counselling"):
 			validate_doc("Treatment Counselling", doc.treatment_counselling, doc.paid_amount, on_cancel)
-		if doc.package_subscription:
+		if doc.get("package_subscription"):
 			validate_doc("Package Subscription", doc.package_subscription, doc.paid_amount, on_cancel)
 
 
