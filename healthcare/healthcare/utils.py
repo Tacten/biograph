@@ -649,7 +649,7 @@ def update_therapy_plan(self, method):
 			doc.set_totals()
 			doc.flags.ignore_permissions = True
 			doc.save()
-			total_paid_amount = data.get("grand_total")
+			total_paid_amount = data.get("paid_amount") or data.get("grand_total")
 			no_of_session = data.get("no_of_session") 
 
 			frappe.db.set_value("Therapy Plan", row.reference_dn, "invoiced_amount", total_paid_amount)
