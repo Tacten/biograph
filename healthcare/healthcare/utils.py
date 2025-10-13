@@ -616,8 +616,9 @@ def update_therapy_plan(self, method):
 			doc = frappe.get_doc(row.reference_dt, row.reference_dn)
 			data = get_invoiced_details(doc)
 			doc.set_totals()
-			doc.save(ignore_permissions=True)
-			total_paid_amount = data.get("grand_total")
+			doc.flags.ignore_permissions = True
+			doc.save()
+			total_paid_amount = data.get("paid_amount") or data.get("grand_total")
 			no_of_session = data.get("no_of_session") 
 		
 			frappe.db.set_value("Therapy Plan", row.reference_dn, "invoiced_amount", total_paid_amount)
