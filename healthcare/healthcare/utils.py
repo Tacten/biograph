@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-utils
 # Copyright (c) 2018, earthians and contributors
 # For license information, please see license.txt
 
@@ -42,6 +42,7 @@ def get_healthcare_services_to_invoice(patient, customer, company, link_customer
 		items_to_invoice += get_therapy_sessions_to_invoice(patient, company)
 		items_to_invoice += get_service_requests_to_invoice(patient, company)
 		items_to_invoice += get_observations_to_invoice(patient, company)
+		items_to_invoice += get_package_subscriptions_to_invoice(patient, company)
 		validate_customer_created(patient, customer, link_customer)
 		return items_to_invoice
 
@@ -120,6 +121,36 @@ def get_appointments_to_invoice(patient, company):
 
 	return appointments_to_invoice
 
+def get_package_subscriptions_to_invoice(patient, company):
+	subscriptions_to_invoice = []
+	subscriptions = frappe.db.get_all(
+		"Package Subscription",
+		fields=["name", "healthcare_package", "valid_to"],
+		filters={
+			"patient": patient.name,
+			"company": company,
+			"invoiced": False,
+			"docstatus": 1,
+		},
+		order_by="valid_to desc",
+	)
+	for sub in subscriptions:
+		subscription_doc = frappe.get_doc("Package Subscription", sub.name)
+		item, item_wise_invoicing = frappe.get_cached_value(
+			"Healthcare Package", sub.healthcare_package, ["item", "item_wise_invoicing"]
+		)
+		if not item_wise_invoicing:
+			subscriptions_to_invoice.append(
+				{"reference_type": "Package Subscription", "reference_name": sub.name, "service": item, "date" : sub.valid_to}
+			)
+		else:
+			for item in subscription_doc.package_details:
+				if not item.invoiced:
+					subscriptions_to_invoice.append(
+						{"reference_type": item.doctype, "reference_name": item.name, "service": item.item_code , "date": sub.valid_to}
+					)
+
+	return subscriptions_to_invoice
 
 def get_encounters_to_invoice(patient, company):
 	if not isinstance(patient, str):
@@ -619,10 +650,25 @@ def update_therapy_plan(self, method):
 			doc.save()
 			total_paid_amount = data.get("paid_amount") or data.get("grand_total")
 			no_of_session = data.get("no_of_session") 
-		
+
 			frappe.db.set_value("Therapy Plan", row.reference_dn, "invoiced_amount", total_paid_amount)
 			frappe.db.set_value("Therapy Plan", row.reference_dn, "invoice_json", data.get("data"))
 			frappe.db.set_value("Therapy Plan", row.reference_dn, "total_invoiced_session", no_of_session)
+		if row.reference_dt == "Therapy Session":
+			if therapy_plan := frappe.db.get_value("Therapy Session", row.reference_dn, "therapy_plan"):
+				doc = frappe.get_doc("Therapy Plan", therapy_plan)
+				doc.set_totals()
+				doc.flags.ignore_permissions = True
+				doc.save()
+				data = get_invoiced_details(doc)
+				no_of_session = data.get("no_of_session")
+
+				total_paid_amount = data.get("grand_total")
+				no_of_session = data.get("no_of_session") 
+
+				frappe.db.set_value("Therapy Plan", therapy_plan, "invoice_json", data.get("data"))
+				frappe.db.set_value("Therapy Plan", therapy_plan, "total_invoiced_session", no_of_session)
+
 
 def set_invoiced(item, method, ref_invoice=None):
 	invoiced = False
