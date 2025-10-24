@@ -71,6 +71,30 @@ class TherapyPlan(Document):
 			GROUP BY si.name
 		""", {"therapy_plan": self.name}, as_dict=1)
 
+		therapy_sessions = frappe.db.get_list(
+			"Therapy Session", {"therapy_plan": self.name}, pluck="name"
+		)
+
+		if therapy_sessions:
+			condition = " AND sii.reference_dn in ({})".format(
+				",".join([frappe.db.escape(l) for l in therapy_sessions])
+			)
+
+			invoices += frappe.db.sql(f"""
+				SELECT 
+					si.name, 
+					COALESCE(SUM(sii.amount), 0) AS therapy_amount
+				FROM `tabSales Invoice` si
+				LEFT JOIN `tabSales Invoice Item` sii 
+					ON sii.parent = si.name
+				WHERE 
+					si.docstatus = 1
+					AND sii.reference_dt = 'Therapy Session'
+					{condition}
+				GROUP BY si.name
+			""", as_dict=1)
+
+		print(invoices)
 		paid_amount = 0
 		for row in invoices:
 			paid_amount += row.therapy_amount
@@ -95,25 +119,39 @@ class TherapyPlan(Document):
 def get_invoiced_details(self, on_referesh = False):
 	if on_referesh:
 		self = frappe._dict(json.loads(self))
+	therapy_sessions = frappe.db.get_list(
+			"Therapy Session", {"therapy_plan": self.name}, pluck="name"
+		)
 	
+	condition = ''
+	if therapy_sessions:
+		condition += " OR sii.reference_dn in ({})".format(
+			",".join([frappe.db.escape(l) for l in therapy_sessions])
+		)
+
 	data = frappe.db.sql(f"""
-		Select si.name, si.grand_total, sum(sii.qty) as no_of_session, sii.item_code as service
+		Select si.name, si.grand_total, sum(sii.qty) as no_of_session, sii.item_code as service, sii.amount as paid_amount
 		From `tabSales Invoice` as si
 		Left Join `tabSales Invoice Item` as sii ON sii.parent = si.name
-		Where si.docstatus = 1 and sii.reference_dt = 'Therapy Plan' and sii.reference_dn = '{self.name}'
+		Where si.docstatus = 1 
+		and ((sii.reference_dt = 'Therapy Plan' and sii.reference_dn = '{self.name}')
+		 {condition})
 		Group By sii.item_code
 	""", as_dict=1)
 
-	total_amount = frappe.db.sql("""
+	total_amount = frappe.db.sql(f"""
 		SELECT 
 			si.name,
-			COALESCE(SUM(sii.amount), 0) AS therapy_amount
+			SUM(
+				sii.amount
+			) AS therapy_amount
 		FROM `tabSales Invoice` si
-		LEFT JOIN `tabSales Invoice Item` sii ON sii.parent = si.name
+		LEFT JOIN `tabSales Invoice Item` sii 
+			ON sii.parent = si.name
 		WHERE 
-			si.docstatus = 1
-			AND sii.reference_dt = 'Therapy Plan'
-			AND sii.reference_dn = %(therapy_plan)s
+			si.docstatus = 1 
+			AND (( sii.reference_dt = 'Therapy Plan' AND sii.reference_dn = %(therapy_plan)s )
+			{condition} )
 		GROUP BY si.name
 	""", {"therapy_plan": self.name}, as_dict=1)
 
@@ -145,6 +183,7 @@ def get_invoiced_details(self, on_referesh = False):
 		""".format(row.service, row.no_of_session)
 	htmls += "</table>"
 	no_of_session = sum([row.no_of_session for row in data])
+
 	return  { "html" : htmls , "data" : str(data), "grand_total" : grand_total, "no_of_session" : no_of_session}
 
 
@@ -252,16 +291,20 @@ def make_sales_invoice(reference_name, patient, company, items, therapy_plan_tem
 def get_invoice_details(therapy_plan):
 	invoices = frappe.db.sql("""
 		SELECT
-			COALESCE(SUM(sii.amount), 0) AS paid_amount
+			SUM(si.grand_total - si.outstanding_amount) AS paid_amount,
+			si.name
 		FROM `tabSales Invoice` si
-		LEFT JOIN `tabSales Invoice Item` sii 
-			ON sii.parent = si.name
 		WHERE 
 			si.docstatus = 1
-			AND sii.reference_dt = 'Therapy Plan'
-			AND sii.reference_dn = %(therapy_plan)s
+			AND si.name IN (
+				SELECT DISTINCT parent
+				FROM `tabSales Invoice Item`
+				WHERE reference_dt = 'Therapy Plan'
+					AND reference_dn = %(therapy_plan)s
+			)
+		GROUP BY si.name
 	""", {"therapy_plan": therapy_plan}, as_dict=1)
-	
+
 	paid_amount = sum([row.paid_amount for row in invoices])
 	return {'total_invoiced': paid_amount, 'unpaid_amount': 0, 'paid_amount': paid_amount }
 

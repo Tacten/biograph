@@ -98,9 +98,11 @@ def get_appointments_to_invoice(patient, company):
 			practitioner_charge = 0
 			income_account = None
 			service_item = None
+			service_name=None
 			if appointment.practitioner:
 				details = get_appointment_billing_item_and_rate(appointment)
 				service_item = details.get("service_item")
+				service_name=frappe.db.get_value("Item",service_item,"item_name")
 				practitioner_charge = details.get("practitioner_charge")
 				income_account = get_income_account(appointment.practitioner, appointment.company)
 			appointments_to_invoice.append(
@@ -108,6 +110,7 @@ def get_appointments_to_invoice(patient, company):
 					"reference_type": "Patient Appointment",
 					"reference_name": appointment.name,
 					"service": service_item,
+					"service_name":service_name,
 					"rate": practitioner_charge,
 					"income_account": income_account,
 					"practitioner": appointment.practitioner,
@@ -612,10 +615,12 @@ def update_therapy_plan(self, method):
 		if row.reference_dt == "Therapy Plan":
 			doc = frappe.get_doc(row.reference_dt, row.reference_dn)
 			data = get_invoiced_details(doc)
-			
-			total_paid_amount = data.get("grand_total")
+			# doc.set_totals()
+			# doc.flags.ignore_permissions = True
+			# doc.save()
+			total_paid_amount = data.get("paid_amount") or data.get("grand_total")
 			no_of_session = data.get("no_of_session") 
-		
+
 			frappe.db.set_value("Therapy Plan", row.reference_dn, "invoiced_amount", total_paid_amount)
 			frappe.db.set_value("Therapy Plan", row.reference_dn, "invoice_json", data.get("data"))
 			frappe.db.set_value("Therapy Plan", row.reference_dn, "total_invoiced_session", no_of_session)
@@ -1388,10 +1393,21 @@ class PatientDuplicateChecker:
 		filters = {}
 		
 		# Build filters based on rule fields
-		for field_config in rule.duplicate_fields:
-			field_name = field_config.field_name
-			if hasattr(self.patient, field_name) and self.patient.get(field_name):
-				filters[field_name] = self.patient.get(field_name)
+		filters = {}
+
+		# Collect all field values
+		field_values = {
+			f.field_name: self.patient.get(f.field_name)
+			for f in rule.duplicate_fields
+		}
+
+		# Check if all required fields have values
+		if all(value not in (None, "") for value in field_values.values()):
+			filters.update(field_values)
+		else:
+			# If any field is missing, skip filters or handle accordingly
+			filters = {}
+
 		
 		if not filters:
 			return {"status": "allow", "matches": []}
@@ -1406,7 +1422,7 @@ class PatientDuplicateChecker:
 			filters=filters, 
 			fields=["name", "patient_name", "sex", "dob", "mobile", "email"]
 		)
-		
+
 		if matches:
 			return {
 				"status": rule.action.lower(),
