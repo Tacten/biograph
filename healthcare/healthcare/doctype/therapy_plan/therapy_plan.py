@@ -130,7 +130,7 @@ def get_invoiced_details(self, on_referesh = False):
 		)
 
 	data = frappe.db.sql(f"""
-		Select si.name, si.grand_total, sum(sii.qty) as no_of_session, sii.item_code as service, si.paid_amount
+		Select si.name, si.grand_total, sum(sii.qty) as no_of_session, sii.item_code as service, sii.amount as paid_amount
 		From `tabSales Invoice` as si
 		Left Join `tabSales Invoice Item` as sii ON sii.parent = si.name
 		Where si.docstatus = 1 
@@ -143,10 +143,7 @@ def get_invoiced_details(self, on_referesh = False):
 		SELECT 
 			si.name,
 			SUM(
-				CASE 
-					WHEN si.paid_amount IS NOT NULL AND si.paid_amount > 0 THEN si.paid_amount
-					ELSE sii.amount
-				END
+				sii.amount
 			) AS therapy_amount
 		FROM `tabSales Invoice` si
 		LEFT JOIN `tabSales Invoice Item` sii 
@@ -186,6 +183,7 @@ def get_invoiced_details(self, on_referesh = False):
 		""".format(row.service, row.no_of_session)
 	htmls += "</table>"
 	no_of_session = sum([row.no_of_session for row in data])
+
 	return  { "html" : htmls , "data" : str(data), "grand_total" : grand_total, "no_of_session" : no_of_session}
 
 
@@ -293,16 +291,20 @@ def make_sales_invoice(reference_name, patient, company, items, therapy_plan_tem
 def get_invoice_details(therapy_plan):
 	invoices = frappe.db.sql("""
 		SELECT
-			(si.grand_total - si.outstanding_amount) as paid_amount
+			SUM(si.grand_total - si.outstanding_amount) AS paid_amount,
+			si.name
 		FROM `tabSales Invoice` si
-		LEFT JOIN `tabSales Invoice Item` sii 
-			ON sii.parent = si.name
 		WHERE 
 			si.docstatus = 1
-			AND sii.reference_dt = 'Therapy Plan'
-			AND sii.reference_dn = %(therapy_plan)s
+			AND si.name IN (
+				SELECT DISTINCT parent
+				FROM `tabSales Invoice Item`
+				WHERE reference_dt = 'Therapy Plan'
+					AND reference_dn = %(therapy_plan)s
+			)
+		GROUP BY si.name
 	""", {"therapy_plan": therapy_plan}, as_dict=1)
-	
+
 	paid_amount = sum([row.paid_amount for row in invoices])
 	return {'total_invoiced': paid_amount, 'unpaid_amount': 0, 'paid_amount': paid_amount }
 
