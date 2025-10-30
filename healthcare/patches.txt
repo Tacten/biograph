@@ -21,5 +21,4 @@ healthcare.patches.v15_0.setup_order_status_codes
 healthcare.patches.v15_0.setup_patient_duplicate_check_rules
 healthcare.patches.v15_0.create_appointment_type
 healthcare.patches.v15_0.custom_field_to_standard_field
-healthcare.patches.v15_0.set_reference_in_therapy_plan
 healthcare.patches.v15_0.set_observation_and_diagnostic_report_status
