@@ -341,7 +341,7 @@ class PatientAppointment(Document):
 
 		# If this is an unavailability appointment, always keep it as "Unavailable"
 		if self.appointment_type == "Unavailable":
-			if self.status != "Cancelled" and self.status != "Unavailable":
+			if self.status != "Cancelled" and self.status != "Unavailable" and self.status != "Status":
 				self.status = "Unavailable"
 			return
 		
@@ -356,7 +356,7 @@ class PatientAppointment(Document):
 			return
 			
 		# If appointment is already marked as "Needs Rescheduling", we should check if it has been rescheduled
-		if self.status == "Needs Rescheduling" and self.status != "Cancelled":
+		if self.status == "Needs Rescheduling" and self.status != "Cancelled" and self.status != 'Closed':
 			# If this has been modified and saved, it means the appointment was rescheduled
 			if self.modified != self.creation:
 				if appointment_date > today:
@@ -369,13 +369,13 @@ class PatientAppointment(Document):
 
 		# If appointment is created for today set status as Open else Scheduled
 		if appointment_date == today:
-			if self.status not in ["Checked In", "Checked Out" , "Confirmed", "Cancelled"]:
+			if self.status not in ["Checked In", "Checked Out" , "Confirmed", "Cancelled", "Closed"]:
 				self.status = "Confirmed"
-		elif (appointment_date > today and self.status not in ["Cancelled"] and 
+		elif (appointment_date > today and self.status not in ["Cancelled", "Closed"] and 
 			str(old_doc.appointment_datetime) != str(self.appointment_datetime)):
 			self.status = "Scheduled"
 
-		elif appointment_date < today and self.status not in ["No Show", "Cancelled"]:
+		elif appointment_date < today and self.status not in ["No Show", "Cancelled", "Closed"]:
 			self.status = "No Show"
 
 	def validate_overlaps(self):
@@ -1552,7 +1552,7 @@ def update_appointment_status():
 			return
 			
 		# If appointment is already marked as "Needs Rescheduling", we should check if it has been rescheduled
-		if appointment_doc.status == "Needs Rescheduling" and appointment_doc.status != "Cancelled":
+		if appointment_doc.status == "Needs Rescheduling" and appointment_doc.status != "Cancelled" and appointment_doc.status != 'Closed':
 			# If this has been modified and saved, it means the appointment was rescheduled
 			if appointment_doc.modified != appointment_doc.creation:
 				if appointment_date > today:
@@ -1563,9 +1563,8 @@ def update_appointment_status():
 			return
 
 		# If appointment is created for today set status as Open else Scheduled
-		if appointment_date == today:
-			if appointment_doc.status not in ["Checked In", "Checked Out", "Open", "Confirmed", "Cancelled"]:
-				return "Open"
+		if appointment_date == today and appointment_doc.status != 'Closed':
+			return "Confirmed"
 
 		elif appointment_date > today and appointment_doc.status not in ["Scheduled", "Confirmed", "Cancelled"]:
 			return "Scheduled"
