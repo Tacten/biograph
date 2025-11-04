@@ -74,43 +74,15 @@ class PatientAppointment(Document):
 		today = getdate()
 		appointment_date = getdate(self.appointment_date)
 
-		# If this is an unavailability appointment, always keep it as "Unavailable"
-		if self.appointment_type == "Unavailable":
-			if self.status != "Cancelled" and self.status != "Unavailable" and self.status != "Status":
-				self.status = "Unavailable"
-			return
-		
-		# For new appointments, set default status based on date
-		if self.is_new():
-			if appointment_date == today:
-				self.status = "Confirmed"
-			elif appointment_date > today:
-				self.status = "Scheduled"
-			else:
-				self.status = "No Show"
-			return
-			
-		# If appointment is already marked as "Needs Rescheduling", we should check if it has been rescheduled
-		if self.status == "Needs Rescheduling" and self.status != "Cancelled" and self.status != 'Closed':
-			# If this has been modified and saved, it means the appointment was rescheduled
-			if self.modified != self.creation:
-				if appointment_date > today:
-					self.status = "Scheduled"
-				elif appointment_date == today:
-					self.status = "Confirmed"
-				return
-			return
-		old_doc = self.get_doc_before_save()
-
 		# If appointment is created for today set status as Open else Scheduled
 		if appointment_date == today:
-			if self.status not in ["Checked In", "Checked Out" , "Confirmed", "Cancelled", "Closed"]:
-				self.status = "Confirmed"
-		elif (appointment_date > today and self.status not in ["Cancelled", "Closed"] and 
-			str(old_doc.appointment_datetime) != str(self.appointment_datetime)):
+			if self.status not in ["Checked In", "Checked Out", "Open", "Confirmed"]:
+				self.status = "Open"
+
+		elif appointment_date > today and self.status not in ["Scheduled", "Confirmed"]:
 			self.status = "Scheduled"
 
-		elif appointment_date < today and self.status not in ["No Show", "Cancelled", "Closed"]:
+		elif appointment_date < today and self.status != "No Show":
 			self.status = "No Show"
 
 	def validate_overlaps(self):

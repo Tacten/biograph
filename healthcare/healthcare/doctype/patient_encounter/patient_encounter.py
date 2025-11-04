@@ -28,11 +28,7 @@ class PatientEncounter(Document):
 
 	def on_update(self):
 		if self.appointment:
-			appointment = frappe.get_doc("Patient Appointment", self.appointment)
-			appointment.status = "Closed"
-			appointment.flags.ignore_permissions = True
-			appointment.save()
-
+			frappe.db.set_value("Patient Appointment", self.appointment, "status", "Closed")
 
 	def on_submit(self):
 		if self.therapies:
