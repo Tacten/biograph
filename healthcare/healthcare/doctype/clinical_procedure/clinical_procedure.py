@@ -54,7 +54,10 @@ class ClinicalProcedure(Document):
 
 	def after_insert(self):
 		if self.appointment:
-			frappe.db.set_value("Patient Appointment", self.appointment, "status", "Closed")
+			appointment = frappe.get_doc("Patient Appointment", self.appointment)
+			appointment.status = "Closed"
+			appointment.flags.ignore_permissions = True
+			appointment.save()
 
 		if self.procedure_template:
 			template = frappe.get_doc("Clinical Procedure Template", self.procedure_template)
