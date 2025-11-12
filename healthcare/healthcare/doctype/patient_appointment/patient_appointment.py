@@ -341,7 +341,7 @@ class PatientAppointment(Document):
 
 		# If this is an unavailability appointment, always keep it as "Unavailable"
 		if self.appointment_type == "Unavailable":
-			if self.status != "Cancelled" and self.status != "Unavailable" and self.status != "Status":
+			if self.status != "Cancelled" and self.status != "Unavailable" and self.status != "Closed":
 				self.status = "Unavailable"
 			return
 		
