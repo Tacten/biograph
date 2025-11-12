@@ -57,9 +57,10 @@ class TherapySession(Document):
 	def on_update(self):
 		if self.appointment:
 			appointment = frappe.get_doc("Patient Appointment", self.appointment)
-			appointment.status = "Closed"
-			appointment.flags.ignore_permissions = True
-			appointment.save()
+			if appointment.status != "Closed":
+				appointment.status = "Closed"
+				appointment.flags.ignore_permissions = True
+				appointment.save()
 
 	def on_cancel(self):
 		if self.appointment:
