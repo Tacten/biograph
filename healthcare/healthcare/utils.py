@@ -1752,9 +1752,6 @@ def insert_observation_and_sample_collection(
 					],
 					as_dict=True,
 				)
-<<<<<<< HEAD
-		# create sample_collection child row for  sample_collection_reqd grouped templates
-=======
 				if comp_details.get("has_component"):
 					# recurse if component is also a template with components
 					sub_sc, sub_drc = insert_observation_and_sample_collection(
@@ -1777,7 +1774,6 @@ def insert_observation_and_sample_collection(
 						child=child if child else "",
 					)
 		# create sample_colleciton child row for sample_collection_reqd grouped templates
->>>>>>> 2eb4837 (fix: Allow observations with components(group observations) as components in observation template)
 		if len(sample_reqd_component_obs) > 0:
 			for comp in sample_reqd_component_obs:
 				comp_details = frappe.get_value(
@@ -1818,11 +1814,7 @@ def insert_observation_and_sample_collection(
 				child=child if child else "",
 			)
 		else:
-<<<<<<< HEAD
-			# create sample_collection child row for  sample_collection_reqd individual templates
-=======
 			# create sample_colleciton child row for sample_collection_reqd individual templates
->>>>>>> 2eb4837 (fix: Allow observations with components(group observations) as components in observation template)
 			sample_collection.append(
 				"observation_sample_collection",
 				{

@@ -17,38 +17,8 @@ healthcare.ObservationWidget = class {
 			if (me.wrapper.find(`.${me.data.observation}`).length!==0) {
 				return;
 			}
-<<<<<<< HEAD
-			const is_approved = me.data.obs_approved;
-			var btn_action = is_approved ? "Rejected" : "Approved";
-			var btn_label = is_approved ? "Reject" : "Approve";
-
-			let grouped_html = (
-				`<div class="${me.data.observation} grouped-obs" style="
-					border: 1px solid var(--border-color);
-					padding-right: 0;
-					font-size: 11px;
-					padding-left: 15px;
-					padding-top: 15px;
-					padding-bottom: 5px;
-					margin-bottom: 3px;
-					border-radius: 10px;
-					background-color:var(--bg-color);">
-					<b>
-						<a href="/app/observation/${me.data.observation}">
-							${me.data.display_name}
-						</a>
-					</b>
-					<div style="float:right; padding-right:5px; margin-top:-10px;">
-						<button class="btn btn-xs btn-secondary small obs-approve" id="authorise-observation-btn-${me.data.observation}">
-							<span style="font-size:10px;">${btn_label}</span>
-						</button>
-					</div>
-				</div>`)
-			me.wrapper.append(grouped_html)
-=======
 			me.render_parent_observation(me.data, btn_label)
 
->>>>>>> 2eb4837 (fix: Allow observations with components(group observations) as components in observation template)
 			let component_wrapper = me.wrapper.find(`.${me.data.observation}`)
 			for(var j=0, k=me.data[me.data.observation].length; j<k; j++) {
 				var obs_data = me.data[me.data.observation][j].observation;
