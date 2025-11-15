@@ -536,12 +536,15 @@ def set_diagnostic_report_status(doc):
 			else:
 				set_status = "Open"
 
-			set_value_dict = {"status": set_status}
+			diagnostic_doc = frappe.get_doc("Diagnostic Report", diagnostic_report)
+			if diagnostic_doc.status == set_status:
+				return
+
+			diagnostic_doc.status = set_status
 			if workflow_state_field:
-				set_value_dict[workflow_state_field] = set_status
-			frappe.db.set_value(
-				"Diagnostic Report", diagnostic_report, set_value_dict, update_modified=False
-			)
+				diagnostic_doc.set(workflow_state_field, set_status)
+
+			diagnostic_doc.save(ignore_permissions=True)
 
 
 def get_approved_observations(data):
