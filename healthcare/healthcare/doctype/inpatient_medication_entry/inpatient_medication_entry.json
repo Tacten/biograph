@@ -189,7 +189,7 @@
    "table_fieldname": "medication_orders"
   }
  ],
- "modified": "2025-09-25 14:32:32.230025",
+ "modified": "2025-12-25 09:36:37.236817",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Inpatient Medication Entry",
@@ -209,7 +209,7 @@
   }
  ],
  "row_format": "Dynamic",
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "track_changes": 1

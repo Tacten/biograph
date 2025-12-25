@@ -258,7 +258,7 @@
    "table_fieldname": "practitioner_schedules"
   }
  ],
- "modified": "2025-09-25 15:03:07.339676",
+ "modified": "2025-12-25 09:36:44.187301",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Healthcare Service Unit",
@@ -302,7 +302,7 @@
  "restrict_to_domain": "Healthcare",
  "row_format": "Dynamic",
  "search_fields": "healthcare_service_unit_name",
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "title_field": "healthcare_service_unit_name",

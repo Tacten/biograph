@@ -212,7 +212,7 @@
    "link_fieldname": "service_unit_type"
   }
  ],
- "modified": "2025-09-25 15:04:43.831015",
+ "modified": "2025-12-25 09:36:31.415367",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Healthcare Service Unit Type",
@@ -234,7 +234,7 @@
  ],
  "restrict_to_domain": "Healthcare",
  "row_format": "Dynamic",
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "title_field": "service_unit_type"

@@ -218,7 +218,7 @@
  ],
  "grid_page_length": 50,
  "links": [],
- "modified": "2025-03-28 11:43:56.469499",
+ "modified": "2025-12-25 09:36:30.992082",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Medication",
@@ -252,7 +252,7 @@
  ],
  "row_format": "Dynamic",
  "search_fields": "abbr, national_drug_code, generic_name",
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "track_changes": 1

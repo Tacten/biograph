@@ -156,7 +156,7 @@
    "link_fieldname": "insurance_payor"
   }
  ],
- "modified": "2025-09-15 19:17:18.855181",
+ "modified": "2025-12-25 09:36:42.849084",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Insurance Payor",
@@ -202,7 +202,7 @@
  "restrict_to_domain": "Healthcare",
  "row_format": "Dynamic",
  "search_fields": "insurance_payor_name",
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "ASC",
  "states": [],
  "title_field": "insurance_payor_name",

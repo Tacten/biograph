@@ -68,7 +68,7 @@
    "link_fieldname": "insurance_plan"
   }
  ],
- "modified": "2025-09-25 14:39:39.639179",
+ "modified": "2025-12-25 09:36:42.209002",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Insurance Payor Eligibility Plan",
@@ -151,7 +151,7 @@
  "restrict_to_domain": "Healthcare",
  "row_format": "Dynamic",
  "search_fields": "insurance_plan_name,insurance_payor",
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "title_field": "insurance_plan_name",

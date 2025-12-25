@@ -612,7 +612,7 @@
   }
  ],
  "max_attachments": 50,
- "modified": "2025-09-02 13:28:52.643822",
+ "modified": "2025-12-25 09:36:34.528457",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Patient",
@@ -672,7 +672,7 @@
  "row_format": "Dynamic",
  "search_fields": "patient_name,mobile,email,phone,uid",
  "show_name_in_global_search": 1,
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "ASC",
  "states": [],
  "title_field": "patient_name",

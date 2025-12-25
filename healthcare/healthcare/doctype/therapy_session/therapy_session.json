@@ -260,7 +260,7 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2025-09-25 12:17:43.610989",
+ "modified": "2025-12-25 09:36:43.046662",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Therapy Session",
@@ -296,7 +296,7 @@
  "quick_entry": 1,
  "row_format": "Dynamic",
  "search_fields": "patient,appointment,therapy_plan,therapy_type",
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "title_field": "patient",

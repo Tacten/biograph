@@ -429,7 +429,7 @@
    "link_fieldname": "practitioner"
   }
  ],
- "modified": "2025-11-26 19:14:01.575157",
+ "modified": "2025-12-25 09:36:35.194204",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Healthcare Practitioner",
@@ -479,7 +479,7 @@
  "row_format": "Dynamic",
  "search_fields": "practitioner_name, mobile_phone, office_phone",
  "show_name_in_global_search": 1,
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "title_field": "practitioner_name",

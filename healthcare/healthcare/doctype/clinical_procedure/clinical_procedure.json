@@ -322,7 +322,7 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2025-05-15 17:42:46.172900",
+ "modified": "2025-12-25 09:36:38.342353",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Clinical Procedure",
@@ -359,7 +359,7 @@
  ],
  "restrict_to_domain": "Healthcare",
  "row_format": "Dynamic",
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "title_field": "title",

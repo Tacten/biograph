@@ -503,7 +503,7 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2025-09-25 13:22:49.662965",
+ "modified": "2025-12-25 09:36:36.599782",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Patient Encounter",
@@ -530,7 +530,7 @@
  "row_format": "Dynamic",
  "search_fields": "patient, practitioner, medical_department, encounter_date, encounter_time",
  "show_name_in_global_search": 1,
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [
   {

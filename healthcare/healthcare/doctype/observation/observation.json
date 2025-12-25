@@ -576,7 +576,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-29 23:04:47.368632",
+ "modified": "2025-12-25 09:36:28.860227",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Observation",
@@ -613,7 +613,7 @@
   }
  ],
  "row_format": "Dynamic",
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "track_changes": 1

@@ -267,7 +267,7 @@
    "link_fieldname": "procedure_template"
   }
  ],
- "modified": "2025-09-25 14:58:58.823692",
+ "modified": "2025-12-25 09:36:40.358748",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Clinical Procedure Template",
@@ -321,7 +321,7 @@
  "restrict_to_domain": "Healthcare",
  "row_format": "Dynamic",
  "search_fields": "template",
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "title_field": "template",

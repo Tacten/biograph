@@ -34,7 +34,7 @@
   }
  ],
  "links": [],
- "modified": "2021-12-23 07:11:16.134902",
+ "modified": "2025-12-25 09:36:35.637980",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Service Request Category",
@@ -86,9 +86,11 @@
  ],
  "quick_entry": 1,
  "restrict_to_domain": "Healthcare",
+ "row_format": "Dynamic",
  "search_fields": "category,patient_care_type",
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "category",
  "track_changes": 1
 }

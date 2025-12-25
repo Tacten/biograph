@@ -513,7 +513,7 @@
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-11-05 15:45:05.268654",
+ "modified": "2025-12-25 09:36:33.073374",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Healthcare Settings",
@@ -537,7 +537,7 @@
  "quick_entry": 1,
  "restrict_to_domain": "Healthcare",
  "row_format": "Dynamic",
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "track_changes": 1

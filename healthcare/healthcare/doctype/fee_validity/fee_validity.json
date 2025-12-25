@@ -125,7 +125,7 @@
  "grid_page_length": 50,
  "in_create": 1,
  "links": [],
- "modified": "2025-05-09 19:31:19.874208",
+ "modified": "2025-12-25 09:36:29.334799",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Fee Validity",
@@ -148,7 +148,7 @@
  "restrict_to_domain": "Healthcare",
  "row_format": "Dynamic",
  "search_fields": "practitioner, patient",
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "title_field": "practitioner"

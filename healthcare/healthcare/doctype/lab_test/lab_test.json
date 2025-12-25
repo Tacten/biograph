@@ -639,7 +639,7 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2025-09-18 12:27:01.235401",
+ "modified": "2025-12-25 09:36:31.745769",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Lab Test",
@@ -698,7 +698,7 @@
  "row_format": "Dynamic",
  "search_fields": "patient,practitioner,lab_test_name,sample",
  "show_name_in_global_search": 1,
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "title_field": "patient",
