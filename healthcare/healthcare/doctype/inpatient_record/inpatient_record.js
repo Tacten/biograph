@@ -133,17 +133,7 @@ frappe.ui.form.on("Inpatient Record", {
 						}
 					});
 				frm.add_custom_button(__("Discharge"), function () {
-					frappe.call({
-						method: "healthcare.healthcare.doctype.discharge_summary.discharge_summary.has_discharge_summary",
-						args: {
-							inpatient_record: frm.doc.name,
-						},
-						callback: function (r) {
-							if (r) {
-								discharge_patient(frm);
-							}
-						},
-					});
+					discharge_patient(frm);
 				});
 				if (frm.doc.insurance_policy) {
 					frm.add_custom_button(__("Create Insurance Coverage"), function () {
