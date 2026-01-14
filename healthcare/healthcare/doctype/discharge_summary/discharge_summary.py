@@ -64,22 +64,3 @@ class DischargeSummary(Document):
 					self.chief_complaint = []
 					for symptom in encounter.symptoms:
 						self.append("chief_complaint", (frappe.copy_doc(symptom)).as_dict())
-
-
-@frappe.whitelist()
-def has_discharge_summary(inpatient_record):
-	if frappe.db.exists("Discharge Summary", {"docstatus": 1, "inpatient_record": inpatient_record}):
-		return True
-
-	draft_summary = frappe.db.exists(
-		"Discharge Summary", {"docstatus": 0, "inpatient_record": inpatient_record}
-	)
-	message = (
-		_(
-			f"A draft Discharge Summary exists. To proceed, please submit: {get_link_to_form('Discharge Summary', draft_summary)}"
-		)
-		if draft_summary
-		else _("Please submit a Discharge Summary to proceed with discharging the patient.")
-	)
-
-	frappe.throw(message)
