@@ -510,7 +510,10 @@ def get_pending_invoices(inpatient_record):
 			if service_unit_names:
 				pending_invoices["Items"] = service_unit_names
 
-	docs = ["Patient Appointment", "Patient Encounter", "Lab Test", "Clinical Procedure"]
+	if not frappe.db.get_single_value("Healthcare Settings", "do_not_bill_inpatient_encounters"):
+		docs = ["Patient Appointment", "Patient Encounter", "Lab Test", "Clinical Procedure"]
+	else:
+		docs = ["Lab Test", "Clinical Procedure"]
 
 	for doc in docs:
 		doc_name_list = get_unbilled_inpatient_docs(doc, inpatient_record)
