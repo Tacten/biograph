@@ -158,7 +158,7 @@ class PatientEncounter(Document):
 			return
 
 		for therapy in self.therapies:
-			if therapy.no_of_sessions <= 0:
+			if not therapy.no_of_sessions or therapy.no_of_sessions <= 0:
 				frappe.throw(
 					_("Row #{0} (Therapies): Number of Sessions should be at least 1").format(therapy.idx)
 				)
@@ -322,32 +322,6 @@ class PatientEncounter(Document):
 			},
 			["posting_date", "note", "name", "practitioner", "user", "clinical_note_type"],
 		)
-
-	@frappe.whitelist()
-	def get_encounter_details(self):
-		medication_requests = []
-		service_requests = []
-		filters = {"patient": self.patient, "docstatus": 1}
-		medication_requests = frappe.get_all("Medication Request", filters, ["*"])
-		service_requests = frappe.get_all("Service Request", filters, ["*"])
-		for service_request in service_requests:
-			if service_request.template_dt == "Lab Test Template":
-				lab_test = frappe.db.get_value("Lab Test", {"service_request": service_request.name}, "name")
-				if lab_test:
-					subject = frappe.db.get_value(
-						"Patient Medical Record", {"reference_name": lab_test}, "subject"
-					)
-					if subject:
-						service_request["lab_details"] = subject
-		clinical_notes = frappe.get_all(
-			"Clinical Note",
-			{
-				"patient": self.patient,
-			},
-			["posting_date", "note"],
-		)
-
-		return medication_requests, service_requests, clinical_notes
 
 
 @frappe.whitelist()
@@ -539,3 +513,78 @@ def create_service_request_from_widget(encounter, data, medication_request=False
 		order = encounter_doc.get_order_details(template, data)
 	order.insert(ignore_permissions=True, ignore_mandatory=True)
 	order.submit()
+
+
+@frappe.whitelist()
+def get_encounter_details(doc):
+	doc = json.loads(doc)
+	if doc.get("__islocal") == 0:
+		doc = frappe.get_doc(doc.doctype, doc.docname)
+	medication_requests = []
+	service_requests = []
+	filters = {"patient": doc.get("patient"), "docstatus": 1}
+	medication_requests = frappe.get_all("Medication Request", filters, ["*"])
+	service_requests = frappe.get_all("Service Request", filters, ["*"])
+	status_codes = frappe.db.get_all(
+		"Code Value",
+		filters={
+			"code_system": ["in", ["Request Status", "Medication Request Status"]],
+		},
+		fields=["name", "code_value", "display"],
+	)
+	status_code_map = get_value_map(status_codes)
+
+	for service_request in service_requests:
+		if service_request.template_dt == "Lab Test Template":
+			lab_test = frappe.db.get_value("Lab Test", {"service_request": service_request.name}, "name")
+			if lab_test:
+				subject = frappe.db.get_value(
+					"Patient Medical Record", {"reference_name": lab_test}, "subject"
+				)
+				if subject:
+					service_request["lab_details"] = subject
+	clinical_notes = frappe.get_all(
+		"Clinical Note", {"patient": doc.get("patient")}, ["posting_date", "note"]
+	)
+
+	return medication_requests, service_requests, clinical_notes, status_code_map
+
+
+def get_value_map(status_codes):
+	"""return a map, for example, {"name": "x", "code_value": "", "display": "1"} to {"x": "1"}"""
+	status_code_map = {
+		list(d.values())[0]: list(d.values())[2]  # display is preferred over code_value
+		if list(d.values())[2]
+		else list(d.values())[1]
+		for d in status_codes
+	}
+	return dict(status_code_map)
+
+
+@frappe.whitelist()
+def create_patient_referral(encounter, references):
+	if isinstance(references, str):
+		references = json.loads(references)
+
+	encounter_doc = frappe.get_doc("Patient Encounter", encounter)
+	for ref in references:
+		order = frappe.get_doc(
+			{
+				"doctype": "Service Request",
+				"order_date": encounter_doc.get("encounter_date"),
+				"order_time": encounter_doc.get("encounter_time"),
+				"company": encounter_doc.get("company"),
+				"status": "draft-Request Status",
+				"source_doc": "Patient Encounter",
+				"order_group": encounter,
+				"patient": encounter_doc.get("patient"),
+				"practitioner": encounter_doc.get("practitioner"),
+				"template_dt": "Appointment Type",
+				"template_dn": ref.get("appointment_type"),
+				"quantity": 1,
+				"order_description": ref.get("referral_note"),
+				"referred_to_practitioner": ref.get("refer_to"),
+			}
+		)
+		order.insert(ignore_permissions=True, ignore_mandatory=True)
+		order.submit()

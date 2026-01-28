@@ -3,6 +3,9 @@ frappe.ui.form.on('Sales Invoice', {
 	refresh(frm) {
 		if (frm.doc.docstatus === 0 && !frm.doc.is_return) {
 			frm.add_custom_button(__('Healthcare Services'), function() {
+				if (!frm.doc.patient) {
+					frappe.throw(__('Please select a Patient to be invoiced'));
+				}
 				frappe.db.get_value("Patient", frm.doc.patient, "customer")
 				.then(r => {
 					let link_customer = null;
@@ -21,6 +24,9 @@ frappe.ui.form.on('Sales Invoice', {
 				})
 			},__('Get Items From'));
 			frm.add_custom_button(__('Prescriptions'), function() {
+				if (!frm.doc.patient) {
+					frappe.throw(__('Please select a Patient to be invoiced'));
+				}
 				frappe.db.get_value("Patient", frm.doc.patient, "customer")
 				.then(r => {
 					let link_customer = null;
@@ -37,6 +43,13 @@ frappe.ui.form.on('Sales Invoice', {
 					}
 				})
 			},__('Get Items From'));
+		}
+	},
+
+	onload_post_render(frm) {
+		if (frm.doc.items && frm.doc.items.length === 1 && !frm.doc.items[0].item_name) {
+			frm.clear_table('items');
+			frm.refresh_field('items');  // Ensure UI updates
 		}
 	},
 
@@ -186,7 +199,7 @@ var make_list_row= function(columns, invoice_healthcare_services, result={}) {
 var set_primary_action= function(frm, dialog, $results, invoice_healthcare_services) {
 	var me = this;
 	dialog.set_primary_action(__('Add'), function() {
-		frm.clear_table('items');
+//		frm.clear_table('items');
 		let checked_values = get_checked_values($results);
 		if(checked_values.length > 0){
 			if(invoice_healthcare_services) {
