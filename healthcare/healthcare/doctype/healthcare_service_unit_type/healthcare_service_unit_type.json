@@ -26,7 +26,9 @@
   "column_break_11",
   "rate",
   "description",
-  "change_in_item"
+  "change_in_item",
+  "is_ot",
+  "medical_department"
  ],
  "fields": [
   {
@@ -204,8 +206,13 @@
    "label": "Minimum Billable Quantity"
   }
  ],
- "links": [],
- "modified": "2024-04-29 18:59:16.479821",
+ "links": [
+  {
+   "link_doctype": "Healthcare Service Unit",
+   "link_fieldname": "service_unit_type"
+  }
+ ],
+ "modified": "2025-12-25 09:36:31.415367",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Healthcare Service Unit Type",
@@ -226,7 +233,8 @@
   }
  ],
  "restrict_to_domain": "Healthcare",
- "sort_field": "modified",
+ "row_format": "Dynamic",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "title_field": "service_unit_type"

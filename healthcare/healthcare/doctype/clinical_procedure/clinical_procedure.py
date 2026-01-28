@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2017, ESS LLP and contributors
 # For license information, please see license.txt
 
@@ -8,12 +7,15 @@ from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
 from frappe.utils import flt, get_link_to_form, now_datetime, nowdate, nowtime
 
-from erpnext.stock.get_item_details import get_item_details
+from erpnext.stock.get_item_details import ItemDetailsCtx, get_item_details
 from erpnext.stock.stock_ledger import get_previous_sle
 
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import get_account
 from healthcare.healthcare.doctype.lab_test.lab_test import create_sample_doc
 from healthcare.healthcare.doctype.nursing_task.nursing_task import NursingTask
+from healthcare.healthcare.doctype.service_request.service_request import (
+	set_service_request_status,
+)
 from healthcare.healthcare.utils import validate_nursing_tasks
 
 
@@ -35,14 +37,14 @@ class ClinicalProcedure(Document):
 			self.set_actual_qty()
 
 		if self.service_request:
-			therapy_session = frappe.db.exists(
+			has_proceedure = frappe.db.exists(
 				"Clinical Procedure",
-				{"service_request": self.service_request, "docstatus": ["!=", 2]},
+				{"service_request": self.service_request, "docstatus": 0},
 			)
-			if therapy_session:
+			if has_proceedure:
 				frappe.throw(
 					_("Clinical Procedure {0} already created from service request {1}").format(
-						frappe.bold(get_link_to_form("Clinical Procedure", therapy_session)),
+						frappe.bold(get_link_to_form("Clinical Procedure", has_proceedure)),
 						frappe.bold(get_link_to_form("Service Request", self.service_request)),
 					),
 					title=_("Already Exist"),
@@ -50,7 +52,7 @@ class ClinicalProcedure(Document):
 
 	def on_cancel(self):
 		if self.service_request:
-			frappe.db.set_value("Service Request", self.service_request, "status", "active-Request Status")
+			set_service_request_status(self.service_request, "active-Request Status")
 
 	def after_insert(self):
 		if self.appointment:
@@ -71,9 +73,12 @@ class ClinicalProcedure(Document):
 	def on_submit(self):
 		self.create_nursing_tasks(post_event=False)
 		if self.service_request:
-			frappe.db.set_value(
-				"Service Request", self.service_request, "status", "completed-Request Status"
-			)
+			status = "active-Request Status"
+			sessions_completed = self.check_sessions_completed()
+			if sessions_completed:
+				status = "completed-Request Status"
+
+			set_service_request_status(self.service_request, status)
 
 	def create_nursing_tasks(self, post_event=True):
 		if post_event:
@@ -87,7 +92,7 @@ class ClinicalProcedure(Document):
 				"Clinical Procedure Template", self.procedure_template, "pre_op_nursing_checklist_template"
 			)
 			# pre op tasks to be created on Clinical Procedure submit, use scheduled date
-			start_time = frappe.utils.get_datetime(f"{self.start_date} {self.start_time}")
+			start_time = frappe.utils.get_datetime(f"{self.start_date} {self.start_time or nowtime()}")
 
 		if template:
 			NursingTask.create_nursing_tasks_from_template(
@@ -111,9 +116,7 @@ class ClinicalProcedure(Document):
 			self.status = "Cancelled"
 
 	def set_title(self):
-		self.title = _("{0} - {1}").format(self.patient_name or self.patient, self.procedure_template)[
-			:100
-		]
+		self.title = _("{0} - {1}").format(self.patient_name or self.patient, self.procedure_template)[:100]
 
 	@frappe.whitelist()
 	def complete_procedure(self):
@@ -130,21 +133,29 @@ class ClinicalProcedure(Document):
 						price_list, price_list_currency = frappe.db.get_values(
 							"Price List", {"selling": 1}, ["name", "currency"]
 						)[0]
-						args = {
-							"doctype": "Sales Invoice",
-							"item_code": item.item_code,
-							"company": self.company,
-							"warehouse": self.warehouse,
-							"customer": customer,
-							"selling_price_list": price_list,
-							"price_list_currency": price_list_currency,
-							"plc_conversion_rate": 1.0,
-							"conversion_rate": 1.0,
-						}
-						item_details = get_item_details(args)
+						ctx: ItemDetailsCtx = ItemDetailsCtx(
+							{
+								"doctype": "Sales Invoice",
+								"item_code": item.item_code,
+								"company": self.company,
+								"warehouse": self.warehouse,
+								"customer": customer,
+								"selling_price_list": price_list,
+								"price_list_currency": price_list_currency,
+								"plc_conversion_rate": 1.0,
+								"conversion_rate": 1.0,
+							}
+						)
+						item_details = get_item_details(ctx)
 						item_price = item_details.price_list_rate * item.qty
 						item_consumption_details = (
-							item_details.item_name + " " + str(item.qty) + " " + item.uom + " " + str(item_price)
+							item_details.item_name
+							+ " "
+							+ str(item.qty)
+							+ " "
+							+ item.uom
+							+ " "
+							+ str(item_price)
 						)
 						consumable_total_amount += item_price
 						if not consumption_details:
@@ -167,9 +178,7 @@ class ClinicalProcedure(Document):
 		self.db_set("status", "Completed")
 
 		if self.service_request:
-			frappe.db.set_value(
-				"Service Request", self.service_request, "status", "completed-Request Status"
-			)
+			set_service_request_status(self.service_request, "completed-Request Status")
 
 		# post op nursing tasks
 		if self.procedure_template:
@@ -231,6 +240,14 @@ class ClinicalProcedure(Document):
 			return stock_entry
 		return stock_entry.as_dict()
 
+	def check_sessions_completed(self):
+		total_sessions_requested = frappe.db.get_value("Service Request", self.service_request, "quantity")
+		sessions = frappe.db.count(
+			"Clinical Procedure", filters={"docstatus": ["!=", 2], "service_request": self.service_request}
+		)
+
+		return True if total_sessions_requested == sessions else False
+
 
 def get_stock_qty(item_code, warehouse):
 	return (
@@ -274,9 +291,7 @@ def set_stock_items(doc, stock_detail_parent, parenttype):
 
 
 def get_items(table, parent, parenttype):
-	items = frappe.db.get_all(
-		table, filters={"parent": parent, "parenttype": parenttype}, fields=["*"]
-	)
+	items = frappe.db.get_all(table, filters={"parent": parent, "parenttype": parenttype}, fields=["*"])
 
 	return items
 
@@ -355,7 +370,14 @@ def get_procedure_prescribed(patient, encounter=False):
 	return (
 		frappe.qb.from_(hso)
 		.select(
-			hso.template_dn, hso.order_group, hso.billing_status, hso.practitioner, hso.order_date, hso.name
+			hso.template_dn,
+			hso.order_group,
+			hso.billing_status,
+			hso.practitioner,
+			hso.order_date,
+			hso.name,
+			hso.insurance_policy,
+			hso.insurance_payor,
 		)
 		.where(hso.patient == patient)
 		.where(hso.status != "completed-Request Status")

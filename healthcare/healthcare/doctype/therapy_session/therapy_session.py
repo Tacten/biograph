@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2020, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
@@ -16,6 +15,9 @@ from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings impor
 	get_receivable_account,
 )
 from healthcare.healthcare.doctype.nursing_task.nursing_task import NursingTask
+from healthcare.healthcare.doctype.service_request.service_request import (
+	set_service_request_status,
+)
 from healthcare.healthcare.utils import validate_nursing_tasks
 
 
@@ -90,7 +92,7 @@ class TherapySession(Document):
 			if sessions_completed:
 				status = "completed-Request Status"
 
-			frappe.db.set_value("Service Request", self.service_request, "status", status)
+			set_service_request_status(self.service_request, status)
 
 	def create_nursing_tasks(self, post_event=True):
 		template = frappe.db.get_value("Therapy Type", self.therapy_type, "nursing_checklist_template")
@@ -150,9 +152,7 @@ class TherapySession(Document):
 				)
 
 	def check_sessions_completed(self):
-		total_sessions_requested = frappe.db.get_value(
-			"Service Request", self.service_request, "quantity"
-		)
+		total_sessions_requested = frappe.db.get_value("Service Request", self.service_request, "quantity")
 		sessions = frappe.db.count(
 			"Therapy Session", filters={"docstatus": ["!=", 2], "service_request": self.service_request}
 		)

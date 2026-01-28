@@ -1,21 +1,21 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2020, earthians and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 
 import json
 
-from six import string_types
-
 import frappe
 from frappe import _
+from frappe.model.mapper import get_mapped_doc
 from frappe.utils import now_datetime
 
 from healthcare.controllers.service_request_controller import ServiceRequestController
 from healthcare.healthcare.doctype.observation.observation import add_observation
 from healthcare.healthcare.doctype.observation_template.observation_template import (
 	get_observation_template_details,
+)
+from healthcare.healthcare.doctype.patient_insurance_coverage.patient_insurance_coverage import (
+	make_insurance_coverage,
 )
 from healthcare.healthcare.doctype.sample_collection.sample_collection import (
 	set_component_observation_data,
@@ -46,6 +46,38 @@ class ServiceRequest(ServiceRequestController):
 				"Observation Template", self.template_dn, "sample_collection_required"
 			)
 
+	def on_submit(self):
+		if self.insurance_policy and not self.insurance_coverage:
+			self.make_insurance_coverage()
+
+	def on_update_after_submit(self):
+		if self.billing_status == "Pending" and self.insurance_policy and not self.insurance_coverage:
+			self.make_insurance_coverage()
+
+	def make_insurance_coverage(self):
+		coverage = make_insurance_coverage(
+			patient=self.patient,
+			policy=self.insurance_policy,
+			company=self.company,
+			template_dt=self.template_dt,
+			template_dn=self.template_dn,
+			item_code=self.item_code,
+			qty=self.quantity,
+		)
+
+		if coverage and coverage.get("coverage"):
+			self.db_set(
+				{
+					"insurance_coverage": coverage.get("coverage"),
+					"coverage_status": coverage.get("coverage_status"),
+				}
+			)
+
+	def on_cancel(self):
+		if self.insurance_coverage:
+			coverage = frappe.get_doc("Patient Insurance Coverage", self.insurance_coverage)
+			coverage.cancel()
+
 	def set_order_details(self):
 		if not self.template_dt and not self.template_dn:
 			frappe.throw(
@@ -71,7 +103,7 @@ class ServiceRequest(ServiceRequestController):
 
 	def update_invoice_details(self, qty):
 		"""
-		updates qty_invoiced and set  billing status
+		updates qty_invoiced and set billing status
 		"""
 		qty_invoiced = self.qty_invoiced + qty
 		invoiced = 0
@@ -96,21 +128,17 @@ class ServiceRequest(ServiceRequestController):
 		frappe.db.set_value(dt, dt_name, "invoiced", invoiced)
 
 
-def update_service_request_status(service_request, service_dt, service_dn, status=None, qty=1):
-	# TODO: fix status updates from linked docs
-	set_service_request_status(service_request, status)
-
-
 @frappe.whitelist()
 def set_service_request_status(service_request, status):
 	frappe.db.set_value("Service Request", service_request, "status", status)
 
 
 @frappe.whitelist()
-def make_clinical_procedure(service_request):
-	if isinstance(service_request, string_types):
-		service_request = json.loads(service_request)
-		service_request = frappe._dict(service_request)
+def make_clinical_procedure(service_request, appointment=None):
+	if not service_request:
+		return
+
+	service_request = frappe.get_cached_doc("Service Request", service_request)
 
 	if (
 		frappe.db.get_single_value("Healthcare Settings", "process_service_request_only_if_paid")
@@ -121,9 +149,12 @@ def make_clinical_procedure(service_request):
 			title=_("Payment Required"),
 		)
 
+	procedure_template = frappe.get_doc("Clinical Procedure Template", service_request.template_dn)
+
 	doc = frappe.new_doc("Clinical Procedure")
 	doc.procedure_template = service_request.template_dn
 	doc.service_request = service_request.name
+	doc.appointment = appointment
 	doc.company = service_request.company
 	doc.patient = service_request.patient
 	doc.patient_name = service_request.patient_name
@@ -134,15 +165,37 @@ def make_clinical_procedure(service_request):
 	doc.start_date = service_request.occurrence_date
 	doc.start_time = service_request.occurrence_time
 	doc.medical_department = service_request.medical_department
+	doc.invoiced = 1 if service_request.billing_status == "Invoiced" else 0
+	doc.insurance_policy = service_request.insurance_policy
+	doc.insurance_payor = service_request.insurance_payor
+	doc.insurance_coverage = service_request.insurance_coverage
+	doc.coverage_status = service_request.coverage_status
+	doc.consume_stock = procedure_template.consume_stock
+	doc.warehouse = frappe.db.get_single_value("Stock Settings", "default_warehouse")
+
+	if not doc.codification_table and procedure_template.codification_table:
+		for code in procedure_template.codification_table:
+			doc.append(
+				"codification_table",
+				(frappe.copy_doc(code)).as_dict(),
+			)
+
+	if not doc.items and procedure_template.items:
+		for item in procedure_template.items:
+			doc.append(
+				"items",
+				(frappe.copy_doc(item)).as_dict(),
+			)
 
 	return doc
 
 
 @frappe.whitelist()
 def make_lab_test(service_request):
-	if isinstance(service_request, string_types):
-		service_request = json.loads(service_request)
-		service_request = frappe._dict(service_request)
+	if not service_request:
+		return
+
+	service_request = frappe.get_cached_doc("Service Request", service_request)
 
 	if (
 		frappe.db.get_single_value("Healthcare Settings", "process_service_request_only_if_paid")
@@ -168,48 +221,21 @@ def make_lab_test(service_request):
 	doc.requesting_department = service_request.medical_department
 	doc.date = service_request.occurrence_date
 	doc.time = service_request.occurrence_time
-	doc.invoiced = service_request.invoiced
+	doc.invoiced = 1 if service_request.billing_status == "Invoiced" else 0
+	doc.insurance_policy = service_request.insurance_policy
+	doc.insurance_payor = service_request.insurance_payor
+	doc.insurance_coverage = service_request.insurance_coverage
+	doc.coverage_status = service_request.coverage_status
 
 	return doc
 
 
 @frappe.whitelist()
-def make_therapy_session(service_request):
-	if isinstance(service_request, string_types):
-		service_request = json.loads(service_request)
-		service_request = frappe._dict(service_request)
+def make_observation(service_request, appointment=None):
+	if not service_request:
+		return
 
-	if (
-		frappe.db.get_single_value("Healthcare Settings", "process_service_request_only_if_paid")
-		and service_request.billing_status != "Invoiced"
-	):
-		frappe.throw(
-			_("Service Request need to be invoiced before proceeding"),
-			title=_("Payment Required"),
-		)
-
-	doc = frappe.new_doc("Therapy Session")
-	doc.therapy_type = service_request.template_dn
-	doc.service_request = service_request.name
-	doc.company = service_request.company
-	doc.patient = service_request.patient
-	doc.patient_name = service_request.patient_name
-	doc.gender = service_request.patient_gender
-	doc.patient_age = service_request.patient_age_data
-	doc.practitioner = service_request.practitioner
-	doc.department = service_request.medical_department
-	doc.start_date = service_request.occurrence_date
-	doc.start_time = service_request.occurrence_time
-	doc.invoiced = service_request.invoiced
-
-	return doc
-
-
-@frappe.whitelist()
-def make_observation(service_request):
-	if isinstance(service_request, string_types):
-		service_request = json.loads(service_request)
-		service_request = frappe._dict(service_request)
+	service_request = frappe.get_cached_doc("Service Request", service_request)
 
 	if (
 		frappe.db.get_single_value("Healthcare Settings", "process_service_request_only_if_paid")
@@ -242,10 +268,10 @@ def make_observation(service_request):
 		if exist_sample_collection:
 			sample_collection = frappe.get_doc("Sample Collection", exist_sample_collection)
 		else:
-			sample_collection = create_sample_collection(patient, service_request)
+			sample_collection = create_sample_collection(patient, service_request, appointment)
 
 		# parent
-		observation = create_observation(service_request)
+		observation = create_observation(service_request, appointment)
 
 		save_sample_collection = False
 		(
@@ -313,28 +339,33 @@ def make_observation(service_request):
 				)
 				sample_collection.save(ignore_permissions=True)
 			else:
-				sample_collection = create_sample_collection(patient, service_request, template)
+				sample_collection = create_sample_collection(patient, service_request, appointment, template)
 				sample_collection.save(ignore_permissions=True)
 		else:
-			observation = create_observation(service_request)
+			observation = create_observation(service_request, appointment)
 
-	diagnostic_report = frappe.db.exists(
-		"Diagnostic Report", {"reference_name": service_request.order_group}
-	)
+	diagnostic_report = frappe.db.exists("Diagnostic Report", {"docname": service_request.order_group})
 	if not diagnostic_report:
-		insert_diagnostic_report(service_request, sample_collection)
+		insert_diagnostic_report(service_request, sample_collection.name if sample_collection else None)
 
 	if sample_collection:
+		if diagnostic_report and not frappe.db.get_value(
+			"Diagnostic Report", diagnostic_report, "sample_collection"
+		):
+			frappe.db.set_value(
+				"Diagnostic Report", diagnostic_report, "sample_collection", sample_collection.name
+			)
 		return sample_collection.name, "Sample Collection"
 	elif observation:
 		return observation.name, "Observation"
 
 
-def create_sample_collection(patient, service_request, template=None):
+def create_sample_collection(patient, service_request, appointment=None, template=None):
 	sample_collection = frappe.new_doc("Sample Collection")
 	sample_collection.patient = patient.name
 	sample_collection.patient_age = patient.get_age()
 	sample_collection.patient_sex = patient.sex
+	sample_collection.appointment = appointment
 	sample_collection.company = service_request.company
 	sample_collection.reference_doc = service_request.source_doc
 	sample_collection.reference_name = service_request.order_group
@@ -357,10 +388,11 @@ def create_sample_collection(patient, service_request, template=None):
 	return sample_collection
 
 
-def create_observation(service_request):
+def create_observation(service_request, appointment=None):
 	doc = frappe.new_doc("Observation")
 	doc.posting_datetime = now_datetime()
 	doc.patient = service_request.patient
+	doc.appointment = appointment
 	doc.observation_template = service_request.template_dn
 	doc.reference_doctype = "Patient Encounter"
 	doc.reference_docname = service_request.order_group
@@ -403,3 +435,37 @@ def check_observation_sample_exist(service_request):
 		)
 		if exist_observation:
 			return exist_observation, "Observation"
+
+
+@frappe.whitelist()
+def make_appointment(source_name, target_doc=None, ignore_permissions=False):
+	def postprocess(source, target):
+		set_missing_values(source, target)
+
+	def set_missing_values(source, target):
+		target.department = frappe.db.get_value(
+			"Healthcare Practitioner", source.referred_to_practitioner, "department"
+		)
+
+	doclist = get_mapped_doc(
+		"Service Request",
+		source_name,
+		{
+			"Service Request": {
+				"doctype": "Patient Appointment",
+				"field_map": {
+					"name": "service_request",
+					"referred_to_practitioner": "practitioner",
+					"template_dn": "appointment_type",
+					"source_doc": "reference_doctype",
+					"order_group": "reference_docname",
+				},
+				"field_no_map": ["naming_series", "status"],
+			},
+		},
+		target_doc,
+		postprocess,
+		ignore_permissions=ignore_permissions,
+	)
+
+	return doclist

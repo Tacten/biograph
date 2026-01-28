@@ -1,4 +1,5 @@
 {
+ "color": "#7EA2AA",
  "creation": "2020-07-14 18:17:54.749754",
  "docstatus": 0,
  "doctype": "Number Card",
@@ -9,11 +10,12 @@
  "is_public": 1,
  "is_standard": 1,
  "label": "Total Patients Admitted",
- "modified": "2020-07-22 13:26:20.027788",
+ "modified": "2025-09-16 17:30:19.655735",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Total Patients Admitted",
  "owner": "Administrator",
+ "show_full_number": 0,
  "show_percentage_stats": 1,
  "stats_time_interval": "Daily",
  "type": "Document Type"

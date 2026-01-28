@@ -1,7 +1,6 @@
 # Copyright (c) 2022, healthcare and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 
 import frappe
 from frappe import _
@@ -19,8 +18,6 @@ class MedicationRequest(ServiceRequestController):
 		self.title = f"{self.patient_name} - {self.medication or self.medication_item}"
 
 	def before_insert(self):
-		self.calculate_total_dispensable_quantity()
-
 		if self.amended_from:
 			frappe.db.set_value(
 				"Medication Request", self.amended_from, "status", "stopped-Medication Request Status"
@@ -40,14 +37,6 @@ class MedicationRequest(ServiceRequestController):
 
 		if not self.priority:
 			self.priority = frappe.db.get_single_value("Healthcare Settings", "default_priority")
-
-	def calculate_total_dispensable_quantity(self):
-		if self.number_of_repeats_allowed:
-			self.total_dispensable_quantity = self.quantity + (
-				self.number_of_repeats_allowed * self.quantity
-			)
-		else:
-			self.total_dispensable_quantity = self.quantity
 
 	def update_invoice_details(self, qty):
 		"""

@@ -19,7 +19,7 @@
   }
  ],
  "links": [],
- "modified": "2020-04-10 12:26:44.087985",
+ "modified": "2025-12-25 09:36:36.001258",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Body Part",
@@ -39,7 +39,9 @@
   }
  ],
  "quick_entry": 1,
- "sort_field": "modified",
+ "row_format": "Dynamic",
+ "sort_field": "creation",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

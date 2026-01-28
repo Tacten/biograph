@@ -37,6 +37,16 @@
   "physical_examination",
   "diagnosis",
   "diagnosis_in_print",
+  "sb_source",
+  "source",
+  "column_break_27",
+  "referring_practitioner",
+  "insurance_section",
+  "insurance_policy",
+  "insurance_coverage",
+  "column_break_35",
+  "insurance_payor",
+  "coverage_status",
   "codification",
   "codification_table",
   "sb_drug_prescription",
@@ -46,7 +56,6 @@
   "sb_procedures",
   "procedure_prescription",
   "rehabilitation_section",
-  "therapy_plan",
   "therapies",
   "section_break_33",
   "encounter_comment",
@@ -277,14 +286,6 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "therapy_plan",
-   "fieldtype": "Link",
-   "hidden": 1,
-   "label": "Therapy Plan",
-   "options": "Therapy Plan",
-   "read_only": 1
-  },
-  {
    "fieldname": "appointment_type",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
@@ -292,8 +293,8 @@
    "no_copy": 1,
    "options": "Appointment Type",
    "print_hide": 1,
-   "read_only": 1,
-   "report_hide": 1
+   "report_hide": 1,
+   "reqd": 1
   },
   {
    "fetch_from": "practitioner.department",
@@ -339,6 +340,70 @@
    "fieldname": "get_applicable_treatment_plans",
    "fieldtype": "Button",
    "label": "Get Applicable Treatment Plans"
+  },
+  {
+   "fieldname": "sb_source",
+   "fieldtype": "Section Break",
+   "label": "Source"
+  },
+  {
+   "fieldname": "source",
+   "fieldtype": "Select",
+   "label": "Source",
+   "options": "Direct\nReferral\nExternal Referral"
+  },
+  {
+   "fieldname": "column_break_27",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "referring_practitioner",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "ignore_user_permissions": 1,
+   "label": "Referring Practitioner",
+   "options": "Healthcare Practitioner"
+  },
+  {
+   "depends_on": "appointment_type",
+   "fieldname": "insurance_section",
+   "fieldtype": "Section Break",
+   "label": "Insurance"
+  },
+  {
+   "depends_on": "appointment_type",
+   "fieldname": "insurance_policy",
+   "fieldtype": "Link",
+   "label": "Insurance Policy",
+   "options": "Patient Insurance Policy"
+  },
+  {
+   "fieldname": "column_break_35",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "insurance_policy.insurance_payor",
+   "fieldname": "insurance_payor",
+   "fieldtype": "Link",
+   "label": "Insurance Payor",
+   "options": "Insurance Payor"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "insurance_coverage",
+   "fieldtype": "Link",
+   "label": "Insurance Coverage",
+   "options": "Patient Insurance Coverage",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fetch_from": "insurance_coverage.status",
+   "fetch_if_empty": 1,
+   "fieldname": "coverage_status",
+   "fieldtype": "Data",
+   "label": "Coverage Status",
+   "read_only": 1
   },
   {
    "fetch_from": "appointment.google_meet_link",
@@ -389,18 +454,56 @@
    "label": "Order History"
   }
  ],
+ "grid_page_length": 50,
  "is_submittable": 1,
  "links": [
   {
+   "group": "Orders",
+   "link_doctype": "Medication Request",
+   "link_fieldname": "order_group"
+  },
+  {
+   "group": "Inpatient",
+   "link_doctype": "Treatment Counselling",
+   "link_fieldname": "admission_encounter"
+  },
+  {
+   "group": "Notes, Tasks & Vitals",
    "link_doctype": "Clinical Note",
    "link_fieldname": "reference_name"
   },
   {
-   "link_doctype": "Treatment Counselling",
+   "group": "Notes, Tasks & Vitals",
+   "link_doctype": "Nursing Task",
+   "link_fieldname": "reference_name"
+  },
+  {
+   "group": "Notes, Tasks & Vitals",
+   "link_doctype": "Vital Signs",
+   "link_fieldname": "encounter"
+  },
+  {
+   "group": "Inpatient",
+   "link_doctype": "Inpatient Record",
    "link_fieldname": "admission_encounter"
+  },
+  {
+   "group": "Inpatient",
+   "link_doctype": "Inpatient Medication Order",
+   "link_fieldname": "patient_encounter"
+  },
+  {
+   "group": "Orders",
+   "link_doctype": "Service Request",
+   "link_fieldname": "order_group"
+  },
+  {
+   "group": "Medical Records",
+   "link_doctype": "Patient Medical Record",
+   "link_fieldname": "reference_name"
   }
  ],
- "modified": "2023-11-07 18:03:12.793649",
+ "modified": "2025-12-25 09:36:36.599782",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Patient Encounter",
@@ -424,9 +527,10 @@
   }
  ],
  "restrict_to_domain": "Healthcare",
+ "row_format": "Dynamic",
  "search_fields": "patient, practitioner, medical_department, encounter_date, encounter_time",
  "show_name_in_global_search": 1,
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [
   {

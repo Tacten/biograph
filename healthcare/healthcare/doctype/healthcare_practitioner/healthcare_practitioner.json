@@ -33,12 +33,17 @@
   "appointments",
   "practitioner_schedules",
   "google_calendar",
+  "show_in_portal",
   "charges",
   "op_consulting_charge_item",
   "op_consulting_charge",
   "column_break_18",
   "inpatient_visit_charge_item",
   "inpatient_visit_charge",
+  "free_followup_details_section",
+  "enable_free_follow_ups",
+  "max_visits",
+  "valid_days",
   "account_details",
   "default_currency",
   "accounts",
@@ -353,11 +358,78 @@
    "fieldtype": "Link",
    "label": "Supplier",
    "options": "Supplier"
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "eval:doc.enable_free_follow_ups == 1",
+   "fieldname": "free_followup_details_section",
+   "fieldtype": "Section Break",
+   "label": "Free Followup Details"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_free_follow_ups",
+   "fieldtype": "Check",
+   "label": "Enable Free Follow-ups"
+  },
+  {
+   "depends_on": "eval:doc.enable_free_follow_ups == 1",
+   "description": "The number of free follow ups (Patient Encounters in valid days) allowed",
+   "fieldname": "max_visits",
+   "fieldtype": "Int",
+   "label": "Number of Patient Encounters in Valid Days",
+   "mandatory_depends_on": "eval:doc.enable_free_follow_ups == 1"
+  },
+  {
+   "depends_on": "eval:doc.enable_free_follow_ups == 1",
+   "description": "Time period (Valid number of days) for free consultations",
+   "fieldname": "valid_days",
+   "fieldtype": "Int",
+   "label": "Valid Number of Days",
+   "mandatory_depends_on": "eval:doc.enable_free_follow_ups == 1"
+  },
+  {
+   "default": "0",
+   "fieldname": "show_in_portal",
+   "fieldtype": "Check",
+   "label": "Show in Portal"
   }
  ],
+ "grid_page_length": 50,
  "image_field": "image",
- "links": [],
- "modified": "2023-03-04 18:33:25.753648",
+ "links": [
+  {
+   "group": "Consultations",
+   "link_doctype": "Patient Appointment",
+   "link_fieldname": "practitioner"
+  },
+  {
+   "group": "Consultations",
+   "link_doctype": "Patient Encounter",
+   "link_fieldname": "practitioner"
+  },
+  {
+   "group": "Orders",
+   "link_doctype": "Medication Request",
+   "link_fieldname": "practitioner"
+  },
+  {
+   "group": "Orders",
+   "link_doctype": "Service Request",
+   "link_fieldname": "practitioner"
+  },
+  {
+   "group": "Admissions",
+   "link_doctype": "Inpatient Record",
+   "link_fieldname": "practitioner"
+  },
+  {
+   "group": "Consultations",
+   "link_doctype": "Fee Validity",
+   "link_fieldname": "practitioner"
+  }
+ ],
+ "modified": "2025-12-25 09:36:35.194204",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Healthcare Practitioner",
@@ -404,9 +476,10 @@
  ],
  "quick_entry": 1,
  "restrict_to_domain": "Healthcare",
+ "row_format": "Dynamic",
  "search_fields": "practitioner_name, mobile_phone, office_phone",
  "show_name_in_global_search": 1,
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "title_field": "practitioner_name",

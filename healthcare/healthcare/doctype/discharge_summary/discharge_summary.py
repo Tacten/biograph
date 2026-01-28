@@ -2,7 +2,9 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
+from frappe.utils import get_link_to_form
 
 
 class DischargeSummary(Document):
@@ -27,7 +29,9 @@ class DischargeSummary(Document):
 				all_service_requests += service_requests
 			for service_request in service_requests:
 				if service_request.template_dt == "Lab Test Template":
-					lab_test = frappe.db.get_value("Lab Test", {"service_request": service_request.name}, "name")
+					lab_test = frappe.db.get_value(
+						"Lab Test", {"service_request": service_request.name}, "name"
+					)
 					if lab_test:
 						subject = frappe.db.get_value(
 							"Patient Medical Record", {"reference_name": lab_test}, "subject"
@@ -47,15 +51,16 @@ class DischargeSummary(Document):
 		self.db_set("status", "Cancelled")
 
 	def validate_encounter_impression(self):
-		encounter = frappe.get_last_doc(
-			"Patient Encounter", filters={"inpatient_record": self.inpatient_record}
-		)
-		if encounter:
-			if encounter.diagnosis:
-				self.diagnosis = []
-				for d in encounter.diagnosis:
-					self.append("diagnosis", (frappe.copy_doc(d)).as_dict())
-			if encounter.symptoms:
-				self.chief_complaint = []
-				for symptom in encounter.symptoms:
-					self.append("chief_complaint", (frappe.copy_doc(symptom)).as_dict())
+		if frappe.db.exists("Patient Encounter", {"inpatient_record": self.inpatient_record}):
+			encounter = frappe.get_last_doc(
+				"Patient Encounter", filters={"inpatient_record": self.inpatient_record}
+			)
+			if encounter:
+				if encounter.diagnosis:
+					self.diagnosis = []
+					for d in encounter.diagnosis:
+						self.append("diagnosis", (frappe.copy_doc(d)).as_dict())
+				if encounter.symptoms:
+					self.chief_complaint = []
+					for symptom in encounter.symptoms:
+						self.append("chief_complaint", (frappe.copy_doc(symptom)).as_dict())

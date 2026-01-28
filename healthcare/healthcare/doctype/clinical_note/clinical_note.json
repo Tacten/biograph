@@ -120,11 +120,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-05-16 18:47:54.650316",
+ "modified": "2025-12-25 09:36:28.733994",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Clinical Note",
- "naming_rule": "Expression",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
@@ -141,7 +141,8 @@
   }
  ],
  "quick_entry": 1,
- "sort_field": "modified",
+ "row_format": "Dynamic",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": []
 }

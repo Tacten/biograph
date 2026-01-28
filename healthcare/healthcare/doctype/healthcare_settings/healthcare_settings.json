@@ -14,6 +14,7 @@
   "default_google_calendar",
   "column_break_9",
   "collect_registration_fee",
+  "registration_item",
   "registration_fee",
   "show_payment_popup",
   "enable_free_follow_ups",
@@ -47,6 +48,7 @@
   "sb_in_ac",
   "income_account",
   "receivable_account",
+  "naming_series_for_journal_entry",
   "order_details_section",
   "process_service_request_only_if_paid",
   "alerts_tab",
@@ -63,7 +65,18 @@
   "laboratory_sms_alerts",
   "sms_printed",
   "column_break_28",
-  "sms_emailed"
+  "sms_emailed",
+  "patient_portal_tab",
+  "default_appointment_type",
+  "column_break_nxka",
+  "show_diagnostics_tab",
+  "payment_section",
+  "payment_gateway",
+  "mode_of_payment",
+  "column_break_xvtl",
+  "collect_payment",
+  "no_payments_app",
+  "payments_app_is_not_installed"
  ],
  "fields": [
   {
@@ -88,6 +101,7 @@
    "fieldtype": "Currency",
    "label": "Registration Fee",
    "mandatory_depends_on": "eval:doc.collect_registration_fee == 1",
+   "non_negative": 1,
    "options": "Currency"
   },
   {
@@ -231,14 +245,14 @@
    "fieldname": "patient_name_by",
    "fieldtype": "Select",
    "label": "Patient Name By",
-   "options": "Patient Name\nNaming Series"
+   "options": "Patient Name\nNaming Series\nAuto Name"
   },
   {
    "default": "0",
-   "description": "Checking this will popup dialog for Appointment Invoicing",
+   "description": "Checking this option will prompt for Appointment invoicing and payment",
    "fieldname": "show_payment_popup",
    "fieldtype": "Check",
-   "label": "Show Payment Popup"
+   "label": "Show Payment Prompt in Appointment"
   },
   {
    "default": "0",
@@ -421,11 +435,85 @@
   {
    "fieldname": "column_break_bkvx",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "naming_series_for_journal_entry",
+   "fieldtype": "Select",
+   "label": "Naming Series for Insurance Coverage Journal Entry"
+  },
+  {
+   "default": "0",
+   "fieldname": "patient_portal_tab",
+   "fieldtype": "Tab Break",
+   "label": "Patient Portal"
+  },
+  {
+   "default": "0",
+   "description": "To enable this feature need Payments App",
+   "fieldname": "collect_payment",
+   "fieldtype": "Check",
+   "label": "Collect Payment on Portal"
+  },
+  {
+   "fieldname": "default_appointment_type",
+   "fieldtype": "Link",
+   "label": "Default Appointment Type",
+   "options": "Appointment Type"
+  },
+  {
+   "fieldname": "column_break_nxka",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "If enabled, diagnostic details tab will show on patient portal",
+   "fieldname": "show_diagnostics_tab",
+   "fieldtype": "Check",
+   "label": "Show Diagnostics Tab on Portal"
+  },
+  {
+   "fieldname": "payment_section",
+   "fieldtype": "Section Break",
+   "label": "Payment Settings"
+  },
+  {
+   "depends_on": "eval: doc.collect_payment==1;",
+   "fieldname": "payment_gateway",
+   "fieldtype": "Data",
+   "label": "Payment Gateway"
+  },
+  {
+   "fieldname": "no_payments_app",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "payments_app_is_not_installed",
+   "fieldtype": "HTML",
+   "label": "Payments app is not installed"
+  },
+  {
+   "fieldname": "column_break_xvtl",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval: doc.collect_payment==1;",
+   "fieldname": "mode_of_payment",
+   "fieldtype": "Link",
+   "label": "Mode of Payment",
+   "options": "Mode of Payment"
+  },
+  {
+   "depends_on": "eval:doc.collect_registration_fee == 1",
+   "fieldname": "registration_item",
+   "fieldtype": "Link",
+   "label": "Registration Item",
+   "mandatory_depends_on": "eval:doc.collect_registration_fee == 1",
+   "options": "Item"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2024-04-30 14:09:19.163643",
+ "modified": "2025-12-25 09:36:33.073374",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Healthcare Settings",
@@ -440,11 +528,16 @@
    "role": "Healthcare Administrator",
    "share": 1,
    "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Patient"
   }
  ],
  "quick_entry": 1,
  "restrict_to_domain": "Healthcare",
- "sort_field": "modified",
+ "row_format": "Dynamic",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "track_changes": 1

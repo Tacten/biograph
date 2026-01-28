@@ -17,11 +17,21 @@ class ObservationTemplate(Document):
 			create_item_from_template(self)
 
 	def on_update(self):
-		# If change_in_item update Item and Price List
-		if self.change_in_item and self.is_billable:
+		doc_before_save = self.get_doc_before_save()
+		if not doc_before_save:
+			return
+		if (
+			doc_before_save.rate != self.rate
+			or doc_before_save.is_billable != self.is_billable
+			or doc_before_save.item_group != self.item_group
+			or doc_before_save.get("gst_hsn_code") != self.get("gst_hsn_code")
+		):
 			update_item_and_item_price(self)
+
 		if not self.item and self.is_billable:
 			create_item_from_template(self)
+
+	MAX_NESTING_LEVEL = 3
 
 	def validate(self):
 		if self.has_component and self.sample_collection_required:
@@ -35,8 +45,80 @@ class ObservationTemplate(Document):
 
 		if self.has_component:
 			self.abbr = ""
+
+			# Prevent self-referencing
+			for row in self.observation_component:
+				if row.observation_template == self.name:
+					frappe.throw(
+						_("Observation Template '{0}' cannot be added as a component of itself.").format(
+							self.name
+						)
+					)
+
+			# Prevent circular / nested self-reference
+			for row in self.observation_component:
+				if ObservationTemplate.is_parent_in_child(row.observation_template, self.name):
+					frappe.throw(
+						_(
+							"Circular reference detected: '{0}' is already a component (directly or indirectly) of '{1}'"
+						).format(self.name, row.observation_template)
+					)
+
+				current_depth = ObservationTemplate.get_current_template_depth(self.name)
+				child_depth = ObservationTemplate.get_nesting_depth(row.observation_template)
+				total_depth = current_depth + child_depth
+
+				if total_depth >= ObservationTemplate.MAX_NESTING_LEVEL:
+					frappe.throw(
+						_(
+							"You cannot add '{0}' because it already contains {1} levels of nested components. The maximum allowed depth is {2}."
+						).format(row.observation_template, total_depth, ObservationTemplate.MAX_NESTING_LEVEL)
+					)
 		else:
 			self.validate_abbr()
+
+	@staticmethod
+	def is_parent_in_child(child_name, parent_name):
+		"""Check recursively if parent_name exists as a component inside child_name"""
+		child_doc = frappe.get_doc("Observation Template", child_name)
+		if not child_doc.has_component:
+			return False
+
+		for comp in child_doc.observation_component:
+			if comp.observation_template == parent_name:
+				return True
+			# recursive check (grandchildren)
+			if ObservationTemplate.is_parent_in_child(comp.observation_template, parent_name):
+				return True
+
+		return False
+
+	@staticmethod
+	def get_current_template_depth(template_name, depth=0):
+		"""Find how deep this node is from the root (count parents upward)."""
+		parent = frappe.db.get_value(
+			"Observation Component", {"observation_template": template_name}, "parent"
+		)
+
+		if not parent:
+			return depth
+
+		return ObservationTemplate.get_current_template_depth(parent, depth + 1)
+
+	@staticmethod
+	def get_nesting_depth(template_name, current_level=0):
+		# Recursively count how deep the component hierarchy goes
+		template = frappe.get_doc("Observation Template", template_name)
+		if not template.has_component:
+			return current_level
+
+		max_depth = current_level
+		for comp in template.observation_component:
+			depth = ObservationTemplate.get_nesting_depth(comp.observation_template, current_level + 1)
+			if depth > max_depth:
+				max_depth = depth
+
+		return max_depth
 
 	def validate_abbr(self):
 		if not self.abbr:
@@ -60,9 +142,7 @@ class ObservationTemplate(Document):
 
 def create_item_from_template(doc):
 	if doc.is_billable:
-		uom = frappe.db.exists("UOM", "Unit") or frappe.db.get_single_value(
-			"Stock Settings", "stock_uom"
-		)
+		uom = frappe.db.exists("UOM", "Unit") or frappe.db.get_single_value("Stock Settings", "stock_uom")
 		# Insert item
 		item = frappe.get_doc(
 			{

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2015, ESS and contributors
 # For license information, please see license.txt
 
@@ -9,6 +8,9 @@ from frappe.model.document import Document
 from frappe.utils import get_link_to_form, getdate, now_datetime
 
 from healthcare.healthcare.doctype.nursing_task.nursing_task import NursingTask
+from healthcare.healthcare.doctype.service_request.service_request import (
+	set_service_request_status,
+)
 
 
 class LabTest(Document):
@@ -25,14 +27,12 @@ class LabTest(Document):
 		self.db_set("status", "Completed")
 
 		if self.service_request:
-			frappe.db.set_value(
-				"Service Request", self.service_request, "status", "completed-Request Status"
-			)
+			set_service_request_status(self.service_request, "completed-Request Status")
 
 	def on_cancel(self):
 		self.db_set("status", "Cancelled")
 		if self.service_request:
-			frappe.db.set_value("Service Request", self.service_request, "status", "active-Request Status")
+			set_service_request_status(self.service_request, "active-Request Status")
 		self.reload()
 
 	def on_update(self):
@@ -43,10 +43,9 @@ class LabTest(Document):
 			self.sensitivity_test_items = sensitivity
 
 	def after_insert(self):
-		if self.service_request:
-			billing_status = frappe.db.get_value("Service Request", self.service_request, "billing_status")
-			if billing_status == "Invoiced":
-				self.db_set("invoiced", True)
+		billing_status = frappe.db.get_value("Service Request", self.service_request, "billing_status")
+		if billing_status == "Invoiced":
+			self.db_set("invoiced", True)
 
 		if self.template:
 			self.load_test_from_template()
@@ -70,7 +69,8 @@ class LabTest(Document):
 				except Exception:
 					item.secondary_uom_result = ""
 					frappe.msgprint(
-						_("Row #{0}: Result for Secondary UOM not calculated").format(item.idx), title=_("Warning")
+						_("Row #{0}: Result for Secondary UOM not calculated").format(item.idx),
+						title=_("Warning"),
 					)
 
 	def validate_result_values(self):
@@ -94,21 +94,20 @@ class LabTest(Document):
 						title=_("Mandatory Results"),
 					)
 
-
-def before_insert(self):
-	if self.service_request:
-		lab_test = frappe.db.exists(
-			"Lab Test",
-			{"service_request": self.service_request, "docstatus": ["!=", 2]},
-		)
-		if lab_test:
-			frappe.throw(
-				_("Lab Test {0} already created from service request {1}").format(
-					frappe.bold(get_link_to_form("Lab Test", lab_test)),
-					frappe.bold(get_link_to_form("Service Request", self.service_request)),
-				),
-				title=_("Already Exist"),
+	def before_insert(self):
+		if self.service_request:
+			lab_test = frappe.db.exists(
+				"Lab Test",
+				{"service_request": self.service_request, "docstatus": ["!=", 2]},
 			)
+			if lab_test:
+				frappe.throw(
+					_("Lab Test {0} already created from service request {1}").format(
+						frappe.bold(get_link_to_form("Lab Test", lab_test)),
+						frappe.bold(get_link_to_form("Service Request", self.service_request)),
+					),
+					title=_("Already Exist"),
+				)
 
 
 def create_test_from_template(lab_test):
@@ -148,9 +147,7 @@ def create_multiple(doctype, docname):
 		lab_test_created = create_lab_test_from_encounter(docname)
 
 	if lab_test_created:
-		frappe.msgprint(
-			_("Lab Test(s) {0} created successfully").format(lab_test_created), indicator="green"
-		)
+		frappe.msgprint(_("Lab Test(s) {0} created successfully").format(lab_test_created), indicator="green")
 
 
 def create_lab_test_from_encounter(encounter):
@@ -198,7 +195,6 @@ def create_lab_test_from_invoice(sales_invoice):
 		for item in invoice.items:
 			lab_test_created = 0
 			if item.reference_dt == "Service Request":
-
 				lab_test_created = (
 					1 if frappe.db.exists("Lab Test", {"service_request": item.reference_dn}) else 0
 				)
@@ -233,9 +229,7 @@ def get_lab_test_template(item):
 	return False
 
 
-def create_lab_test_doc(
-	practitioner, patient, template, company, invoiced=False, service_unit=None
-):
+def create_lab_test_doc(practitioner, patient, template, company, invoiced=False, service_unit=None):
 	lab_test = frappe.new_doc("Lab Test")
 	lab_test.invoiced = invoiced
 	lab_test.practitioner = practitioner
@@ -320,7 +314,11 @@ def create_sample_doc(template, patient, invoice, company=None):
 			sample_collection = frappe.get_doc("Sample Collection", sample_exists)
 			quantity = int(sample_collection.sample_qty) + int(template.sample_qty)
 			if template.sample_details:
-				sample_details = sample_collection.sample_details + "\n-\n" + _("Test :")
+				sample_details = (
+					(sample_collection.sample_details + "\n-\n")
+					if sample_collection.sample_details
+					else "" + _("Test :")
+				)
 				sample_details += (template.get("lab_test_name") or template.get("template")) + "\n"
 				sample_details += _("Collection Details:") + "\n\t" + template.sample_details
 				frappe.db.set_value(
@@ -433,14 +431,39 @@ def get_employee_by_user_id(user_id):
 
 @frappe.whitelist()
 def get_lab_test_prescribed(patient):
-	hso = frappe.qb.DocType("Service Request")
+	sr = frappe.qb.DocType("Service Request")
 	return (
-		frappe.qb.from_(hso)
+		frappe.qb.from_(sr)
 		.select(
-			hso.template_dn, hso.order_group, hso.billing_status, hso.practitioner, hso.order_date, hso.name
+			sr.template_dn,
+			sr.order_group,
+			sr.billing_status,
+			sr.practitioner,
+			sr.order_date,
+			sr.name,
+			sr.insurance_policy,
+			sr.insurance_payor,
 		)
-		.where(hso.patient == patient)
-		.where(hso.status != "completed-Request Status")
-		.where(hso.template_dt == "Lab Test Template")
-		.orderby(hso.creation, order=frappe.qb.desc)
+		.where(sr.patient == patient)
+		.where(sr.status != "completed-Request Status")
+		.where(sr.template_dt == "Lab Test Template")
+		.orderby(sr.creation, order=frappe.qb.desc)
 	).run()
+	# return frappe.db.sql(
+	# 	"""
+	# 		select
+	# 			sr.template_dn as lab_test_code,
+	# 			sr.order_group,
+	# 			sr.invoiced,
+	# 			sr.practitioner as practitioner,
+	# 			sr.order_date as encounter_date,
+	# 			sr.name,
+	# 			sr.insurance_policy,
+	# 			sr.insurance_payor
+	# 		from
+	# 			`tabService Request` sr
+	# 		where
+	# 			sr.patient=%s
+	# 			and sr.status!=%s
+	# 			and sr.template_dt=%s
+	# 	""", (patient, "Completed", "Lab Test Template"))

@@ -119,9 +119,16 @@
    "label": "Link existing Item"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
- "links": [],
- "modified": "2022-05-31 16:37:04.658515",
+ "links": [
+  {
+   "group": "Therapy Plans",
+   "link_doctype": "Therapy Plan",
+   "link_fieldname": "therapy_plan_template"
+  }
+ ],
+ "modified": "2025-12-25 09:36:37.628173",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Therapy Plan Template",
@@ -142,7 +149,8 @@
   }
  ],
  "quick_entry": 1,
- "sort_field": "modified",
+ "row_format": "Dynamic",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "track_changes": 1

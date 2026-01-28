@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2015, ESS LLP and contributors
 # For license information, please see license.txt
 
@@ -15,11 +14,18 @@ class AppointmentType(Document):
 					"Item Price", {"item_code": item.op_consulting_charge_item, "price_list": self.price_list}
 				)
 
-				if not existing_op_item_price and item.op_consulting_charge_item and item.op_consulting_charge:
-					make_item_price(self.price_list, item.op_consulting_charge_item, item.op_consulting_charge)
+				if (
+					not existing_op_item_price
+					and item.op_consulting_charge_item
+					and item.op_consulting_charge
+				):
+					make_item_price(
+						self.price_list, item.op_consulting_charge_item, item.op_consulting_charge
+					)
 
 				existing_ip_item_price = frappe.db.exists(
-					"Item Price", {"item_code": item.inpatient_visit_charge_item, "price_list": self.price_list}
+					"Item Price",
+					{"item_code": item.inpatient_visit_charge_item, "price_list": self.price_list},
 				)
 
 				if (
@@ -38,8 +44,8 @@ def get_billing_details(appointment_type, docname=None):
 			# fetch generic ones without department / service_unit
 			filters = {
 				"parent": appointment_type,
-				"dt": None,
-				"dn": None,
+				"dt": ["is", "not set"],
+				"dn": ["is", "not set"],
 			}
 		return frappe.db.get_value(
 			"Appointment Type Service Item",

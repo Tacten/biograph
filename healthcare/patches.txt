@@ -1,4 +1,5 @@
 [pre_model_sync]
+healthcare.patches.v16_0.check_v16_compatibility_with_frappe
 healthcare.patches.v0_0.setup_abdm_custom_fields
 healthcare.patches.v0_0.set_medical_code_from_field_to_codification_table
 healthcare.patches.v15_0.check_version_compatibility_with_frappe
@@ -10,6 +11,11 @@ healthcare.patches.v15_0.setup_service_request
 healthcare.patches.v15_0.create_custom_field_in_payment_entry
 healthcare.patches.v15_0.add_observation_to_patient_history
 healthcare.patches.v15_0.create_patient_medical_records_for_observations #25-12-2024
+healthcare.patches.v16_0.setup_service_request_and_insurance
+healthcare.patches.v16_0.validate_inpatient_billables
+healthcare.patches.v16_0.rename_time_block_to_practitioner_availability
+healthcare.patches.v16_0.setup_portal_settings
+healthcare.patches.v16_0.add_patient_role_permissions
 
 [post_model_sync]
 healthcare.patches.v15_0.rename_field_medical_department_in_appoitment_type_service_item
@@ -18,3 +24,8 @@ healthcare.patches.v15_0.set_allow_booking_for_in_appointment_type
 healthcare.patches.v15_0.setup_basic_code_systems
 healthcare.patches.v15_0.setup_diagnostic_module_codes
 healthcare.patches.v15_0.setup_order_status_codes
+healthcare.patches.v15_0.set_reference_in_therapy_plan
+healthcare.patches.v15_0.set_observation_and_diagnostic_report_status
+healthcare.patches.v16_0.set_template_dn_and_template_dt_in_appointment
+healthcare.patches.v15_0.add_discharge_summary_to_patient_history
+healthcare.patches.v15_0.add_custom_fields_if_not_exists

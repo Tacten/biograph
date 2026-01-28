@@ -13,8 +13,8 @@
   "medication",
   "medication_item",
   "order_date",
-  "expected_date",
   "order_time",
+  "expected_date",
   "column_break_4",
   "company",
   "status",
@@ -54,6 +54,7 @@
   "dosage",
   "number_of_repeats_allowed",
   "column_break_91",
+  "comment",
   "order_description",
   "period",
   "occurrence_time",
@@ -458,12 +459,17 @@
    "label": "Medication Item",
    "options": "Item",
    "reqd": 1
+  },
+  {
+   "fieldname": "comment",
+   "fieldtype": "Small Text",
+   "label": "Comment"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-05-08 10:12:52.606084",
+ "modified": "2025-12-25 09:36:32.861444",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Medication Request",
@@ -516,8 +522,9 @@
   }
  ],
  "restrict_to_domain": "Healthcare",
+ "row_format": "Dynamic",
  "search_fields": "title,patient,order_group,inpatient_record,practitioner,patient_email,patient_mobile",
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "title_field": "title",

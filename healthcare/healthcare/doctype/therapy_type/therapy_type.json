@@ -213,7 +213,7 @@
   }
  ],
  "links": [],
- "modified": "2023-11-06 14:59:47.927972",
+ "modified": "2025-12-25 09:36:44.519666",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Therapy Type",
@@ -256,7 +256,8 @@
   }
  ],
  "quick_entry": 1,
- "sort_field": "modified",
+ "row_format": "Dynamic",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "track_changes": 1

@@ -19,7 +19,7 @@
   }
  ],
  "links": [],
- "modified": "2023-03-24 21:12:01.434571",
+ "modified": "2025-12-25 09:36:42.422244",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Medication Class",
@@ -40,7 +40,8 @@
   }
  ],
  "quick_entry": 1,
- "sort_field": "modified",
+ "row_format": "Dynamic",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "track_changes": 1

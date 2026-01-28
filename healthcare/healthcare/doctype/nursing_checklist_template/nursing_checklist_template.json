@@ -55,7 +55,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-07-25 19:27:22.028262",
+ "modified": "2025-12-25 09:36:44.003810",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Nursing Checklist Template",
@@ -87,7 +87,8 @@
    "write": 1
   }
  ],
- "sort_field": "modified",
+ "row_format": "Dynamic",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "track_changes": 1

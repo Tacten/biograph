@@ -44,7 +44,7 @@
    "fieldname": "naming_series",
    "fieldtype": "Select",
    "label": "Series",
-   "options": "HLC-THP-.YYYY.-"
+   "options": "HLC-THS-.YYYY.-"
   },
   {
    "fieldname": "appointment",
@@ -237,7 +237,8 @@
    "no_copy": 1,
    "options": "Service Request",
    "print_hide": 1,
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "collapsible": 1,
@@ -249,11 +250,17 @@
  "is_submittable": 1,
  "links": [
   {
+   "group": "Assessments",
+   "link_doctype": "Patient Assessment",
+   "link_fieldname": "therapy_session"
+  },
+  {
+   "group": "Tasks",
    "link_doctype": "Nursing Task",
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2023-04-06 04:11:55.237021",
+ "modified": "2025-12-25 09:36:43.046662",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Therapy Session",
@@ -287,8 +294,9 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "search_fields": "patient,appointment,therapy_plan,therapy_type",
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "title_field": "patient",

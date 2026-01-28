@@ -134,7 +134,7 @@
    "link_fieldname": "code_system"
   }
  ],
- "modified": "2024-01-08 16:44:38.512275",
+ "modified": "2025-12-25 09:36:32.306687",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Code System",
@@ -192,8 +192,9 @@
  ],
  "quick_entry": 1,
  "restrict_to_domain": "Healthcare",
+ "row_format": "Dynamic",
  "search_fields": "code_system, uri",
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "title_field": "code_system",

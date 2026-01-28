@@ -13,6 +13,7 @@
   "naming_series",
   "observation_template",
   "observation_category",
+  "appointment",
   "column_break_7xu5",
   "company",
   "posting_date",
@@ -107,7 +108,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Registered\nPreliminary\nFinal\nAmended\nCorrected\nCancelled\nEntered in Error\nUnknown\nApproved\nDisapproved",
+   "options": "Registered\nPreliminary\nFinal\nAmended\nCorrected\nCancelled\nEntered in Error\nUnknown\nApproved\nRejected",
    "read_only_depends_on": "eval:doc.docstatus==1;"
   },
   {
@@ -564,12 +565,18 @@
    "fieldtype": "Check",
    "label": "Invoiced",
    "read_only": 1
+  },
+  {
+   "fieldname": "appointment",
+   "fieldtype": "Link",
+   "label": "Appointment",
+   "options": "Patient Appointment"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-10-25 06:00:59.016090",
+ "modified": "2025-12-25 09:36:28.860227",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Observation",
@@ -577,6 +584,7 @@
  "owner": "Administrator",
  "permissions": [
   {
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -590,6 +598,7 @@
    "write": 1
   },
   {
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -599,10 +608,12 @@
    "report": 1,
    "role": "Healthcare Administrator",
    "share": 1,
+   "submit": 1,
    "write": 1
   }
  ],
- "sort_field": "modified",
+ "row_format": "Dynamic",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "track_changes": 1

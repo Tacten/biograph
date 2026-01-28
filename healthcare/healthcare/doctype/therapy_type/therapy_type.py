@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2020, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
@@ -24,7 +23,16 @@ class TherapyType(Document):
 		create_item_from_therapy(self)
 
 	def on_update(self):
-		if self.change_in_item:
+		doc_before_save = self.get_doc_before_save()
+		if not doc_before_save:
+			return
+		if (
+			doc_before_save.rate != self.rate
+			or doc_before_save.is_billable != self.is_billable
+			or doc_before_save.item_group != self.item_group
+			or doc_before_save.description != self.description
+			or doc_before_save.get("gst_hsn_code") != self.get("gst_hsn_code")
+		):
 			self.update_item_and_item_price()
 
 	def enable_disable_item(self):
@@ -57,8 +65,6 @@ class TherapyType(Document):
 
 		elif not self.is_billable and self.item:
 			frappe.db.set_value("Item", self.item, "disabled", 1)
-
-		self.db_set("change_in_item", 0)
 
 	@frappe.whitelist()
 	def add_exercises(self):

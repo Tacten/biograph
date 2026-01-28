@@ -9,13 +9,15 @@
  "engine": "InnoDB",
  "field_order": [
   "appointment_type",
-  "default_duration",
   "allow_booking_for",
+  "default_duration",
   "column_break_jdo1",
   "color",
   "billing_tab",
   "price_list",
-  "items"
+  "items",
+  "medical_codes_tab",
+  "codification_table"
  ],
  "fields": [
   {
@@ -23,7 +25,6 @@
    "fieldname": "appointment_type",
    "fieldtype": "Data",
    "ignore_xss_filter": 1,
-   "in_list_view": 1,
    "label": "Type",
    "reqd": 1,
    "translatable": 1,
@@ -72,13 +73,34 @@
    "default": "Practitioner",
    "fieldname": "allow_booking_for",
    "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Allow Booking For",
    "options": "Practitioner\nDepartment\nService Unit",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "medical_codes_tab",
+   "fieldtype": "Tab Break",
+   "label": "Medical Codes"
+  },
+  {
+   "fieldname": "codification_table",
+   "fieldtype": "Table",
+   "label": "Codification Table",
+   "options": "Codification Table"
   }
  ],
- "links": [],
- "modified": "2023-06-10 13:43:27.137414",
+ "grid_page_length": 50,
+ "links": [
+  {
+   "group": "Appointments",
+   "link_doctype": "Patient Appointment",
+   "link_fieldname": "appointment_type"
+  }
+ ],
+ "modified": "2025-12-25 09:36:33.253457",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Appointment Type",
@@ -112,8 +134,9 @@
  ],
  "quick_entry": 1,
  "restrict_to_domain": "Healthcare",
+ "row_format": "Dynamic",
  "search_fields": "appointment_type",
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": []
 }

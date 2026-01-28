@@ -16,6 +16,7 @@ from healthcare.healthcare.doctype.observation_template.test_observation_templat
 	create_observation_template,
 )
 from healthcare.healthcare.doctype.patient_appointment.test_patient_appointment import (
+	create_appointment_type,
 	create_patient,
 )
 
@@ -228,6 +229,7 @@ def create_patient_encounter(patient, observation_template):
 	patient_encounter = frappe.new_doc("Patient Encounter")
 	patient_encounter.patient = patient
 	patient_encounter.practitioner = create_practitioner()
+	patient_encounter.appointment_type = create_appointment_type().name
 	patient_encounter.encounter_date = getdate()
 	patient_encounter.encounter_time = nowtime()
 
@@ -283,9 +285,7 @@ def observation_with_formula(**kwargs):
 	obs_template.save()
 
 	create_sales_invoice(kwargs.get("patient"), obs_template.name)
-	child_obs_1 = frappe.db.get_value(
-		"Observation", {"observation_template": first_obs_template}, "name"
-	)
+	child_obs_1 = frappe.db.get_value("Observation", {"observation_template": first_obs_template}, "name")
 	child_obs_2 = frappe.db.get_value(
 		"Observation", {"observation_template": obs_template_component.name}, "name"
 	)
@@ -352,9 +352,7 @@ def with_incorrect_operand(self, patient):
 		operand_1_db_set=True,
 	)
 	self.assertTrue(
-		frappe.db.exists(
-			"Observation", {"observation_template": result_observ_temp, "result_data": None}
-		)
+		frappe.db.exists("Observation", {"observation_template": result_observ_temp, "result_data": None})
 	)
 
 
