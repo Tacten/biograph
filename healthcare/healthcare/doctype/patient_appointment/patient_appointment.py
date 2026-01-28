@@ -322,6 +322,11 @@ class PatientAppointment(Document):
 				"Service Request", self.service_request, "status", "completed-Request Status"
 			)
 
+		if self.service_request:
+			frappe.db.set_value(
+				"Service Request", self.service_request, "status", "completed-Request Status"
+			)
+
 	def set_title(self):
 		if self.is_unavailability:
 			# For unavailability appointments, use patient_name as title
@@ -634,6 +639,8 @@ class PatientAppointment(Document):
 					),
 					frappe.DuplicateEntryError,
 				)
+			if not self.appointment_based_on_check_in:
+				self.appointment_based_on_check_in = True
 
 	def validate_service_unit(self):
 		if self.inpatient_record and self.service_unit:
@@ -742,25 +749,35 @@ class PatientAppointment(Document):
 	def set_postition_in_queue(self):
 		from frappe.query_builder.functions import Max
 
-		if self.status == "Checked In" and not self.position_in_queue:
-			appointment = frappe.qb.DocType("Patient Appointment")
-			position = (
-				frappe.qb.from_(appointment)
-				.select(
-					Max(appointment.position_in_queue).as_("max_position"),
-				)
-				.where(
-					(appointment.status == "Checked In")
-					& (appointment.practitioner == self.practitioner)
-					& (appointment.service_unit == self.service_unit)
-					& (appointment.appointment_time == self.appointment_time)
-				)
-			).run(as_dict=True)[0]
-			position_in_queue = 1
-			if position and position.get("max_position"):
-				position_in_queue = position.get("max_position") + 1
+		if self.status != "Checked In" or self.position_in_queue:
+			return
 
-			self.position_in_queue = position_in_queue
+		appointment = frappe.qb.DocType("Patient Appointment")
+		query = (
+			frappe.qb.from_(appointment)
+			.select(
+				Max(appointment.position_in_queue).as_("max_position"),
+			)
+			.where((appointment.status == "Checked In") & (appointment.name != self.name))
+		)
+
+		if self.appointment_for == "Practitioner":
+			query = query.where(
+				(appointment.practitioner == self.practitioner)
+				& (appointment.appointment_time == self.appointment_time)
+				& (appointment.service_unit == self.service_unit)
+			)
+		else:
+			query = query.where(appointment.appointment_date == self.appointment_date)
+			if self.service_unit:
+				query = query.where(appointment.service_unit == self.service_unit)
+			if self.department:
+				query = query.where(appointment.department == self.department)
+
+		position = query.run(as_dict=True)
+		max_position = position[0]["max_position"] if position and position[0].get("max_position") else 0
+
+		self.position_in_queue = max_position + 1
 
 	def ensure_duration_is_set(self):
 		"""Ensure that appointment duration is properly set based on appointment type or slot"""
@@ -1388,8 +1405,13 @@ def get_events(start, end, filters=None):
 	:param filters: Filters (JSON).
 	"""
 	from frappe.desk.calendar import get_event_conditions
+	from frappe.desk.reportview import build_match_conditions
 
 	conditions = get_event_conditions("Patient Appointment", filters)
+	match_conditions = build_match_conditions("Patient Appointment")
+
+	if match_conditions:
+		conditions += "and" + match_conditions
 
 	data = frappe.db.sql(
 		"""

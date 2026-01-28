@@ -188,10 +188,16 @@
    "read_only": 1
   }
  ],
+ "grid_page_length": 50,
  "links": [
   {
    "link_doctype": "Clinical Note",
    "link_fieldname": "reference_name"
+  },
+  {
+   "group": "Therapy Sessions",
+   "link_doctype": "Therapy Session",
+   "link_fieldname": "therapy_plan"
   }
  ],
  "modified": "2025-09-27 21:14:22.974335",

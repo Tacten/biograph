@@ -417,6 +417,7 @@
    "fieldname": "email_sent",
    "fieldtype": "Check",
    "hidden": 1,
+   "label": "Email Sent",
    "print_hide": 1,
    "report_hide": 1
   },
@@ -425,6 +426,7 @@
    "fieldname": "sms_sent",
    "fieldtype": "Check",
    "hidden": 1,
+   "label": "SMS Sent",
    "print_hide": 1,
    "report_hide": 1
   },
@@ -433,6 +435,7 @@
    "fieldname": "printed",
    "fieldtype": "Check",
    "hidden": 1,
+   "label": "Printed",
    "print_hide": 1,
    "report_hide": 1
   },
@@ -441,6 +444,7 @@
    "fieldname": "normal_toggle",
    "fieldtype": "Check",
    "hidden": 1,
+   "label": "Normal Toggle",
    "print_hide": 1,
    "report_hide": 1
   },
@@ -449,6 +453,7 @@
    "fieldname": "sensitivity_toggle",
    "fieldtype": "Check",
    "hidden": 1,
+   "label": "Sensitivity Toggle",
    "print_hide": 1,
    "report_hide": 1
   },
@@ -546,6 +551,7 @@
    "fieldname": "descriptive_toggle",
    "fieldtype": "Check",
    "hidden": 1,
+   "label": "Descriptive Toggle",
    "print_hide": 1,
    "report_hide": 1
   },
@@ -571,6 +577,7 @@
    "fieldname": "imaging_toggle",
    "fieldtype": "Check",
    "hidden": 1,
+   "label": "Imaging Toggle",
    "print_hide": 1,
    "read_only": 1,
    "report_hide": 1
@@ -634,7 +641,7 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2023-06-21 00:31:52.282467",
+ "modified": "2025-09-18 12:27:01.235401",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Lab Test",
@@ -690,6 +697,7 @@
   }
  ],
  "restrict_to_domain": "Healthcare",
+ "row_format": "Dynamic",
  "search_fields": "patient,practitioner,lab_test_name,sample",
  "show_name_in_global_search": 1,
  "sort_field": "modified",

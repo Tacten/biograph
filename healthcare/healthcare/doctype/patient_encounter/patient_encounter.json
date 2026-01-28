@@ -472,12 +472,47 @@
 	"is_submittable": 1,
 	"links": [
 	 {
+	  "group": "Orders",
+	  "link_doctype": "Medication Request",
+	  "link_fieldname": "order_group"
+	 },
+	 {
+	  "group": "Notes, Tasks & Vitals",
 	  "link_doctype": "Clinical Note",
+	  "link_fieldname": "reference_name"
+	 },
+	 {
+	  "group": "Notes, Tasks & Vitals",
+	  "link_doctype": "Nursing Task",
+	  "link_fieldname": "reference_name"
+	 },
+	 {
+	  "group": "Notes, Tasks & Vitals",
+	  "link_doctype": "Vital Signs",
+	  "link_fieldname": "encounter"
+	 },
+	 {
+	  "group": "Inpatient",
+	  "link_doctype": "Inpatient Record",
+	  "link_fieldname": "admission_encounter"
+	 },
+	 {
+	  "group": "Inpatient",
+	  "link_doctype": "Inpatient Medication Order",
+	  "link_fieldname": "patient_encounter"
+	 },
+	 {
+	  "group": "Orders",
+	  "link_doctype": "Service Request",
+	  "link_fieldname": "order_group"
+	 },
+	 {
+	  "group": "Medical Records",
+	  "link_doctype": "Patient Medical Record",
 	  "link_fieldname": "reference_name"
 	 }
 	],
-
-	"modified": "2025-06-13 10:00:19.265096",
+	"modified": "2025-09-28 12:18:20.535746",
 	"modified_by": "Administrator",
 	"module": "Healthcare",
 	"name": "Patient Encounter",
