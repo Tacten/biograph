@@ -22,7 +22,7 @@ jobs:
         with:
           route: POST /repos/{owner}/{repo}/pulls
           owner: earthians
-          repo: marley
+          repo: biograph
           title: |-
             "chore: release v${{ matrix.version }}"
           body: "Automated Release."

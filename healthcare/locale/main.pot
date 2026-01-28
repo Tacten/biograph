@@ -1,11 +1,11 @@
-# Translations template for Marley Health.
+# Translations template for Biograph.
 # Copyright (C) 2025 earthians Health Informatics Pvt. Ltd.
-# This file is distributed under the same license as the Marley Health project.
+# This file is distributed under the same license as the Biograph project.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Marley Health VERSION\n"
+"Project-Id-Version: Biograph VERSION\n"
 "Report-Msgid-Bugs-To: info@earthianslive.com\n"
 "POT-Creation-Date: 2025-12-24 09:40+0553\n"
 "PO-Revision-Date: 2025-12-24 09:40+0553\n"

@@ -2,7 +2,7 @@ import requests
 import sys
 from urllib.parse import urlparse
 
-NETLOC_LIST = ["marley.frappe.cloud", "marleyhealth.io", ]
+NETLOC_LIST = ["biograph.frappe.cloud", "biograph.io", ]
 
 def uri_validator(x):
 	result = urlparse(x)
@@ -18,7 +18,7 @@ def docs_link_exists(body):
 
 if __name__ == "__main__":
 	pr = sys.argv[1]
-	response = requests.get("https://api.github.com/repos/earthians/marley/pulls/{}".format(pr))
+	response = requests.get("https://api.github.com/repos/earthians/biograph/pulls/{}".format(pr))
 
 	if response.ok:
 		payload = response.json()
