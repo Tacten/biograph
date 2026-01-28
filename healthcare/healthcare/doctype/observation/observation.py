@@ -34,6 +34,7 @@ class Observation(Document):
 
 	def before_insert(self):
 		set_observation_idx(self)
+		self.render_templates()
 
 	def on_submit(self):
 		if self.service_request:
@@ -52,7 +53,7 @@ class Observation(Document):
 			self.days = patient_doc.calculate_age().get("age_in_days")
 
 	def set_status(self):
-		if self.status not in ["Approved", "Disapproved"]:
+		if self.status not in ["Approved", "Rejected"]:
 			if self.has_result() and self.status != "Final":
 				self.status = "Preliminary"
 			elif self.amended_from and self.status not in ["Amended", "Corrected"]:
@@ -93,6 +94,19 @@ class Observation(Document):
 
 		return False
 
+	def component_has_result(self):
+		component_obs = frappe.db.get_all("Observation", {"parent_observation": self.name}, pluck="name")
+		for obs in component_obs:
+			obs_doc = frappe.get_doc("Observation", obs)
+			if obs_doc.has_component:
+				if not obs_doc.component_has_result():
+					return False
+			else:
+				if not obs_doc.has_result():
+					return False
+
+		return True
+
 	def validate_input(self):
 		if self.permitted_data_type in ["Quantity", "Numeric"]:
 			if self.result_data and not is_numbers_with_exceptions(self.result_data):
@@ -101,6 +115,19 @@ class Observation(Document):
 						frappe.bold(self.result_data), frappe.bold(self.permitted_data_type)
 					)
 				)
+
+	def render_templates(self):
+		if self.result_template and not self.result_text:
+			terms_and_conditions = frappe.get_doc("Terms and Conditions", self.result_template)
+
+			if terms_and_conditions.terms:
+				self.result_text = frappe.render_template(terms_and_conditions.terms, self.as_dict())
+
+		if self.interpretation_template and not self.result_interpretation:
+			terms_and_conditions = frappe.get_doc("Terms and Conditions", self.interpretation_template)
+
+			if terms_and_conditions.terms:
+				self.result_interpretation = frappe.render_template(terms_and_conditions.terms, self.as_dict())
 
 
 @frappe.whitelist()
@@ -156,7 +183,6 @@ def aggregate_and_return_observation_data(observations):
 	obs_length = 0
 
 	for obs in observations:
-
 		if not obs.get("has_component"):
 			if obs.get("permitted_data_type"):
 				obs_length += 1
@@ -171,7 +197,9 @@ def aggregate_and_return_observation_data(observations):
 
 		else:
 			child_observations = get_child_observations(obs)
-			obs_dict = return_child_observation_data_as_dict(child_observations, obs, obs_length)
+			obs_dict, obs_length = return_child_observation_data_as_dict(
+				child_observations, obs, obs_length
+			)
 
 			if len(obs_dict) > 0:
 				out_data.append(obs_dict)
@@ -196,16 +224,28 @@ def return_child_observation_data_as_dict(child_observations, obs, obs_length=0)
 	obs_list = []
 	has_result = False
 	obs_approved = False
+	all_children_approved = True
 
 	for child in child_observations:
-		if child.get("permitted_data_type"):
-			obs_length += 1
-		if child.get("permitted_data_type") == "Select" and child.get("options"):
-			child["options_list"] = child.get("options").split("\n")
-		if child.get("specimen"):
-			child["received_time"] = frappe.get_value("Specimen", child.get("specimen"), "received_time")
-		observation_data = {"observation": child}
-		obs_list.append(observation_data)
+		if child.get("has_component"):
+			grand_children = get_child_observations(child)
+			grand_dict, obs_length = return_child_observation_data_as_dict(
+				grand_children, child, obs_length
+			)
+			obs_list.append(grand_dict)
+			if not grand_dict.get("obs_approved", False):
+				all_children_approved = False
+		else:
+			if child.get("permitted_data_type"):
+				obs_length += 1
+			if child.get("permitted_data_type") == "Select" and child.get("options"):
+				child["options_list"] = child.get("options").split("\n")
+			if child.get("specimen"):
+				child["received_time"] = frappe.get_value("Specimen", child.get("specimen"), "received_time")
+			if child.get("status") != "Approved":
+				all_children_approved = False
+			observation_data = {"observation": child}
+			obs_list.append(observation_data)
 
 		if (
 			child.get("result_data")
@@ -213,8 +253,9 @@ def return_child_observation_data_as_dict(child_observations, obs, obs_length=0)
 			or child.get("result_select") not in [None, "", "Null"]
 		):
 			has_result = True
-		if child.get("status") == "Approved":
-			obs_approved = True
+
+	if all_children_approved and child_observations:
+		obs_approved = True
 
 	obs_dict = {
 		"has_component": True,
@@ -228,7 +269,7 @@ def return_child_observation_data_as_dict(child_observations, obs, obs_length=0)
 		"obs_approved": obs_approved,
 	}
 
-	return obs_dict
+	return obs_dict, obs_length
 
 
 def get_observation_reference(doc):
@@ -314,6 +355,7 @@ def add_observation(**args):
 	if args.get("parent"):
 		observation_doc.parent_observation = args.get("parent")
 	observation_doc.sales_invoice_item = args.get("child") if args.get("child") else ""
+	observation_doc.service_request = args.get("service_request")
 	observation_doc.insert(ignore_permissions=True)
 	return observation_doc.name
 
@@ -442,53 +484,94 @@ def get_observation_result_template(template_name, observation):
 
 
 @frappe.whitelist()
-def set_observation_status(observation, status, reason=None):
+def set_observation_status(observation, status, reason=None, parent_obs=None):
 	observation_doc = frappe.get_doc("Observation", observation)
-	if observation_doc.has_result():
-		observation_doc.status = status
-		if reason:
-			observation_doc.disapproval_reason = reason
-		if status == "Approved":
-			observation_doc.submit()
-		if status == "Disapproved":
-			new_doc = frappe.copy_doc(observation_doc)
-			new_doc.status = ""
-			new_doc.insert()
-			observation_doc.cancel()
-	else:
+
+	if not (observation_doc.has_result() or observation_doc.has_component):
 		frappe.throw(_("Please enter result to Approve."))
+
+	if observation_doc.has_component and not observation_doc.component_has_result():
+		frappe.throw(_("Please enter result for all components to Approve."))
+
+	observation_doc.status = status
+	if reason:
+		observation_doc.disapproval_reason = reason
+
+	if status == "Approved":
+		observation_doc.submit()
+	elif status == "Rejected":
+		if not observation_doc.has_component:
+			observation_doc.cancel()
+		new_doc = frappe.copy_doc(observation_doc)
+		new_doc.status = ""
+		new_doc.disapproval_reason = ""
+		if parent_obs:
+			new_doc.parent_observation = parent_obs
+		new_doc.insert()
+		if observation_doc.has_component:
+			parent_obs = new_doc.name
+
+	if observation_doc.has_component:
+
+		component_obs = frappe.db.get_all(
+			"Observation",
+			filters={"parent_observation": observation},
+			pluck="name",
+		)
+
+		for obs in component_obs:
+			set_observation_status(obs, status, reason, parent_obs)
+		if status == "Rejected" and observation_doc.docstatus == 1:
+			observation_doc.cancel()
 
 
 def set_diagnostic_report_status(doc):
-	if doc.has_result() and doc.sales_invoice and not doc.has_component and doc.sales_invoice:
-		observations = frappe.db.get_all(
-			"Observation",
-			{
-				"sales_invoice": doc.sales_invoice,
-				"docstatus": 0,
-				"status": ["!=", "Approved"],
-				"has_component": 0,
-			},
-		)
+	if not doc.has_component:
+		ref_doctype = "Sales Invoice" if doc.sales_invoice else doc.reference_doctype
+		ref_docname = doc.sales_invoice if doc.sales_invoice else doc.reference_docname
+
+		if doc.reference_doctype == "Sample Collection" and doc.reference_docname:
+			ref_doctype, ref_docname = frappe.get_cached_value(
+				"Sample Collection", doc.reference_docname, ["reference_doc", "reference_name"]
+			)
+
 		diagnostic_report = frappe.db.get_value(
-			"Diagnostic Report",
-			{"ref_doctype": "Sales Invoice", "docname": doc.sales_invoice},
-			["name"],
-			as_dict=True,
+			"Diagnostic Report", {"ref_doctype": ref_doctype, "docname": ref_docname}, "name"
 		)
+
 		if diagnostic_report:
+			out_data, obs_length = get_observation_details(diagnostic_report)
+			approved_observations = get_approved_observations(out_data)
+
 			workflow_name = get_workflow_name("Diagnostic Report")
 			workflow_state_field = get_workflow_state_field(workflow_name)
-			if observations and len(observations) > 0:
+			if obs_length == len(approved_observations):
+				set_status = "Approved"
+			elif len(approved_observations) > 0:
 				set_status = "Partially Approved"
 			else:
-				set_status = "Approved"
+				set_status = "Open"
+
 			set_value_dict = {"status": set_status}
 			if workflow_state_field:
 				set_value_dict[workflow_state_field] = set_status
 			frappe.db.set_value(
-				"Diagnostic Report", diagnostic_report.get("name"), set_value_dict, update_modified=False
+				"Diagnostic Report", diagnostic_report, set_value_dict, update_modified=False
 			)
+
+
+def get_approved_observations(data):
+	approved_observations = []
+
+	for item in data:
+		obs = item.get("observation")
+		if isinstance(obs, dict):
+			if obs.get("docstatus") == 1 and obs.get("status") == "Approved":
+				approved_observations.append(obs)
+		else:
+			approved_observations += get_approved_observations(item.get(obs))
+
+	return approved_observations
 
 
 def set_calculated_result(doc):
@@ -629,7 +712,7 @@ def get_observations_for_medical_record(observation, parent_observation=None):
 
 	else:
 		child_observations = get_child_observations(obs_doc)
-		obs_dict = return_child_observation_data_as_dict(child_observations, obs_doc)
+		obs_dict, obs_length = return_child_observation_data_as_dict(child_observations, obs_doc)
 
 		if len(obs_dict) > 0:
 			out_data.append(obs_dict)

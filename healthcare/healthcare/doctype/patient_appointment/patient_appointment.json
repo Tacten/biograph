@@ -470,8 +470,24 @@
   }
  ],
  "grid_page_length": 50,
- "links": [],
- "modified": "2025-07-24 17:54:27.714016",
+ "links": [
+  {
+   "group": "Records",
+   "link_doctype": "Patient Encounter",
+   "link_fieldname": "appointment"
+  },
+  {
+   "group": "Records",
+   "link_doctype": "Vital Signs",
+   "link_fieldname": "appointment"
+  },
+  {
+   "group": "Records",
+   "link_doctype": "Patient Medical Record",
+   "link_fieldname": "reference_name"
+  }
+ ],
+ "modified": "2025-09-25 13:27:12.862039",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Patient Appointment",

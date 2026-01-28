@@ -10,7 +10,7 @@ from frappe import _
 from frappe.contacts.address_and_contact import load_address_and_contact
 from frappe.contacts.doctype.contact.contact import get_default_contact
 from frappe.model.document import Document
-from frappe.model.naming import set_name_by_naming_series
+from frappe.model.naming import set_name_by_naming_series, set_name_from_naming_options
 from frappe.utils import cint, cstr, getdate
 from frappe.utils.nestedset import get_root_of
 
@@ -159,8 +159,10 @@ class Patient(Document):
 		patient_name_by = frappe.db.get_single_value("Healthcare Settings", "patient_name_by")
 		if patient_name_by == "Patient Name":
 			self.name = self.get_patient_name()
-		else:
+		elif patient_name_by == "Naming Series":
 			set_name_by_naming_series(self)
+		else:
+			set_name_from_naming_options(frappe.get_meta(self.doctype).autoname, self)
 
 	def get_patient_name(self):
 		self.set_full_name()
@@ -194,17 +196,36 @@ class Patient(Document):
 
 	@frappe.whitelist()
 	def invoice_patient_registration(self):
-		if frappe.db.get_single_value("Healthcare Settings", "registration_fee"):
-			company = frappe.defaults.get_user_default("company")
-			if not company:
-				company = frappe.db.get_single_value("Global Defaults", "default_company")
+		registration_fee = frappe.db.get_single_value("Healthcare Settings", "registration_fee")
+		if not registration_fee:
+			return
 
-			sales_invoice = make_invoice(self.name, company)
-			sales_invoice.save(ignore_permissions=True)
-			frappe.db.set_value("Patient", self.name, "status", "Active")
-			send_registration_sms(self)
+		# Check if registration invoice already exists
+		existing_item = frappe.db.exists(
+			"Sales Invoice Item",
+			{
+				"reference_dt": "Patient",
+				"reference_dn": self.name,
+				"item_name": "Registration Fee",
+				"docstatus": 0,
+			},
+		)
 
-			return {"invoice": sales_invoice.name}
+		if existing_item:
+			invoice_name = frappe.db.get_value("Sales Invoice Item", existing_item, "parent")
+			sales_invoice = frappe.get_doc("Sales Invoice", invoice_name)
+			return sales_invoice.as_dict()
+
+		company = frappe.defaults.get_user_default("company") or frappe.db.get_single_value(
+			"Global Defaults", "default_company"
+		)
+
+		sales_invoice = make_invoice(self.name, company)
+		sales_invoice.insert(ignore_permissions=True)
+
+		send_registration_sms(self)
+
+		return sales_invoice.as_dict()
 
 	def set_contact(self):
 		contact = get_default_contact(self.doctype, self.name)
@@ -335,6 +356,7 @@ def create_customer(doc):
 
 def make_invoice(patient, company):
 	uom = frappe.db.exists("UOM", "Nos") or frappe.db.get_single_value("Stock Settings", "stock_uom")
+	registration_item = frappe.db.get_single_value("Healthcare Settings", "registration_item") or None
 	sales_invoice = frappe.new_doc("Sales Invoice")
 	sales_invoice.customer = frappe.db.get_value("Patient", patient, "customer")
 	sales_invoice.patient = patient
@@ -343,15 +365,24 @@ def make_invoice(patient, company):
 	sales_invoice.is_pos = 0
 	sales_invoice.debit_to = get_receivable_account(company)
 
-	item_line = sales_invoice.append("items")
-	item_line.item_name = "Registration Fee"
-	item_line.description = "Registration Fee"
-	item_line.qty = 1
-	item_line.uom = uom
-	item_line.conversion_factor = 1
-	item_line.income_account = get_income_account(None, company)
-	item_line.rate = frappe.db.get_single_value("Healthcare Settings", "registration_fee")
-	item_line.amount = item_line.rate
+	sales_invoice.append(
+		"items",
+		{
+			"item_code": registration_item or None,
+			"item_name": "Registration Fee",
+			"description": "Registration Fee",
+			"qty": 1,
+			"uom": uom or "Nos",
+			"stock_uom": uom or "Nos",
+			"rate": frappe.db.get_single_value("Healthcare Settings", "registration_fee"),
+			"price_list_rate": frappe.db.get_single_value("Healthcare Settings", "registration_fee"),
+			"income_account": get_income_account(None, company),
+			"conversion_factor": 1,
+			"reference_dt": "Patient",
+			"reference_dn": patient,
+		},
+	)
+
 	sales_invoice.set_missing_values()
 	return sales_invoice
 

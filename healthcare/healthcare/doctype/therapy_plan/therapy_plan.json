@@ -188,7 +188,13 @@
    "read_only": 1
   }
  ],
+ "grid_page_length": 50,
  "links": [
+  {
+   "group": "Therapy Sessions",
+   "link_doctype": "Therapy Session",
+   "link_fieldname": "therapy_plan"
+  },
   {
    "link_doctype": "Clinical Note",
    "link_fieldname": "reference_name"

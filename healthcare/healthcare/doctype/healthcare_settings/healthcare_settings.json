@@ -14,6 +14,7 @@
   "default_google_calendar",
   "column_break_9",
   "collect_registration_fee",
+  "registration_item",
   "registration_fee",
   "show_payment_popup",
   "enable_free_follow_ups",
@@ -234,7 +235,7 @@
    "fieldname": "patient_name_by",
    "fieldtype": "Select",
    "label": "Patient Name By",
-   "options": "Patient Name\nNaming Series"
+   "options": "Patient Name\nNaming Series\nAuto Name"
   },
   {
    "default": "0",
@@ -409,6 +410,14 @@
    "label": "Orders"
   },
   {
+   "depends_on": "eval:doc.collect_registration_fee == 1",
+   "fieldname": "registration_item",
+   "fieldtype": "Link",
+   "label": "Registration Item",
+   "mandatory_depends_on": "eval:doc.collect_registration_fee == 1",
+   "options": "Item"
+  },
+  {
    "fieldname": "patient_duplicate_check_tab",
    "fieldtype": "Tab Break",
    "label": "Patient Duplicate Check"
@@ -447,7 +456,7 @@
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-10-08 09:06:09.173901",
+ "modified": "2025-11-05 15:45:05.268654",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Healthcare Settings",
