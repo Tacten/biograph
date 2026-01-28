@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2017, ESS LLP and Contributors
 # See license.txt
 
 
-from frappe.tests.utils import FrappeTestCase
+from frappe.tests import IntegrationTestCase
 
 
-class TestDosageForm(FrappeTestCase):
+class TestDosageForm(IntegrationTestCase):
 	pass

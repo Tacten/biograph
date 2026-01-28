@@ -1,16 +1,15 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2020, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
 
 import frappe
-from frappe.tests.utils import FrappeTestCase
+from frappe.tests import IntegrationTestCase
 from frappe.utils import nowdate
 
 from healthcare.healthcare.doctype.therapy_plan.test_therapy_plan import create_therapy_plan
 
 
-class TestTherapySession(FrappeTestCase):
+class TestTherapySession(IntegrationTestCase):
 	def test_exercise_set_from_therapy_type(self):
 		plan = create_therapy_plan()
 		session = create_therapy_session(plan.patient, "Basic Rehab", plan.name)

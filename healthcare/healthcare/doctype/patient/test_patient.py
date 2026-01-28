@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2015, ESS LLP and Contributors
 # See license.txt
 
@@ -6,14 +5,14 @@
 import os
 
 import frappe
-from frappe.tests.utils import FrappeTestCase
+from frappe.tests import IntegrationTestCase
 
 from healthcare.healthcare.doctype.patient_appointment.test_patient_appointment import (
 	create_patient,
 )
 
 
-class TestPatient(FrappeTestCase):
+class TestPatient(IntegrationTestCase):
 	def test_customer_created(self):
 		frappe.db.sql("""delete from `tabPatient`""")
 		frappe.db.set_single_value("Healthcare Settings", "link_customer_to_patient", 1)

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2020, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
@@ -6,7 +5,7 @@
 import json
 
 import frappe
-from frappe.tests.utils import FrappeTestCase
+from frappe.tests import IntegrationTestCase
 from frappe.utils import getdate, strip_html
 
 from healthcare.healthcare.doctype.patient_appointment.test_patient_appointment import (
@@ -14,7 +13,7 @@ from healthcare.healthcare.doctype.patient_appointment.test_patient_appointment 
 )
 
 
-class TestPatientHistorySettings(FrappeTestCase):
+class TestPatientHistorySettings(IntegrationTestCase):
 	def setUp(self):
 		dt = create_custom_doctype()
 		settings = frappe.get_single("Patient History Settings")
@@ -45,8 +44,8 @@ class TestPatientHistorySettings(FrappeTestCase):
 		self.assertTrue(medical_rec)
 
 		medical_rec = frappe.get_doc("Patient Medical Record", medical_rec)
-		expected_subject = "Date:{0}Rating:0.3Feedback:Test Patient History Settings".format(
-			frappe.utils.format_date(getdate())
+		expected_subject = (
+			f"Date:{frappe.utils.format_date(getdate())}Rating:0.3Feedback:Test Patient History Settings"
 		)
 		self.assertEqual(strip_html(medical_rec.subject), expected_subject)
 		self.assertEqual(medical_rec.patient, patient)

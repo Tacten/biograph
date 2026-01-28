@@ -114,9 +114,19 @@ class TherapySession(Document):
 			doc = frappe.get_doc("Therapy Plan", self.therapy_plan)
 			doc.set_totals()
 		if self.service_request:
-			frappe.db.set_value(
-				"Service Request", self.service_request, "status", "completed-Request Status"
-			)
+			status = "active-Request Status"
+			sessions_completed = self.check_sessions_completed()
+			if sessions_completed:
+				status = "completed-Request Status"
+			frappe.db.set_value("Service Request", self.service_request, "status", status)
+
+	def check_sessions_completed(self):
+		"""Check if all sessions from a service request have been completed."""
+		total_sessions_requested = frappe.db.get_value("Service Request", self.service_request, "quantity")
+		sessions = frappe.db.count(
+			"Therapy Session", filters={"docstatus": ["!=", 2], "service_request": self.service_request}
+		)
+		return True if total_sessions_requested == sessions else False
 
 	def create_nursing_tasks(self, post_event=True):
 		template = frappe.db.get_value("Therapy Type", self.therapy_type, "nursing_checklist_template")

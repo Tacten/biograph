@@ -103,7 +103,7 @@
   }
  ],
  "links": [],
- "modified": "2023-01-13 19:40:58.647870",
+ "modified": "2025-12-25 09:36:34.154831",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Exercise Type",
@@ -145,7 +145,8 @@
   }
  ],
  "quick_entry": 1,
- "sort_field": "modified",
+ "row_format": "Dynamic",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "track_changes": 1

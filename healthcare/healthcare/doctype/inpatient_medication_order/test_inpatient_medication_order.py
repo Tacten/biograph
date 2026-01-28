@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2020, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
 
 import frappe
-from frappe.tests.utils import FrappeTestCase
+from frappe.tests import IntegrationTestCase
 from frappe.utils import add_days, getdate, now_datetime
 
 from healthcare.healthcare.doctype.inpatient_record.inpatient_record import (
@@ -20,7 +19,7 @@ from healthcare.healthcare.doctype.inpatient_record.test_inpatient_record import
 )
 
 
-class TestInpatientMedicationOrder(FrappeTestCase):
+class TestInpatientMedicationOrder(IntegrationTestCase):
 	def setUp(self):
 		frappe.db.sql("""delete from `tabInpatient Record`""")
 		self.patient = create_patient()
@@ -97,7 +96,7 @@ class TestInpatientMedicationOrder(FrappeTestCase):
 			discharge_patient(self.ip_record)
 
 		for doctype in ["Inpatient Medication Entry", "Inpatient Medication Order"]:
-			frappe.db.sql("delete from `tab{doctype}`".format(doctype=doctype))
+			frappe.db.sql(f"delete from `tab{doctype}`")
 
 
 def create_dosage_form():

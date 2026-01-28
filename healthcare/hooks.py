@@ -1,5 +1,3 @@
-from . import __version__ as app_version  # noqa
-
 app_name = "healthcare"
 app_title = "Marley Health"
 app_publisher = "earthians Health Informatics Pvt. Ltd."
@@ -9,10 +7,20 @@ app_color = "grey"
 app_email = "info@earthianslive.com"
 app_license = "GNU GPL V3"
 required_apps = ["frappe/erpnext"]
+app_home = "/desk/healthcare"
+
+add_to_apps_screen = [
+	{
+		"name": app_name,
+		"logo": "/assets/healthcare/images/healthcare.svg",
+		"title": app_title,
+		"route": app_home,
+		"has_permission": "erpnext.check_app_permission",
+	}
+]
 
 # Includes in <head>
 # ------------------
-
 # include js, css files in header of desk.html
 # app_include_css = "/assets/healthcare/css/healthcare.css"
 app_include_js = "healthcare.bundle.js"
@@ -34,8 +42,8 @@ app_include_js = "healthcare.bundle.js"
 # include js in doctype views
 doctype_js = {
 	"Sales Invoice": "public/js/sales_invoice.js",
-	"Healthcare Practitioner" : "public/js/healthcare_practitioner.js",
-	}
+	"Healthcare Practitioner": "public/js/healthcare_practitioner.js",
+}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -72,7 +80,7 @@ jinja = {
 # Installation
 # ------------
 
-# before_install = "healthcare.install.before_install"
+before_install = "healthcare.install.before_install"
 after_install = "healthcare.setup.setup_healthcare"
 
 # Uninstallation
@@ -123,12 +131,17 @@ doc_events = {
 		"after_insert": "healthcare.healthcare.utils.create_healthcare_service_unit_tree_root",
 		"on_trash": "healthcare.healthcare.utils.company_on_trash",
 	},
-	"Patient": {
-		"after_insert": "healthcare.regional.india.abdm.utils.set_consent_attachment_details"
-	},
+	"Patient": {"after_insert": "healthcare.regional.india.abdm.utils.set_consent_attachment_details"},
 	"Payment Entry": {
-		"on_submit": "healthcare.healthcare.custom_doctype.payment_entry.set_paid_amount_in_healthcare_docs",
-		"on_cancel": "healthcare.healthcare.custom_doctype.payment_entry.set_paid_amount_in_healthcare_docs",
+		"on_submit": [
+			"healthcare.healthcare.custom_doctype.payment_entry.manage_payment_entry_submit_cancel",
+			"healthcare.healthcare.custom_doctype.payment_entry.set_paid_amount_in_healthcare_docs",
+		],
+		"on_cancel": [
+			"healthcare.healthcare.custom_doctype.payment_entry.manage_payment_entry_submit_cancel",
+			"healthcare.healthcare.custom_doctype.payment_entry.set_paid_amount_in_healthcare_docs",
+		],
+		"validate": "healthcare.healthcare.doctype.insurance_claim.insurance_claim.validate_payment_entry_and_set_claim_fields",
 	},
 }
 
@@ -139,6 +152,7 @@ scheduler_events = {
 	"daily": [
 		"healthcare.healthcare.doctype.patient_appointment.patient_appointment.update_appointment_status",
 		"healthcare.healthcare.doctype.fee_validity.fee_validity.update_validity_status",
+		"healthcare.healthcare.doctype.inpatient_record.inpatient_record.add_occupied_service_unit_in_ip_to_billables",
 	],
 }
 
@@ -248,6 +262,13 @@ global_search_doctypes = {
 	]
 }
 
+healthcare_service_order_doctypes = [
+	"Medication",
+	"Therapy Type",
+	"Lab Test Template",
+	"Clinical Procedure Template",
+]
+
 domains = {
 	"Healthcare": "healthcare.setup",
 }
@@ -255,27 +276,9 @@ domains = {
 # nosemgrep
 standard_portal_menu_items = [
 	{
-		"title": "Personal Details",
-		"route": "/personal-details",
+		"title": "Patient Portal",
+		"route": "/patient-portal",
 		"reference_doctype": "Patient",
-		"role": "Patient",
-	},
-	{
-		"title": "Lab Test",
-		"route": "/lab-test",
-		"reference_doctype": "Lab Test",
-		"role": "Patient",
-	},
-	{
-		"title": "Prescription",
-		"route": "/prescription",
-		"reference_doctype": "Patient Encounter",
-		"role": "Patient",
-	},
-	{
-		"title": "Patient Appointment",
-		"route": "/patient-appointments",
-		"reference_doctype": "Patient Appointment",
 		"role": "Patient",
 	},
 ]

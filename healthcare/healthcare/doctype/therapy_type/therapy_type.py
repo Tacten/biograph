@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2020, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
@@ -46,12 +45,13 @@ class TherapyType(Document):
 	def update_item_and_item_price(self):
 		if self.is_billable and self.item:
 			item_doc = frappe.get_doc("Item", {"item_code": self.item})
-			item_doc.item_name = self.item_name
-			item_doc.item_group = self.item_group
-			item_doc.description = self.description
-			item_doc.disabled = 0
-			item_doc.ignore_mandatory = True
-			item_doc.save(ignore_permissions=True)
+			if item_doc:
+				item_doc.item_name = self.item_name
+				item_doc.item_group = self.item_group
+				item_doc.description = self.description
+				item_doc.disabled = 0
+				item_doc.ignore_mandatory = True
+				item_doc.save(ignore_permissions=True)
 
 			if self.rate:
 				if frappe.db.exists("Item Price", {"item_code": self.item}):

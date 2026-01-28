@@ -11,10 +11,11 @@ from frappe import _
 from frappe.core.doctype.sms_settings.sms_settings import send_sms
 from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils import add_to_date, flt, format_date, get_link_to_form, get_time, getdate, today
+from frappe.utils import add_to_date, flt, format_date, get_datetime, get_link_to_form, get_time, getdate, today
 
 from erpnext.setup.doctype.employee.employee import is_holiday
 
+from healthcare.healthcare.api.patient_portal import update_payment_record
 from healthcare.healthcare.doctype.fee_validity.fee_validity import (
 	check_fee_validity,
 	get_fee_validity,
@@ -23,6 +24,9 @@ from healthcare.healthcare.doctype.fee_validity.fee_validity import (
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import (
 	get_income_account,
 	get_receivable_account,
+)
+from healthcare.healthcare.doctype.patient_insurance_coverage.patient_insurance_coverage import (
+	make_insurance_coverage,
 )
 from healthcare.healthcare.utils import get_appointment_billing_item_and_rate
 
@@ -53,6 +57,7 @@ class PatientAppointment(Document):
 		if not self.is_unavailability:
 			self.validate_based_on_appointments_for()
 			self.validate_customer_created()
+			self.validate_practitioner_unavailability()
 		else:
 			# For unavailability appointments, make sure the status remains "Unavailable"
 			if self.status != "Cancelled" and self.status != "Unavailable":
@@ -65,7 +70,7 @@ class PatientAppointment(Document):
 		self.set_status()
 		self.set_title()
 		self.update_event()
-		self.set_postition_in_queue()
+		self.set_position_in_queue()
 
 
 	def before_save(self):
@@ -86,6 +91,14 @@ class PatientAppointment(Document):
 		):
 			update_fee_validity(self)
 
+		doc_before_save = self.get_doc_before_save()
+		if doc_before_save and not doc_before_save.insurance_policy == self.insurance_policy:
+			self.make_insurance_coverage()
+
+	def on_payment_authorized(self, payment_status):
+		if payment_status in ["Authorized", "Completed"]:
+			update_payment_record("Patient Appointment", self.name)
+
 	def after_insert(self):
 		# Create calendar events for all appointments, including unavailability
 		if self.appointment_type == "Unavailable":
@@ -99,7 +112,86 @@ class PatientAppointment(Document):
 		
 		self.update_prescription_details()
 		self.set_payment_details()
-		
+
+		# Handle insurance coverage for normal appointments
+		if self.insurance_policy and self.appointment_type and not check_fee_validity(self):
+			if frappe.db.get_single_value("Healthcare Settings", "show_payment_popup"):
+				frappe.msgprint(
+					_(
+						"Insurance Coverage not created!<br>Not supported as <b>Automate Appointment Invoicing</b> enabled"
+					),
+					alert=True,
+					indicator="warning",
+				)
+			else:
+				self.make_insurance_coverage()
+
+		if self.service_request:
+			frappe.db.set_value("Service Request", self.service_request, "status", "completed-Request Status")
+
+	def make_insurance_coverage(self):
+		"""Create insurance coverage for this appointment."""
+		billing_detail = get_appointment_billing_item_and_rate(self)
+		if not billing_detail.get("service_item"):
+			return
+
+		make_insurance_coverage(
+			patient=self.patient,
+			company=self.company,
+			insurance_policy=self.insurance_policy,
+			billing_item=billing_detail.get("service_item"),
+			qty=1,
+			rate=billing_detail.get("practitioner_charge"),
+			reference_dt="Patient Appointment",
+			reference_dn=self.name,
+		)
+
+	def validate_practitioner_unavailability(self):
+		"""Validate that the appointment doesn't conflict with practitioner unavailability."""
+		scopes = [self.practitioner, self.department, self.service_unit]
+		# appointment window
+		if self.appointment_datetime:
+			start_dt = get_datetime(self.appointment_datetime)
+		else:
+			if not (self.appointment_date and self.appointment_time):
+				frappe.throw(_("Appointment Date and Time are required."))
+			start_dt = get_datetime(f"{self.appointment_date} {self.appointment_time}")
+
+		if self.appointment_end_datetime:
+			end_dt = get_datetime(self.appointment_end_datetime)
+		else:
+			end_dt = add_to_date(start_dt, minutes=int(self.duration) or 0)
+
+		if end_dt <= start_dt:
+			frappe.throw(_("Appointment end must be after start."))
+
+		rows = frappe.get_all(
+			"Practitioner Availability",
+			fields=["name", "start_date", "end_date", "start_time", "end_time"],
+			filters={"type": "Unavailable", "docstatus": ("!=", 2), "scope": ["in", scopes]},
+			order_by="start_date asc, start_time asc",
+		)
+
+		conflicts = []
+		for r in rows:
+			existing_start_date = getdate(r.start_date)
+			existing_end_date = getdate(r.end_date)
+			existing_start_time = get_time(r.start_time)
+			existing_end_time = get_time(r.end_time)
+
+			overlap_start_date = max(getdate(start_dt), existing_start_date)
+			overlap_end_date = min(getdate(end_dt), existing_end_date)
+			if overlap_start_date <= overlap_end_date:
+				# Check if the daily times overlap
+				if get_time(start_dt) < existing_end_time and existing_start_time < get_time(end_dt):
+					conflicts.append(r["name"])
+
+		if conflicts:
+			msg = ", ".join(frappe.bold(n) for n in conflicts)
+			frappe.throw(
+				_(f"This Appointment conflicts with Practitioner Availability of type 'Unavailable': {msg}.")
+			)
+
 	def insert_unavailability_calendar_event(self):
 		"""Special method to create calendar events for unavailability"""
 		try:
@@ -746,7 +838,7 @@ class PatientAppointment(Document):
 				event_doc.reload()
 				self.google_meet_link = event_doc.google_meet_link
 
-	def set_postition_in_queue(self):
+	def set_position_in_queue(self):
 		from frappe.query_builder.functions import Max
 
 		if self.status != "Checked In" or self.position_in_queue:
@@ -1023,6 +1115,14 @@ def get_appointment_item(appointment_doc, item):
 
 def cancel_appointment(appointment_id):
 	appointment = frappe.get_doc("Patient Appointment", appointment_id)
+
+	if not appointment.practitioner:
+		return
+
+	if appointment.insurance_coverage:
+		coverage = frappe.get_doc("Patient Insurance Coverage", appointment.insurance_coverage)
+		coverage.cancel()
+
 	if appointment.service_request:
 		frappe.db.set_value(
 			"Service Request", appointment.service_request, "status", "active-Request Status"

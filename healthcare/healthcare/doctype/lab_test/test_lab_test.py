@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2015, ESS LLP and Contributors
 # See license.txt
 
 
 import frappe
-from frappe.tests.utils import FrappeTestCase
+from frappe.tests import IntegrationTestCase
 from frappe.utils import getdate, nowtime
 
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import (
@@ -13,6 +12,7 @@ from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings impor
 )
 from healthcare.healthcare.doctype.lab_test.lab_test import create_multiple
 from healthcare.healthcare.doctype.patient_appointment.test_patient_appointment import (
+	create_appointment_type,
 	create_patient,
 )
 from healthcare.healthcare.doctype.patient_medical_record.test_patient_medical_record import (
@@ -20,7 +20,7 @@ from healthcare.healthcare.doctype.patient_medical_record.test_patient_medical_r
 )
 
 
-class TestLabTest(FrappeTestCase):
+class TestLabTest(IntegrationTestCase):
 	def test_lab_test_item(self):
 		lab_template = create_lab_test_template()
 		self.assertTrue(frappe.db.exists("Item", lab_template.item))
@@ -94,7 +94,9 @@ class TestLabTest(FrappeTestCase):
 		)
 		if service_requests:
 			for service_request in service_requests:
-				self.assertTrue(frappe.db.exists("Lab Test", {"service_request": service_request.get("name")}))
+				self.assertTrue(
+					frappe.db.exists("Lab Test", {"service_request": service_request.get("name")})
+				)
 		# self.assertTrue(patient_encounter.lab_test_prescription[0].lab_test_created)
 		# self.assertTrue(patient_encounter.lab_test_prescription[0].lab_test_created)
 
@@ -207,6 +209,7 @@ def create_patient_encounter():
 	blood_test_template = create_blood_test_template(medical_department)
 
 	patient_encounter = frappe.new_doc("Patient Encounter")
+	patient_encounter.appointment_type = create_appointment_type().name
 	patient_encounter.patient = patient
 	patient_encounter.practitioner = create_practitioner()
 	patient_encounter.encounter_date = getdate()

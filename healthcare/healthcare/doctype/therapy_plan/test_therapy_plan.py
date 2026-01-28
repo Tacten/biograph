@@ -1,14 +1,14 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2020, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
 
 import frappe
-from frappe.tests.utils import FrappeTestCase
+from frappe.tests import IntegrationTestCase
 from frappe.utils import flt, getdate, nowdate
 
 from healthcare.healthcare.doctype.patient_appointment.test_patient_appointment import (
 	create_appointment,
+	create_appointment_type,
 	create_healthcare_docs,
 	create_medical_department,
 	create_patient,
@@ -20,22 +20,26 @@ from healthcare.healthcare.doctype.therapy_plan.therapy_plan import (
 from healthcare.healthcare.doctype.therapy_type.test_therapy_type import create_therapy_type
 
 
-class TestTherapyPlan(FrappeTestCase):
+class TestTherapyPlan(IntegrationTestCase):
 	def test_creation_on_encounter_submission(self):
 		patient, practitioner = create_healthcare_docs()
 		medical_department = create_medical_department()
 		encounter = create_encounter(patient, medical_department, practitioner)
-		self.assertTrue(frappe.db.exists("Therapy Plan", encounter.therapy_plan))
+		self.assertTrue(
+			frappe.db.exists(
+				"Therapy Plan", {"source_doc": "Patient Encounter", "order_group": encounter.name}
+			)
+		)
 
 	def test_status(self):
 		plan = create_therapy_plan()
 		self.assertEqual(plan.status, "Not Started")
 
-		session = make_therapy_session(plan.name, plan.patient, "Basic Rehab", "_Test Company")
+		session = make_therapy_session(plan.patient, "Basic Rehab", "_Test Company", plan.name)
 		frappe.get_doc(session).submit()
 		self.assertEqual(frappe.db.get_value("Therapy Plan", plan.name, "status"), "In Progress")
 
-		session = make_therapy_session(plan.name, plan.patient, "Basic Rehab", "_Test Company")
+		session = make_therapy_session(plan.patient, "Basic Rehab", "_Test Company", plan.name)
 		frappe.get_doc(session).submit()
 		self.assertEqual(frappe.db.get_value("Therapy Plan", plan.name, "status"), "Completed")
 
@@ -43,13 +47,11 @@ class TestTherapyPlan(FrappeTestCase):
 		appointment = create_appointment(patient, practitioner, nowdate())
 
 		session = make_therapy_session(
-			plan.name, plan.patient, "Basic Rehab", "_Test Company", appointment.name
+			plan.patient, "Basic Rehab", "_Test Company", plan.name, appointment.name
 		)
 		session = frappe.get_doc(session)
 		session.submit()
-		self.assertEqual(
-			frappe.db.get_value("Patient Appointment", appointment.name, "status"), "Closed"
-		)
+		self.assertEqual(frappe.db.get_value("Patient Appointment", appointment.name, "status"), "Closed")
 		session.cancel()
 		self.assertEqual(frappe.db.get_value("Patient Appointment", appointment.name, "status"), "Open")
 
@@ -64,9 +66,7 @@ class TestTherapyPlan(FrappeTestCase):
 		si = make_sales_invoice(plan.name, patient, "_Test Company", template)
 		si.save()
 
-		therapy_plan_template_amt = frappe.db.get_value(
-			"Therapy Plan Template", template, "total_amount"
-		)
+		therapy_plan_template_amt = frappe.db.get_value("Therapy Plan Template", template, "total_amount")
 		self.assertEqual(si.items[0].amount, therapy_plan_template_amt)
 
 
@@ -88,15 +88,18 @@ def create_therapy_plan(template=None, patient=None):
 	return plan
 
 
-def create_encounter(patient, medical_department, practitioner):
+def create_encounter(patient, medical_department, practitioner, submit=True):
 	encounter = frappe.new_doc("Patient Encounter")
 	encounter.patient = patient
 	encounter.practitioner = practitioner
 	encounter.medical_department = medical_department
+	encounter.appointment_type = create_appointment_type().name
+	encounter.source = "Direct"
 	therapy_type = create_therapy_type()
 	encounter.append("therapies", {"therapy_type": therapy_type.name, "no_of_sessions": 2})
 	encounter.save()
-	encounter.submit()
+	if submit:
+		encounter.submit()
 	return encounter
 
 

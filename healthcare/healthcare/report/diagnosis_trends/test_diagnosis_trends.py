@@ -1,27 +1,26 @@
 import frappe
 from frappe import DuplicateEntryError
-from frappe.tests.utils import FrappeTestCase
+from frappe.tests import IntegrationTestCase
 from frappe.utils import add_days, add_months, getdate
 
 from healthcare.healthcare.doctype.patient_appointment.test_patient_appointment import (
+	create_appointment_type,
 	create_practitioner,
 )
+from healthcare.healthcare.doctype.therapy_plan.test_therapy_plan import create_encounter
 from healthcare.healthcare.report.diagnosis_trends.diagnosis_trends import execute
-from healthcare.healthcare.test_utils import create_encounter
 
 months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 
-class TestDiagnosisTrends(FrappeTestCase):
+class TestDiagnosisTrends(IntegrationTestCase):
 	@classmethod
 	def setUpClass(cls):
 		cls.create_diagnosis()
 
 	@classmethod
 	def create_diagnosis(cls):
-		medical_department = frappe.get_doc(
-			{"doctype": "Medical Department", "department": "Cardiology"}
-		)
+		medical_department = frappe.get_doc({"doctype": "Medical Department", "department": "Cardiology"})
 		try:
 			medical_department.insert()
 		except DuplicateEntryError:
@@ -31,11 +30,10 @@ class TestDiagnosisTrends(FrappeTestCase):
 		practitioner_name = create_practitioner(medical_department=medical_department.name)
 		encounter_cardiology = create_encounter(
 			patient=patient.name,
+			medical_department=medical_department,
 			practitioner=practitioner_name,
+			submit=False,
 		)
-		encounter = frappe.get_list(
-			"Patient Encounter",
-		)[0]
 
 		try:
 			cls.diagnosis = frappe.get_doc(
@@ -59,13 +57,15 @@ class TestDiagnosisTrends(FrappeTestCase):
 		except DuplicateEntryError:
 			pass
 
-		encounter = frappe.get_doc("Patient Encounter", encounter["name"])
+		encounter = frappe.get_doc("Patient Encounter", encounter_cardiology.name)
 		encounter.append(
 			"diagnosis",
 			{
 				"diagnosis": "Fever",
 			},
 		)
+		encounter.source = "Direct"
+		encounter.appointment_type = create_appointment_type().name
 		encounter.save()
 
 		encounter_cardiology.reload()
@@ -75,6 +75,8 @@ class TestDiagnosisTrends(FrappeTestCase):
 				"diagnosis": "Heart Attack",
 			},
 		)
+		encounter.source = "Direct"
+		encounter.appointment_type = create_appointment_type().name
 		encounter_cardiology.save()
 
 	def test_report_data(self):

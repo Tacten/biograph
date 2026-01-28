@@ -1,12 +1,17 @@
 <div align="center">
 
-  <h2>Biograph -by Tacten</h2>
+  <h2>Biograph - by Tacten</h2>
   <p align="center">
     <p>Open source & easy-to-use hospital information system(HIS) for all healthcare organisations.</p>
   </p>
 
   [Biograph](https://tacten.co/digitalhealth)
 
+ <div align="center" style="max-height: 40px;">
+    <a href="https://frappecloud.com/marley/signup">
+        <img src=".github/try-on-f-cloud-button.svg" height="40">
+    </a>
+ </div>
 
 </div>
 
@@ -53,4 +58,4 @@ GNU GPL V3. See [license.txt](https://github.com/earthians/marley/blob/develop/l
 
 ### Credits
 
-Biograph (Fork and Enhancements of Marley Health) is  developed & maintained by Tacten and community contributors.
+Biograph (Fork and Enhancements of Marley Health) is developed & maintained by Tacten and community contributors.

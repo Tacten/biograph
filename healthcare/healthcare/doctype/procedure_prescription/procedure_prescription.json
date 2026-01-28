@@ -9,6 +9,8 @@
   "procedure",
   "procedure_name",
   "department",
+  "no_of_sessions",
+  "interval",
   "practitioner",
   "service_request",
   "column_break_ky11",
@@ -36,7 +38,6 @@
    "fetch_from": "procedure.template",
    "fieldname": "procedure_name",
    "fieldtype": "Data",
-   "in_list_view": 1,
    "label": "Procedure Name"
   },
   {
@@ -126,18 +127,31 @@
    "label": "Service Request",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "no_of_sessions",
+   "fieldtype": "Int",
+   "label": "No of Sessions"
+  },
+  {
+   "fieldname": "interval",
+   "fieldtype": "Duration",
+   "label": "Interval"
   }
  ],
+ "grid_page_length": 50,
  "istable": 1,
  "links": [],
- "modified": "2023-11-01 23:09:04.600093",
+ "modified": "2025-12-25 09:36:39.292830",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Procedure Prescription",
  "owner": "Administrator",
  "permissions": [],
  "restrict_to_domain": "Healthcare",
- "sort_field": "modified",
+ "row_format": "Dynamic",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "track_changes": 1
