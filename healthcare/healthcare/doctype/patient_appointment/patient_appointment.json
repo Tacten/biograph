@@ -41,6 +41,8 @@
   "appointment_time",
   "end_time",
   "appointment_datetime",
+  "appointment_end_time",
+  "appointment_end_datetime",
   "add_video_conferencing",
   "event",
   "google_meet_link",
@@ -48,6 +50,8 @@
   "therapy_types",
   "create_therapy_sessions",
   "section_break_16",
+  "insurance_policy",
+  "insurance_coverage",
   "mode_of_payment",
   "billing_item",
   "invoiced",
@@ -217,6 +221,19 @@
    "label": "Payments"
   },
   {
+   "fieldname": "insurance_policy",
+   "fieldtype": "Link",
+   "label": "Insurance Policy",
+   "options": "Patient Insurance Policy"
+  },
+  {
+   "fieldname": "insurance_coverage",
+   "fieldtype": "Link",
+   "label": "Insurance Coverage",
+   "options": "Patient Insurance Coverage",
+   "read_only": 1
+  },
+  {
    "fetch_from": "patient.patient_name",
    "fieldname": "patient_name",
    "fieldtype": "Data",
@@ -249,6 +266,24 @@
    "read_only": 1,
    "report_hide": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "appointment_end_time",
+   "fieldtype": "Time",
+   "hidden": 1,
+   "label": "Appointment End Time",
+   "print_hide": 1,
+   "read_only": 1,
+   "report_hide": 1
+  },
+  {
+   "fieldname": "appointment_end_datetime",
+   "fieldtype": "Datetime",
+   "hidden": 1,
+   "label": "Appointment End Datetime",
+   "print_hide": 1,
+   "read_only": 1,
+   "report_hide": 1
   },
   {
    "fieldname": "mode_of_payment",

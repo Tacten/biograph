@@ -198,6 +198,10 @@ class PatientAppointment(Document):
 			if not self.practitioner and not self.service_unit:
 				return
 
+			# Skip if appointment_time is not set
+			if not self.appointment_time:
+				return
+
 			# Get start time as datetime
 			starts_on = datetime.combine(
 				getdate(self.appointment_date), get_time(self.appointment_time)
@@ -341,6 +345,11 @@ class PatientAppointment(Document):
 
 	def insert_calendar_event(self):
 		if not self.practitioner:
+			return
+
+		# Skip calendar event creation if appointment_time is not set
+		# This can happen for department/service unit appointments with check-in
+		if not self.appointment_time:
 			return
 
 		starts_on = datetime.combine(
@@ -491,6 +500,11 @@ class PatientAppointment(Document):
 			return
 
 		if not self.practitioner:
+			return
+
+		# Skip overlap validation if appointment_time is not set
+		# This can happen for department/service unit appointments with check-in
+		if not self.appointment_time:
 			return
 
 		# Calculate end time based on duration or directly from end_time field
@@ -821,7 +835,7 @@ class PatientAppointment(Document):
 					frappe.db.set_value("Patient Appointment", self.name, "notes", comments)
 
 	def update_event(self):
-		if self.event:
+		if self.event and self.appointment_time:
 			event_doc = frappe.get_doc("Event", self.event)
 			starts_on = datetime.combine(
 				getdate(self.appointment_date), get_time(self.appointment_time)
