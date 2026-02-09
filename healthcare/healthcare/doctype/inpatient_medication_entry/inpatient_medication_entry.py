@@ -65,15 +65,23 @@ class InpatientMedicationEntry(Document):
 
 	def validate_medication_orders(self):
 		for entry in self.medication_orders:
-			docstatus, is_completed = frappe.db.get_value(
+			if not entry.against_imoe:
+				continue
+
+			result = frappe.db.get_value(
 				"Inpatient Medication Order Entry", entry.against_imoe, ["docstatus", "is_completed"]
 			)
+
+			if not result:
+				continue
+
+			docstatus, is_completed = result
 
 			if docstatus == 2:
 				frappe.throw(
 					_(
 						"Row {0}: Cannot create Inpatient Medication Entry against cancelled Inpatient Medication Order {1}"
-					).format(entry.idx, get_link_to_form(entry.against_imo))
+					).format(entry.idx, get_link_to_form("Inpatient Medication Order", entry.against_imo))
 				)
 
 			if is_completed:
