@@ -1,18 +1,18 @@
 ---
 name: Bug Report
-description: Report a bug encountered while using Marley Health
+description: Report a bug encountered while using Tacten Health
 labels: ["bug"]
 
 body:
   - type: markdown
     attributes:
       value: |
-        Welcome to Marley Health issue tracker! Before creating an issue, please consider the following:
+        Welcome to Tacten Health issue tracker! Before creating an issue, please consider the following:
 
-        1. This tracker should only be used to report bugs and request features / enhancements to Marley Health
+        1. This tracker should only be used to report bugs and request features / enhancements to Tacten Health
             - For questions and general support, checkout the [documentation](https://marley.frappe.cloud/docs) or use the [forum](https://discuss.frappe.io/c/healthcare/58) to search for solutions / get inputs from the open source community.
             - For documentation issues, propose edit on the [documentation site](https://marley.frappe.cloud/docs) directly.
-            - You can also post in the Telegram group for Marley Health development work: https://t.me/frappehealth
+            - You can also post in the Telegram group for Tacten Health development work: https://t.me/frappehealth
         2. When making a bug report, make sure you provide all required information. The easier it is for maintainers to reproduce, the faster it'll be fixed.
         3. If you think you know what the reason for the bug is, share it with us. Maybe put in a PR 😉
 
@@ -29,7 +29,7 @@ body:
     id: module
     attributes:
       label: Module
-      description: Select the affected module of Marley Health.
+      description: Select the affected module of Tacten Health.
       multiple: true
       options:
         - Outpatient Module
@@ -50,11 +50,11 @@ body:
     id: exact-version
     attributes:
       label: Version
-      description: Share exact version number of Frappe, ERPNext and Marley Health you are using.
+      description: Share exact version number of Frappe, ERPNext and Tacten Health you are using.
       placeholder: |
         Frappe version -
         ERPNext version -
-        Marley Health version -
+        Tacten Health version -
     validations:
       required: true
 
