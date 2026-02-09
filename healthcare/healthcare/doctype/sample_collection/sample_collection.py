@@ -29,7 +29,7 @@ class SampleCollection(Document):
 							},
 						)
 
-		if self.appointment:
+		if self.get("appointment"):
 			frappe.db.set_value("Patient Appointment", self.appointment, "status", "Closed")
 
 	def validate(self):
