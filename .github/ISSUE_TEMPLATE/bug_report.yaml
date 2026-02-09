@@ -12,7 +12,7 @@ body:
         1. This tracker should only be used to report bugs and request features / enhancements to Marley Health
             - For questions and general support, checkout the [documentation](https://deepwiki.com/Tacten/biograph) or use the [forum](https://discuss.frappe.io/c/healthcare/58) to search for solutions / get inputs from the open source community.
             - For documentation issues, propose edit on the [documentation site](https://deepwiki.com/Tacten/biograph) directly.
-            - You can also post in the Telegram group for Biograph  development work: https://t.me/frappehealth
+            - You can also post in the Telegram group for Biograph  development work: https://t.me/tactenbiograph
         2. When making a bug report, make sure you provide all required information. The easier it is for maintainers to reproduce, the faster it'll be fixed.
         3. If you think you know what the reason for the bug is, share it with us. Maybe put in a PR 😉
 
