@@ -31,7 +31,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2020-11-25 13:43:38.511771",
+ "modified": "2025-12-25 09:36:37.348884",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Patient History Settings",
@@ -49,7 +49,9 @@
   }
  ],
  "quick_entry": 1,
- "sort_field": "modified",
+ "row_format": "Dynamic",
+ "sort_field": "creation",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

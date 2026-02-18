@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2017, earthians and contributors
 # For license information, please see license.txt
 
@@ -29,7 +28,18 @@ class ClinicalProcedureTemplate(Document):
 			create_item_from_template(self)
 
 	def on_update(self):
-		if self.change_in_item:
+		doc_before_save = self.get_doc_before_save()
+		if not doc_before_save:
+			return
+		if (
+			doc_before_save.template != self.template
+			or doc_before_save.rate != self.rate
+			or doc_before_save.is_billable != self.is_billable
+			or doc_before_save.item_group != self.item_group
+			or doc_before_save.description != self.description
+			or doc_before_save.medical_department != self.medical_department
+			or doc_before_save.get("gst_hsn_code") != self.get("gst_hsn_code")
+		):
 			update_item_and_item_price(self)
 
 	def enable_disable_item(self):
@@ -128,9 +138,7 @@ def update_item_and_item_price(doc):
 		item_doc = frappe.get_doc("Item", {"item_code": doc.item})
 		item_doc.item_name = item_name
 		item_doc.item_group = item_group
-		item_doc.description = (
-			doc.description if doc.get("doctype") == "Clinical Procedure Template" else ""
-		)
+		item_doc.description = doc.description if doc.get("doctype") == "Clinical Procedure Template" else ""
 		item_doc.disabled = 0
 		item_doc.save(ignore_permissions=True)
 		if rate:
@@ -145,5 +153,3 @@ def update_item_and_item_price(doc):
 
 	elif not doc.is_billable and doc.item and not doc.link_existing_item:
 		frappe.db.set_value("Item", doc.item, "disabled", 1)
-
-	doc.db_set("change_in_item", 0)

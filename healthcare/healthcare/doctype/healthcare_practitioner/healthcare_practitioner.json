@@ -21,6 +21,7 @@
   "mobile_phone",
   "residence_phone",
   "office_phone",
+  "description",
   "employee_and_user_details_section",
   "practitioner_type",
   "employee",
@@ -56,6 +57,7 @@
  ],
  "fields": [
   {
+   "description": "Add prefix before name (e.g., Dr. Nitin). This is optional.",
    "fieldname": "first_name",
    "fieldtype": "Data",
    "label": "First Name",
@@ -69,6 +71,7 @@
    "no_copy": 1
   },
   {
+   "description": "You can add a suffix after a last name. Example: Sharma (PT). This is optional.",
    "fieldname": "last_name",
    "fieldtype": "Data",
    "label": "Last Name",
@@ -128,18 +131,21 @@
    "fieldname": "mobile_phone",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Mobile"
+   "label": "Mobile",
+   "options": "Phone"
   },
   {
    "fieldname": "residence_phone",
    "fieldtype": "Data",
-   "label": "Phone (R)"
+   "label": "Phone (R)",
+   "options": "Phone"
   },
   {
    "fieldname": "office_phone",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Phone (Office)"
+   "label": "Phone (Office)",
+   "options": "Phone"
   },
   {
    "collapsible": 1,
@@ -353,11 +359,47 @@
    "fieldtype": "Link",
    "label": "Supplier",
    "options": "Supplier"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Long Text",
+   "label": "Description"
   }
  ],
  "image_field": "image",
- "links": [],
- "modified": "2023-03-04 18:33:25.753648",
+ "links": [
+  {
+   "group": "Consultations",
+   "link_doctype": "Patient Appointment",
+   "link_fieldname": "practitioner"
+  },
+  {
+   "group": "Consultations",
+   "link_doctype": "Patient Encounter",
+   "link_fieldname": "practitioner"
+  },
+  {
+   "group": "Orders",
+   "link_doctype": "Medication Request",
+   "link_fieldname": "practitioner"
+  },
+  {
+   "group": "Orders",
+   "link_doctype": "Service Request",
+   "link_fieldname": "practitioner"
+  },
+  {
+   "group": "Admissions",
+   "link_doctype": "Inpatient Record",
+   "link_fieldname": "practitioner"
+  },
+  {
+   "group": "Consultations",
+   "link_doctype": "Fee Validity",
+   "link_fieldname": "practitioner"
+  }
+ ],
+ "modified": "2025-11-26 19:14:01.575157",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Healthcare Practitioner",
@@ -404,6 +446,7 @@
  ],
  "quick_entry": 1,
  "restrict_to_domain": "Healthcare",
+ "row_format": "Dynamic",
  "search_fields": "practitioner_name, mobile_phone, office_phone",
  "show_name_in_global_search": 1,
  "sort_field": "modified",

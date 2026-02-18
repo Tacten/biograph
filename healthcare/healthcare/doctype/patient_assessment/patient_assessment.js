@@ -2,9 +2,26 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Patient Assessment', {
+	validate:function(frm){
+		frm.doc.assessment_sheet.forEach(e => {
+			if(!e.score || e.score == ''){
+				console.log("hello")
+				frappe.utils.scroll_to(frm.get_field("assessment_sheet").$wrapper, true, 30);
+				frappe.throw({
+					title: __('Value Missing'),
+					message: __('Row #{0}: Score value is missing' , [e.idx]),
+					indicator: 'red'
+				});
+				return;
+			}
+		});
+	},
 	refresh: function(frm) {
 		if (frm.doc.assessment_template) {
 			frm.trigger('set_score_range');
+			if (frm.is_new()) {
+				frm.trigger('assessment_template');
+			}
 		}
 
 		if (!frm.doc.__islocal) {
@@ -61,6 +78,7 @@ frappe.ui.form.on('Patient Assessment', {
 	},
 
 	show_patient_progress: function(frm) {
+		frm.dashboard.reset()
 		let bars = [];
 		let message = '';
 		let added_min = false;

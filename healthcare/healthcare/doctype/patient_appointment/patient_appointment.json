@@ -22,26 +22,36 @@
   "section_patient_details",
   "patient",
   "patient_name",
+  "patient_phone",
+  "patient_email",
   "inpatient_record",
   "column_break_4pp7",
   "patient_sex",
   "patient_age",
   "section_break_12",
   "duration",
+  "reference_doctype",
+  "reference_docname",
   "service_request",
   "procedure_template",
   "get_procedure_from_encounter",
   "procedure_prescription",
   "therapy_plan",
-  "therapy_type",
-  "get_prescribed_therapies",
   "column_break_17",
   "appointment_time",
+  "end_time",
   "appointment_datetime",
+  "appointment_end_time",
+  "appointment_end_datetime",
   "add_video_conferencing",
   "event",
   "google_meet_link",
+  "section_therapies",
+  "therapy_types",
+  "create_therapy_sessions",
   "section_break_16",
+  "insurance_policy",
+  "insurance_coverage",
   "mode_of_payment",
   "billing_item",
   "invoiced",
@@ -91,8 +101,7 @@
    "fieldname": "duration",
    "fieldtype": "Int",
    "in_filter": 1,
-   "label": "Duration (In Minutes)",
-   "set_only_once": 1
+   "label": "Duration (In Minutes)"
   },
   {
    "fieldname": "column_break_1",
@@ -106,7 +115,8 @@
    "in_filter": 1,
    "in_list_view": 1,
    "label": "Status",
-   "options": "\nScheduled\nOpen\nConfirmed\nChecked In\nChecked Out\nClosed\nCancelled\nNo Show",
+   "no_copy": 1,
+   "options": "\nScheduled\nOpen\nConfirmed\nChecked In\nChecked Out\nClosed\nCancelled\nNo Show\nNeeds Rescheduling\nUnavailable",
    "read_only": 1,
    "search_index": 1
   },
@@ -150,7 +160,6 @@
    "label": "Appointment Details"
   },
   {
-   "depends_on": "eval:doc.appointment_for==\"Practitioner\"",
    "fieldname": "practitioner",
    "fieldtype": "Link",
    "in_standard_filter": 1,
@@ -199,9 +208,30 @@
    "read_only": 1
   },
   {
+   "depends_on": "eval:doc.appointment_time",
+   "description": "Automatically calculated based on duration",
+   "fieldname": "end_time",
+   "fieldtype": "Time",
+   "label": "End Time",
+   "read_only": 1
+  },
+  {
    "fieldname": "section_break_16",
    "fieldtype": "Section Break",
    "label": "Payments"
+  },
+  {
+   "fieldname": "insurance_policy",
+   "fieldtype": "Link",
+   "label": "Insurance Policy",
+   "options": "Patient Insurance Policy"
+  },
+  {
+   "fieldname": "insurance_coverage",
+   "fieldtype": "Link",
+   "label": "Insurance Coverage",
+   "options": "Patient Insurance Coverage",
+   "read_only": 1
   },
   {
    "fetch_from": "patient.patient_name",
@@ -236,6 +266,24 @@
    "read_only": 1,
    "report_hide": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "appointment_end_time",
+   "fieldtype": "Time",
+   "hidden": 1,
+   "label": "Appointment End Time",
+   "print_hide": 1,
+   "read_only": 1,
+   "report_hide": 1
+  },
+  {
+   "fieldname": "appointment_end_datetime",
+   "fieldtype": "Datetime",
+   "hidden": 1,
+   "label": "Appointment End Datetime",
+   "print_hide": 1,
+   "read_only": 1,
+   "report_hide": 1
   },
   {
    "fieldname": "mode_of_payment",
@@ -300,26 +348,29 @@
    "report_hide": 1
   },
   {
-   "depends_on": "eval:doc.patient && doc.therapy_plan;",
-   "fieldname": "therapy_type",
-   "fieldtype": "Link",
-   "label": "Therapy",
-   "options": "Therapy Type",
-   "set_only_once": 1
-  },
-  {
-   "depends_on": "eval:doc.patient && doc.therapy_plan && doc.__islocal;",
-   "fieldname": "get_prescribed_therapies",
-   "fieldtype": "Button",
-   "label": "Get Prescribed Therapies"
-  },
-  {
    "depends_on": "eval: doc.patient;",
    "fieldname": "therapy_plan",
    "fieldtype": "Link",
    "label": "Therapy Plan",
    "options": "Therapy Plan",
    "set_only_once": 1
+  },
+  {
+   "depends_on": "eval:doc.therapy_plan",
+   "fieldname": "section_therapies",
+   "fieldtype": "Section Break",
+   "label": "Therapies"
+  },
+  {
+   "fieldname": "therapy_types",
+   "fieldtype": "Table",
+   "label": "Therapy Types",
+   "options": "Patient Appointment Therapy"
+  },
+  {
+   "fieldname": "create_therapy_sessions",
+   "fieldtype": "Button",
+   "label": "Create Therapy Sessions"
   },
   {
    "fieldname": "ref_sales_invoice",
@@ -359,6 +410,7 @@
    "fetch_from": "practitioner.practitioner_name",
    "fieldname": "practitioner_name",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Practitioner Name",
    "read_only": 1
   },
@@ -422,10 +474,55 @@
    "options": "Service Request",
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fetch_from": "patient.mobile",
+   "fetch_if_empty": 1,
+   "fieldname": "patient_phone",
+   "fieldtype": "Data",
+   "label": "Patient Phone"
+  },
+  {
+   "fetch_from": "patient.email",
+   "fetch_if_empty": 1,
+   "fieldname": "patient_email",
+   "fieldtype": "Data",
+   "label": "Patient Email"
+  },
+  {
+   "fieldname": "reference_doctype",
+   "fieldtype": "Link",
+   "label": "Reference Doctype",
+   "options": "DocType",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reference_docname",
+   "fieldtype": "Dynamic Link",
+   "label": "Reference Docname",
+   "options": "reference_doctype",
+   "read_only": 1
   }
  ],
- "links": [],
- "modified": "2024-11-20 08:21:29.729408",
+ "grid_page_length": 50,
+ "links": [
+  {
+   "group": "Records",
+   "link_doctype": "Patient Encounter",
+   "link_fieldname": "appointment"
+  },
+  {
+   "group": "Records",
+   "link_doctype": "Vital Signs",
+   "link_fieldname": "appointment"
+  },
+  {
+   "group": "Records",
+   "link_doctype": "Patient Medical Record",
+   "link_fieldname": "reference_name"
+  }
+ ],
+ "modified": "2025-09-25 13:27:12.862039",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Patient Appointment",
@@ -470,6 +567,7 @@
   }
  ],
  "restrict_to_domain": "Healthcare",
+ "row_format": "Dynamic",
  "search_fields": "patient, practitioner, department, appointment_date, appointment_time",
  "show_name_in_global_search": 1,
  "sort_field": "modified",

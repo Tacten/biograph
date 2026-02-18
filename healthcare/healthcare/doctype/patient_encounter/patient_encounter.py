@@ -28,13 +28,19 @@ class PatientEncounter(Document):
 
 	def on_update(self):
 		if self.appointment:
-			frappe.db.set_value("Patient Appointment", self.appointment, "status", "Closed")
+			appointment = frappe.get_doc("Patient Appointment", self.appointment)
+			if appointment.status != "Closed":
+				appointment.status = "Closed"
+				appointment.flags.ignore_permissions = True
+				appointment.save()
+
 
 	def on_submit(self):
 		if self.therapies:
 			create_therapy_plan(self)
 		self.make_service_request()
 		self.make_medication_request()
+		self.update_patient_history()
 		# to save service_request name in prescription
 		self.save("Update")
 		self.db_set("status", "Completed")
@@ -158,7 +164,7 @@ class PatientEncounter(Document):
 			return
 
 		for therapy in self.therapies:
-			if therapy.no_of_sessions <= 0:
+			if not therapy.no_of_sessions or therapy.no_of_sessions <= 0:
 				frappe.throw(
 					_("Row #{0} (Therapies): Number of Sessions should be at least 1").format(therapy.idx)
 				)
@@ -320,34 +326,249 @@ class PatientEncounter(Document):
 			{
 				"patient": patient,
 			},
-			["posting_date", "note", "name", "practitioner", "user", "clinical_note_type"],
+			["modified","posting_date", "note", "name", "practitioner", "user", "clinical_note_type"],
 		)
 
+	def _copy_child_table_row(self, source_row):
+		"""Helper method to safely copy child table rows without ID conflicts"""
+		new_row = {}
+		for field in source_row.as_dict():
+			if field not in ["name", "owner", "creation", "modified", "modified_by", 
+							"parent", "parentfield", "parenttype", "idx", "docstatus"]:
+				new_row[field] = source_row.get(field)
+		return new_row
+
+	def load_history_from_patient(self):
+		"""
+		Fetch history data from Patient DocType and populate in the encounter
+		Only loads data from Patient -> Encounter, not the other way around
+		"""
+		if not self.patient:
+			return
+			
+		# Safety check - don't proceed if we already have data and this isn't forced
+		if (self.get("patient_madical_history") or self.get("patient_medication_history") or 
+			self.get("patient_surgery_history") or self.get("patient_surgery_history")) or self.get("social_history"):
+			return
+			
+		try:
+			# Get patient doc
+			patient = frappe.get_doc("Patient", self.patient)
+			
+			# Copy allergies text field
+			if patient.allergies:
+				self.allergies = patient.allergies
+			
+			if patient.surgical_history:
+				self.surgical_history = patient.surgical_history
+
+			if patient.medication:
+				self.medication = patient.medication
+			
+			# Clear existing tables before loading to avoid duplicates
+			self.set("patient_madical_history", [])
+			self.set("patient_medication_history", [])
+			self.set("patient_surgery_history", [])
+			self.set("patient_surgery_history", [])
+			
+			# Safely add comorbidities
+			if patient.get("patient_madical_history"):
+				for diag in patient.patient_madical_history:
+					if diag.get("diagnosis"):
+						self.append("patient_madical_history", {
+							"diagnosis": diag.diagnosis
+						})
+			
+			# Safely add medication history
+			# if patient.get("patient_medication_history"):
+			# 	for med in patient.patient_medication_history:
+			# 		if med.get("medication"):
+			# 			med_data = {
+			# 				"medication": med.medication
+			# 			}			
+			# 			# Copy optional fields if they exist
+			# 			optional_fields = ["dosage", "period", "status", "prescribed_by", "notes"]
+			# 			for field in optional_fields:
+			# 				if hasattr(med, field) and med.get(field):
+			# 					med_data[field] = med.get(field)
+			# 			self.append("patient_medication_history", med_data)
+			
+			# Safely add surgical history
+			# if patient.get("patient_surgery_history"):
+			# 	for surgery in patient.patient_surgery_history:
+			# 		if surgery.get("procedure_template"):
+			# 			surgery_data = {
+			# 				"procedure_template": surgery.procedure_template
+			# 			}
+			# 			# Copy optional fields if they exist
+			# 			optional_fields = ["procedure_date", "description", "status", 
+			# 							"practitioner", "medical_department", "notes"]
+			# 			for field in optional_fields:
+			# 				if hasattr(surgery, field) and surgery.get(field):
+			# 					surgery_data[field] = surgery.get(field)
+			# 			self.append("patient_surgery_history", surgery_data)
+			
+			# Safely add family history
+			if patient.get("family_medical_history"):
+				for diag in patient.family_medical_history:
+					if diag.get("diagnosis"):
+						self.append("family_medical_history", {
+							"diagnosis": diag.diagnosis
+						})
+			
+			# Ensure validation sees the changes
+			self._deduplicate_child_tables()
+			
+		except Exception as e:
+			frappe.log_error(f"Error loading history from patient: {str(e)}")
+			frappe.msgprint(_("Could not load patient history: {0}").format(str(e)), alert=True)
+
+	def update_patient_history(self):
+		"""
+		Update Patient DocType with history data from the encounter
+		This is only called during submit to ensure clean data
+		"""
+		if not self.patient:
+			return
+			
+		try:
+			# Get patient doc
+			patient = frappe.get_doc("Patient", self.patient)
+			
+			# Update allergies text field
+			if self.allergies:
+				patient.allergies = self.allergies
+
+			if self.surgical_history:
+				patient.surgical_history = self.surgical_history
+			
+			if self.medication:
+				patient.medication = self.medication
+			
+			# Update medical history / comorbidities (Patient Encounter Diagnosis)
+			if self.patient_madical_history:
+				# Clear existing comorbidities
+				patient.patient_madical_history = []
+				
+				# Add new records
+				for diag in self.patient_madical_history:
+					if diag.diagnosis:
+						patient.append("patient_madical_history", {
+							"diagnosis": diag.diagnosis
+						})
+
+			###
+			# Update medication history (Medication History Item)
+			# if self.patient_medication_history:
+			# 	# Clear existing medication history
+			# 	patient.patient_medication_history = []
+			# 	# Add new records
+			# 	for med in self.patient_medication_history:
+			# 		if med.medication:
+			# 			med_data = {
+			# 				"medication": med.medication
+			# 			}
+			# 			# Copy optional fields if they exist
+			# 			optional_fields = ["dosage", "period", "status", "prescribed_by", "notes"]
+			# 			for field in optional_fields:
+			# 				if hasattr(med, field) and getattr(med, field):
+			# 					med_data[field] = getattr(med, field)			
+			# 			patient.append("patient_medication_history", med_data)
+			###
+
+			###
+			# Update surgical history (Surgery History Item)
+			# if self.patient_surgery_history:
+			# 	# Clear existing surgical history
+			# 	patient.patient_surgery_history = []
+			# 	# Add new records
+			# 	for surgery in self.patient_surgery_history:
+			# 		if surgery.procedure_template:
+			# 			surgery_data = {
+			# 				"procedure_template": surgery.procedure_template
+			# 			}	
+			# 			# Copy optional fields if they exist
+			# 			optional_fields = ["procedure_date", "description", "status", 
+			# 							"practitioner", "medical_department", "notes"]
+			# 			for field in optional_fields:
+			# 				if hasattr(surgery, field) and getattr(surgery, field):
+			# 					surgery_data[field] = getattr(surgery, field)
+			# 			patient.append("patient_surgery_history", surgery_data)
+			###
+
+			# Update family history (Patient Encounter Diagnosis)
+			if self.family_medical_history:
+				# Clear existing family history
+				patient.family_medical_history = []
+				
+				# Add new records
+				for diag in self.family_medical_history:
+					if diag.diagnosis:
+						patient.append("family_medical_history", {
+							"diagnosis": diag.diagnosis
+						})
+			
+			# Save patient document with ignore_permissions
+			patient.save(ignore_permissions=True)
+			
+			frappe.msgprint(_("Patient history has been updated."), alert=True)
+			
+		except Exception as e:
+			frappe.log_error(f"Error updating patient history: {str(e)}")
+			frappe.msgprint(_("Error updating patient history: {0}").format(str(e)), alert=True)
+	
 	@frappe.whitelist()
-	def get_encounter_details(self):
-		medication_requests = []
-		service_requests = []
-		filters = {"patient": self.patient, "docstatus": 1}
-		medication_requests = frappe.get_all("Medication Request", filters, ["*"])
-		service_requests = frappe.get_all("Service Request", filters, ["*"])
-		for service_request in service_requests:
-			if service_request.template_dt == "Lab Test Template":
-				lab_test = frappe.db.get_value("Lab Test", {"service_request": service_request.name}, "name")
-				if lab_test:
-					subject = frappe.db.get_value(
-						"Patient Medical Record", {"reference_name": lab_test}, "subject"
-					)
-					if subject:
-						service_request["lab_details"] = subject
-		clinical_notes = frappe.get_all(
-			"Clinical Note",
-			{
-				"patient": self.patient,
-			},
-			["posting_date", "note"],
-		)
+	def load_patient_history(self):
+		"""
+		Manual method to reload patient history into the encounter
+		"""
+		# Clear existing values using frappe's proper method
+		self.set("patient_madical_history", [])
+		self.set("patient_medication_history", [])
+		self.set("patient_surgery_history", [])
+		self.set("family_medical_history", [])
+		
+		# Now load fresh data
+		self.load_history_from_patient()
+		return self
 
-		return medication_requests, service_requests, clinical_notes
+	def _deduplicate_child_tables(self):
+		"""Remove duplicate entries from child tables to prevent validation errors"""
+		for field in ["patient_madical_history", "patient_medication_history", 
+					 "patient_surgery_history", "family_medical_history"]:
+			if not self.get(field):
+				continue
+				
+			# Create a set to track unique values
+			unique_tracker = set()
+			items_to_remove = []
+			
+			# For each table, identify what makes a row unique and track duplicates
+			for i, item in enumerate(self.get(field)):
+				if field == "patient_madical_history" or field == "family_medical_history":
+					# For diagnosis tables, the diagnosis field is what makes it unique
+					unique_key = item.diagnosis if item.diagnosis else ""
+				elif field == "patient_medication_history":
+					# For medication history, the medication makes it unique
+					unique_key = item.medication if item.medication else ""
+				elif field == "patient_surgery_history":
+					# For surgery history, the procedure template makes it unique
+					unique_key = item.procedure_template if item.procedure_template else ""
+				else:
+					continue
+					
+				if not unique_key:
+					continue
+					
+				if unique_key in unique_tracker:
+					# This is a duplicate, mark for removal
+					items_to_remove.append(i)
+				else:
+					unique_tracker.add(unique_key)
+			
+			# Remove duplicates (in reverse order to not mess up indices)
+			for idx in reversed(items_to_remove):
+				self.get(field).pop(idx)
 
 
 @frappe.whitelist()
@@ -411,7 +632,12 @@ def create_therapy_plan(encounter):
 		for entry in encounter.therapies:
 			doc.append(
 				"therapy_plan_details",
-				{"therapy_type": entry.therapy_type, "no_of_sessions": entry.no_of_sessions},
+				{
+					"therapy_type": entry.therapy_type, 
+					"no_of_sessions": entry.no_of_sessions,
+					"no_of_days": entry.no_of_days,
+					"no_of_sessions_per_day": entry.no_of_sessions_per_day 
+				},
 			)
 		doc.save(ignore_permissions=True)
 		if doc.get("name"):
@@ -539,3 +765,216 @@ def create_service_request_from_widget(encounter, data, medication_request=False
 		order = encounter_doc.get_order_details(template, data)
 	order.insert(ignore_permissions=True, ignore_mandatory=True)
 	order.submit()
+
+
+@frappe.whitelist()
+def get_encounter_details(doc):
+	doc = json.loads(doc)
+	if doc.get("__islocal") == 0:
+		doc = frappe.get_doc(doc.doctype, doc.docname)
+	medication_requests = []
+	service_requests = []
+	filters = {"patient": doc.get("patient"), "docstatus": 1}
+	medication_requests = frappe.get_all("Medication Request", filters, ["*"])
+	service_requests = frappe.get_all("Service Request", filters, ["*"])
+	status_codes = frappe.db.get_all(
+		"Code Value",
+		filters={
+			"code_system": ["in", ["Request Status", "Medication Request Status"]],
+		},
+		fields=["name", "code_value", "display"],
+	)
+	status_code_map = get_value_map(status_codes)
+
+	for service_request in service_requests:
+		if service_request.template_dt == "Lab Test Template":
+			lab_test = frappe.db.get_value("Lab Test", {"service_request": service_request.name}, "name")
+			if lab_test:
+				subject = frappe.db.get_value(
+					"Patient Medical Record", {"reference_name": lab_test}, "subject"
+				)
+				if subject:
+					service_request["lab_details"] = subject
+	clinical_notes = frappe.get_all(
+		"Clinical Note", {"patient": doc.get("patient")}, ["posting_date", "note"]
+	)
+
+	return medication_requests, service_requests, clinical_notes, status_code_map
+
+
+def get_value_map(status_codes):
+	"""return a map, for example, {"name": "x", "code_value": "", "display": "1"} to {"x": "1"}"""
+	status_code_map = {
+		list(d.values())[0]: list(d.values())[2]  # display is preferred over code_value
+		if list(d.values())[2]
+		else list(d.values())[1]
+		for d in status_codes
+	}
+	return dict(status_code_map)
+
+
+@frappe.whitelist()
+def create_patient_referral(encounter, references):
+	if isinstance(references, str):
+		references = json.loads(references)
+
+	encounter_doc = frappe.get_doc("Patient Encounter", encounter)
+	for ref in references:
+		order = frappe.get_doc(
+			{
+				"doctype": "Service Request",
+				"order_date": encounter_doc.get("encounter_date"),
+				"order_time": encounter_doc.get("encounter_time"),
+				"company": encounter_doc.get("company"),
+				"status": "draft-Request Status",
+				"source_doc": "Patient Encounter",
+				"order_group": encounter,
+				"patient": encounter_doc.get("patient"),
+				"practitioner": encounter_doc.get("practitioner"),
+				"template_dt": "Appointment Type",
+				"template_dn": ref.get("appointment_type") or "Consultation",
+				"quantity": 1,
+				"order_description": ref.get("referral_note"),
+				"referred_to_practitioner": ref.get("refer_to"),
+			}
+		)
+		order.insert(ignore_permissions=True, ignore_mandatory=True)
+		order.submit()
+
+
+@frappe.whitelist()
+def get_encounter_details(doc):
+	doc = json.loads(doc)
+	if doc.get("__islocal") == 0:
+		doc = frappe.get_doc(doc.doctype, doc.docname)
+	medication_requests = []
+	service_requests = []
+	filters = {"patient": doc.get("patient"), "docstatus": 1}
+	medication_requests = frappe.get_all("Medication Request", filters, ["*"])
+	service_requests = frappe.get_all("Service Request", filters, ["*"])
+	status_codes = frappe.db.get_all(
+		"Code Value",
+		filters={
+			"code_system": ["in", ["Request Status", "Medication Request Status"]],
+		},
+		fields=["name", "code_value", "display"],
+	)
+	status_code_map = get_value_map(status_codes)
+
+	for service_request in service_requests:
+		if service_request.template_dt == "Lab Test Template":
+			lab_test = frappe.db.get_value("Lab Test", {"service_request": service_request.name}, "name")
+			if lab_test:
+				subject = frappe.db.get_value(
+					"Patient Medical Record", {"reference_name": lab_test}, "subject"
+				)
+				if subject:
+					service_request["lab_details"] = subject
+	clinical_notes = frappe.get_all(
+		"Clinical Note", {"patient": doc.get("patient")}, ["posting_date", "note"]
+	)
+
+	return medication_requests, service_requests, clinical_notes, status_code_map
+
+
+def get_value_map(status_codes):
+	"""return a map, for example, {"name": "x", "code_value": "", "display": "1"} to {"x": "1"}"""
+	status_code_map = {
+		list(d.values())[0]: list(d.values())[2]  # display is preferred over code_value
+		if list(d.values())[2]
+		else list(d.values())[1]
+		for d in status_codes
+	}
+	return dict(status_code_map)
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_filtered_advice_template(doctype, txt, searchfield, start, page_len, filters):
+	filters["symptoms"] = filters.get("doc").get("symptoms")
+	filters["diagnosis"] = filters.get("doc").get("diagnosis")
+	filters["department"] = filters.get("doc").get("medical_department")
+	
+	symptoms, diagnosis = [], []
+
+	if filters.get("symptoms"):
+		symptoms = [row["complaint"] for row in filters.get("symptoms")]
+
+	if filters.get("diagnosis"):
+		diagnosis = [row["diagnosis"] for row in filters.get("diagnosis")]
+
+	conditions = []
+
+	if symptoms:
+		formatted_symptoms = ", ".join([f'"{s}"' for s in symptoms])
+		symptoms_condition = f"pes.complaint in ({formatted_symptoms})"
+		conditions.append(symptoms_condition)
+
+	if diagnosis:
+		formatted_diagnosis = ", ".join([f'"{d}"' for d in diagnosis])
+		diagnosis_condition = f"ped.diagnosis in ({formatted_diagnosis})"
+		conditions.append(diagnosis_condition)
+	txt_conditions = []
+	if txt:
+		txt_conditions.append(f"ped.diagnosis like '%{txt}%' ")
+		txt_conditions.append(f"pes.complaint like '%{txt}%' ")
+		txt_conditions.append(f"dat.name like '%{txt}%' ")
+
+	department_condition = ''
+	if filters.get("department"):
+		department_condition += f" dat.medical_department = '{filters.get('department')}' and "
+
+	where_clause = f"{department_condition}"
+	where_clause += " OR ".join(conditions)
+	where_sql = f"WHERE {where_clause}" if conditions else ""
+	if txt_conditions:
+		where_sql += f" and ({'OR '.join(txt_conditions)} )"
+	
+	if filters.get("department") and (not where_sql or where_sql == ""):
+		where_sql = f" WHERE dat.medical_department = '{filters.get('department')}' "
+
+
+	result = frappe.db.sql(
+		f"""
+		SELECT DISTINCT dat.name, dat.medical_department, ped.diagnosis, pes.complaint
+		FROM `tabDoctor Advice Template` AS dat
+		LEFT JOIN `tabPatient Encounter Diagnosis` AS ped ON ped.parent = dat.name
+		LEFT JOIN `tabPatient Encounter Symptom` AS pes ON pes.parent = dat.name
+		{where_sql}
+		""", as_dict=1
+	)
+	if filters.get("department"):
+		md_wise_data = frappe.db.sql(f"""
+			Select dat.name, dat.medical_department
+			From `tabDoctor Advice Template` AS dat
+			Where dat.strictly_based_on_medical_department = 1 and dat.medical_department = '{filters.get("department")}'
+		""", as_dict=1)
+
+		if md_wise_data:
+			result = md_wise_data + result 
+
+	result_map = {}
+	DAT_LIST = []
+	for row in result:
+		if not result_map.get(row.name):
+			result_map[row.name] = row
+			DAT_LIST.append(row.name)
+		else:
+			result_map[row.name].update(row)
+
+	parent_list = []
+	for row in DAT_LIST:
+		child_list = []
+		if result_map.get(row):
+			if result_map.get(row).get("name"):
+				child_list.append(result_map.get(row).get("name"))
+			if result_map.get(row).get("medical_department"):
+				child_list.append(result_map.get(row).get("medical_department"))
+			if result_map.get(row).get("diagnosis"):
+				child_list.append(result_map.get(row).get("diagnosis"))
+			if result_map.get(row).get("complaint"):
+				child_list.append(result_map.get(row).get("complaint"))
+			parent_list.append(tuple(child_list))
+		result = tuple(parent_list)
+
+	return result

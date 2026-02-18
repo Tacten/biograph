@@ -9,24 +9,24 @@ on:
   workflow_dispatch:
 
 jobs:
-  stable-release:
+  create-stable-release:
     name: Release
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        version: ["14", "15"]
+        version: ["14", "15", "16"]
 
     steps:
       - uses: octokit/request-action@v2.x
         with:
           route: POST /repos/{owner}/{repo}/pulls
           owner: earthians
-          repo: marley
+          repo: biograph
           title: |-
             "chore: release v${{ matrix.version }}"
-          body: "Automated release."
+          body: "Automated Release."
           base: version-${{ matrix.version }}
           head: version-${{ matrix.version }}-hotfix
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.EARTHIANS_BOT_TOKEN }}

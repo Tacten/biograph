@@ -6,15 +6,24 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import flt, today
-
+import json
 from healthcare.healthcare.utils import validate_nursing_tasks
+from erpnext.stock.get_item_details import get_item_details, get_pos_profile
+from frappe.model.mapper import get_mapped_doc
+from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import get_income_account
+
 
 
 class TherapyPlan(Document):
 	def validate(self):
 		self.set_totals()
 		self.set_status()
-
+		
+	def after_insert(self):
+		get_invoiced_details(self)
+	
+	def on_update(self):
+		get_invoiced_details(self)
 	def on_submit(self):
 		validate_nursing_tasks(self)
 
@@ -39,6 +48,58 @@ class TherapyPlan(Document):
 		self.db_set("total_sessions", total_sessions)
 		self.db_set("total_sessions_completed", total_sessions_completed)
 
+		# for billing details
+		total_charges = 0
+		for row in self.therapy_plan_details:
+			doc = frappe.get_doc("Therapy Type", row.therapy_type)
+			if doc.is_billable:
+				no_of_sessions = row.no_of_sessions  or 0
+				total_charges += doc.rate * no_of_sessions
+		self.total_plan_amount = total_charges
+
+		invoices = frappe.db.sql("""
+			SELECT 
+				si.name, 
+				COALESCE(SUM(sii.amount), 0) AS therapy_amount
+			FROM `tabSales Invoice` si
+			LEFT JOIN `tabSales Invoice Item` sii 
+				ON sii.parent = si.name
+			WHERE 
+				si.docstatus = 1
+				AND sii.reference_dt = 'Therapy Plan'
+				AND sii.reference_dn = %(therapy_plan)s
+			GROUP BY si.name
+		""", {"therapy_plan": self.name}, as_dict=1)
+
+		therapy_sessions = frappe.db.get_list(
+			"Therapy Session", {"therapy_plan": self.name}, pluck="name"
+		)
+
+		if therapy_sessions:
+			condition = " AND sii.reference_dn in ({})".format(
+				",".join([frappe.db.escape(l) for l in therapy_sessions])
+			)
+
+			invoices += frappe.db.sql(f"""
+				SELECT 
+					si.name, 
+					COALESCE(SUM(sii.amount), 0) AS therapy_amount
+				FROM `tabSales Invoice` si
+				LEFT JOIN `tabSales Invoice Item` sii 
+					ON sii.parent = si.name
+				WHERE 
+					si.docstatus = 1
+					AND sii.reference_dt = 'Therapy Session'
+					{condition}
+				GROUP BY si.name
+			""", as_dict=1)
+
+
+		paid_amount = 0
+		for row in invoices:
+			paid_amount += row.therapy_amount
+		self.invoiced_amount = paid_amount
+
 	@frappe.whitelist()
 	def set_therapy_details_from_template(self):
 		# Add therapy types in the child table
@@ -53,6 +114,109 @@ class TherapyPlan(Document):
 		return self
 
 
+
+@frappe.whitelist()
+def get_invoiced_details(self, on_referesh = False):
+	if on_referesh:
+		self = frappe._dict(json.loads(self))
+	therapy_sessions = frappe.db.get_list(
+			"Therapy Session", {"therapy_plan": self.name}, pluck="name"
+		)
+	
+	condition = ''
+	if therapy_sessions:
+		condition += " OR sii.reference_dn in ({})".format(
+			",".join([frappe.db.escape(l) for l in therapy_sessions])
+		)
+
+	data = frappe.db.sql(f"""
+		Select si.name, si.grand_total, sum(sii.qty) as no_of_session, sii.item_code as service, sii.amount as paid_amount
+		From `tabSales Invoice` as si
+		Left Join `tabSales Invoice Item` as sii ON sii.parent = si.name
+		Where si.docstatus = 1 
+		and ((sii.reference_dt = 'Therapy Plan' and sii.reference_dn = '{self.name}')
+		 {condition})
+		Group By sii.item_code
+	""", as_dict=1)
+
+	total_amount = frappe.db.sql(f"""
+		SELECT 
+			si.name,
+			SUM(
+				sii.amount
+			) AS therapy_amount
+		FROM `tabSales Invoice` si
+		LEFT JOIN `tabSales Invoice Item` sii 
+			ON sii.parent = si.name
+		WHERE 
+			si.docstatus = 1 
+			AND (( sii.reference_dt = 'Therapy Plan' AND sii.reference_dn = %(therapy_plan)s )
+			{condition} )
+		GROUP BY si.name
+	""", {"therapy_plan": self.name}, as_dict=1)
+
+	grand_total = sum([row.therapy_amount for row in total_amount])
+
+	htmls = """
+		<h3>No of Invoiced Therapy Session</h3>
+		<table class="table">
+			<tr>
+				<th>
+					<p>Therapy Type</p>
+				</th>
+				<th>
+					<p>No of Session Invoiced</p>
+				</th>
+			</tr>
+		"""
+	for row in data:
+		htmls += """
+				<tr>
+					<td>
+						{0}
+					</td>
+					<td>
+						{1}
+					</td>
+				</tr>
+
+		""".format(row.service, row.no_of_session)
+	htmls += "</table>"
+	no_of_session = sum([row.no_of_session for row in data])
+
+	return  { "html" : htmls , "data" : str(data), "grand_total" : grand_total, "no_of_session" : no_of_session}
+
+
+@frappe.whitelist()
+def get_services_details(self):
+	doc = json.loads(self)
+	therapy_data  = []
+	invoice_json = get_invoiced_details(self, on_referesh=True)
+
+	if invoice_json.get("data"):
+		invoiced_data = eval(invoice_json.get("data"))
+
+		for row in doc.get('therapy_plan_details'):
+			
+			session = 0
+			for d in invoiced_data:
+				if frappe.db.get_value("Therapy Type", row.get("therapy_type"), "item") == d.get("service"):
+					session += d.get("no_of_session")
+			if (row.get("no_of_sessions") - session) > 0:
+				therapy_data.append({
+					"therapy_type" : row.get("therapy_type"),
+					"sessions" : row.get("no_of_sessions") - session
+				})
+	else:
+		for row in doc.get('therapy_plan_details'):
+			if (row.get("no_of_sessions") > 0 ):
+				therapy_data.append({
+					"therapy_type" : row.get("therapy_type"),
+					"sessions" : row.get("no_of_sessions")
+				})
+	return therapy_data
+
+	
 @frappe.whitelist()
 def make_therapy_session(therapy_plan, patient, therapy_type, company, appointment=None):
 	therapy_type = frappe.get_doc("Therapy Type", therapy_type)
@@ -78,38 +242,96 @@ def make_therapy_session(therapy_plan, patient, therapy_type, company, appointme
 
 
 @frappe.whitelist()
-def make_sales_invoice(reference_name, patient, company, therapy_plan_template):
+def make_sales_invoice(reference_name, patient, company, items, therapy_plan_template=None):
 	from erpnext.stock.get_item_details import get_item_details
 
 	si = frappe.new_doc("Sales Invoice")
 	si.company = company
 	si.patient = patient
 	si.customer = frappe.db.get_value("Patient", patient, "customer")
+	si.ref_practitioner = frappe.db.get_value("Therapy Plan", reference_name, "practitioner")
 
-	item = frappe.db.get_value("Therapy Plan Template", therapy_plan_template, "linked_item")
+	# if therapy_plan_template:
+	# 	item = frappe.db.get_value("Therapy Plan Template", therapy_plan_template, "linked_item")
 	price_list, price_list_currency = frappe.db.get_values(
 		"Price List", {"selling": 1}, ["name", "currency"]
 	)[0]
-	args = {
-		"doctype": "Sales Invoice",
-		"item_code": item,
-		"company": company,
-		"customer": si.customer,
-		"selling_price_list": price_list,
-		"price_list_currency": price_list_currency,
-		"plc_conversion_rate": 1.0,
-		"conversion_rate": 1.0,
-	}
+	
+	items =  eval(items)
 
-	item_line = si.append("items", {})
-	item_details = get_item_details(args)
-	item_line.item_code = item
-	item_line.qty = 1
-	item_line.rate = item_details.price_list_rate
-	item_line.amount = flt(item_line.rate) * flt(item_line.qty)
-	item_line.reference_dt = "Therapy Plan"
-	item_line.reference_dn = reference_name
-	item_line.description = item_details.description
+	for row in items:
+		args = {
+			"doctype": "Sales Invoice",
+			"item_code": frappe.db.get_value("Therapy Type", row.get("therapy_type"), "item"),
+			"company": company,
+			"customer": si.customer,
+			"selling_price_list": price_list,
+			"price_list_currency": price_list_currency,
+			"plc_conversion_rate": 1.0,
+			"conversion_rate": 1.0,
+			"income_account": get_income_account(si.ref_practitioner, company)
+		}
 
+		item_details = get_item_details(args)
+		si.append("items", {
+			"item_code" : frappe.db.get_value("Therapy Type", row.get("therapy_type"), "item"),
+			"qty" : row.get("sessions"),
+			"rate": item_details.price_list_rate,
+			"amount" : flt(item_details.price_list_rate) * flt(row.get("sessions")),
+			"reference_dt" : "Therapy Plan",
+			"reference_dn" : reference_name,
+			"description" : item_details.description,
+			"income_account": get_income_account(si.ref_practitioner, company)
+		})
+		
 	si.set_missing_values(for_validate=True)
 	return si
+
+@frappe.whitelist()
+def get_invoice_details(therapy_plan):
+	invoices = frappe.db.sql("""
+		SELECT
+			SUM(si.grand_total - si.outstanding_amount) AS paid_amount,
+			si.name
+		FROM `tabSales Invoice` si
+		WHERE 
+			si.docstatus = 1
+			AND si.name IN (
+				SELECT DISTINCT parent
+				FROM `tabSales Invoice Item`
+				WHERE reference_dt = 'Therapy Plan'
+					AND reference_dn = %(therapy_plan)s
+			)
+		GROUP BY si.name
+	""", {"therapy_plan": therapy_plan}, as_dict=1)
+
+	paid_amount = sum([row.paid_amount for row in invoices])
+	return {'total_invoiced': paid_amount, 'unpaid_amount': 0, 'paid_amount': paid_amount }
+
+@frappe.whitelist()
+def make_patient_appointment(source_name, target_doc=None):
+	def set_missing_values(source, target):
+		target.appointment_type = "Therapy Session"
+		target.patient_phone = frappe.db.get_value("Patient", target.patient, "mobile") or frappe.db.get_value("Patient", target.patient, "phone")
+		target.patient_email = frappe.db.get_value("Patient", target.patient, "email") 
+	
+	doc = get_mapped_doc(
+		"Therapy Plan",
+		source_name,
+		{
+			"Therapy Plan": {
+				"doctype": "Patient Appointment",
+				"field_map": {"name" :"therapy_plan" },
+				"field_no_map": ["practitioner"],
+			},
+			"Therapy Plan Detail" : {
+				"doctype" : "Patient Appointment Therapy",
+				"field_map": {"custom_default_duration" :"duration" },
+				"condition": lambda doc: abs(doc.no_of_sessions) > (doc.sessions_completed)
+			}	
+		},
+		target_doc,
+		set_missing_values,
+	)
+
+	return doc

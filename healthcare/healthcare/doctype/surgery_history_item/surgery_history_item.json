@@ -1,0 +1,78 @@
+{
+ "actions": [],
+ "creation": "2023-08-15 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "procedure_template",
+  "procedure_date",
+  "description",
+  "column_break_4",
+  "status",
+  "practitioner",
+  "medical_department",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "procedure_template",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Procedure Template",
+   "options": "Clinical Procedure Template",
+   "reqd": 1
+  },
+  {
+   "fieldname": "procedure_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Procedure Date"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Completed\nScheduled\nNot Required\nCancelled"
+  },
+  {
+   "fieldname": "practitioner",
+   "fieldtype": "Link",
+   "label": "Healthcare Practitioner",
+   "options": "Healthcare Practitioner"
+  },
+  {
+   "fieldname": "medical_department",
+   "fieldtype": "Link",
+   "label": "Medical Department",
+   "options": "Medical Department"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Text",
+   "label": "Notes"
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2023-08-15 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Healthcare",
+ "name": "Surgery History Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+} 

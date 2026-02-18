@@ -41,6 +41,7 @@
   "medical_coding_section",
   "codification_table",
   "sb_refs",
+  "column_break_34",
   "service_request",
   "invoiced",
   "prescription",
@@ -280,6 +281,10 @@
    "read_only": 1
   },
   {
+   "fieldname": "column_break_34",
+   "fieldtype": "Column Break"
+  },
+  {
    "allow_on_submit": 1,
    "fieldname": "title",
    "fieldtype": "Data",
@@ -305,10 +310,9 @@
    "fieldname": "service_request",
    "fieldtype": "Link",
    "label": "Service Request",
-   "no_copy": 1,
    "options": "Service Request",
-   "print_hide": 1,
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "is_submittable": 1,
@@ -318,7 +322,7 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2023-04-06 04:08:43.588359",
+ "modified": "2025-12-25 09:36:38.342353",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Clinical Procedure",
@@ -354,7 +358,8 @@
   }
  ],
  "restrict_to_domain": "Healthcare",
- "sort_field": "modified",
+ "row_format": "Dynamic",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "title_field": "title",

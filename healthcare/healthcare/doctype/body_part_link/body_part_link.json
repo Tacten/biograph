@@ -19,14 +19,16 @@
  ],
  "istable": 1,
  "links": [],
- "modified": "2020-04-10 12:25:23.101749",
+ "modified": "2025-12-25 09:36:42.125634",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Body Part Link",
  "owner": "Administrator",
  "permissions": [],
  "quick_entry": 1,
- "sort_field": "modified",
+ "row_format": "Dynamic",
+ "sort_field": "creation",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

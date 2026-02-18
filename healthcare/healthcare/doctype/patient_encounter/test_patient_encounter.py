@@ -1,15 +1,17 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
 
 import frappe
-from frappe.tests.utils import FrappeTestCase
+from frappe.tests import IntegrationTestCase
 
+from healthcare.healthcare.doctype.patient_appointment.test_patient_appointment import (
+	create_appointment_type,
+)
 from healthcare.healthcare.doctype.patient_encounter.patient_encounter import PatientEncounter
 
 
-class TestPatientEncounter(FrappeTestCase):
+class TestPatientEncounter(IntegrationTestCase):
 	def setUp(self):
 		try:
 			gender_m = frappe.get_doc({"doctype": "Gender", "gender": "MALE"}).insert()
@@ -76,6 +78,7 @@ class TestPatientEncounter(FrappeTestCase):
 				"doctype": "Patient Encounter",
 				"patient": self.patient_male.name,
 				"practitioner": self.practitioner.name,
+				"appointment_type": create_appointment_type().name,
 			}
 		).insert()
 		plans = PatientEncounter.get_applicable_treatment_plans(encounter.as_dict())
@@ -86,6 +89,7 @@ class TestPatientEncounter(FrappeTestCase):
 				"doctype": "Patient Encounter",
 				"patient": self.patient_female.name,
 				"practitioner": self.practitioner.name,
+				"appointment_type": create_appointment_type().name,
 			}
 		).insert()
 		plans = PatientEncounter.get_applicable_treatment_plans(encounter.as_dict())

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2020, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
@@ -24,7 +23,16 @@ class TherapyType(Document):
 		create_item_from_therapy(self)
 
 	def on_update(self):
-		if self.change_in_item:
+		doc_before_save = self.get_doc_before_save()
+		if not doc_before_save:
+			return
+		if (
+			doc_before_save.rate != self.rate
+			or doc_before_save.is_billable != self.is_billable
+			or doc_before_save.item_group != self.item_group
+			or doc_before_save.description != self.description
+			or doc_before_save.get("gst_hsn_code") != self.get("gst_hsn_code")
+		):
 			self.update_item_and_item_price()
 
 	def enable_disable_item(self):
@@ -37,12 +45,13 @@ class TherapyType(Document):
 	def update_item_and_item_price(self):
 		if self.is_billable and self.item:
 			item_doc = frappe.get_doc("Item", {"item_code": self.item})
-			item_doc.item_name = self.item_name
-			item_doc.item_group = self.item_group
-			item_doc.description = self.description
-			item_doc.disabled = 0
-			item_doc.ignore_mandatory = True
-			item_doc.save(ignore_permissions=True)
+			if item_doc:
+				item_doc.item_name = self.item_name
+				item_doc.item_group = self.item_group
+				item_doc.description = self.description
+				item_doc.disabled = 0
+				item_doc.ignore_mandatory = True
+				item_doc.save(ignore_permissions=True)
 
 			if self.rate:
 				if frappe.db.exists("Item Price", {"item_code": self.item}):
@@ -56,8 +65,6 @@ class TherapyType(Document):
 
 		elif not self.is_billable and self.item:
 			frappe.db.set_value("Item", self.item, "disabled", 1)
-
-		self.db_set("change_in_item", 0)
 
 	@frappe.whitelist()
 	def add_exercises(self):
@@ -131,3 +138,26 @@ def change_item_code_from_therapy(item_code, doc):
 		rename_doc("Item", doc.item, item_code, ignore_permissions=True)
 		frappe.db.set_value("Therapy Type", doc.name, "item_code", item_code)
 	return
+
+@frappe.whitelist()
+def get_item_details(args=None):
+	if not isinstance(args, dict):
+		args = json.loads(args)
+
+	item = frappe.db.get_all(
+		"Item", filters={"disabled": 0, "name": args.get("item_code")}, fields=["stock_uom", "item_name"]
+	)
+
+	if not item:
+		frappe.throw(_("Item {0} is not active").format(args.get("item_code")))
+
+	item = item[0]
+	ret = {
+		"uom": item.stock_uom,
+		"stock_uom": item.stock_uom,
+		"item_name": item.item_name,
+		"qty": 1,
+		"transfer_qty": 0,
+		"conversion_factor": 1,
+	}
+	return ret

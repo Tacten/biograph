@@ -43,36 +43,8 @@ frappe.ui.form.on('Therapy Type', {
 			frm.set_value('item_code', frm.doc.therapy_type);
 		if (!frm.doc.description)
 			frm.set_value('description', frm.doc.therapy_type);
-		mark_change_in_item(frm);
 	},
-
-	rate: function(frm) {
-		mark_change_in_item(frm);
-	},
-
-	is_billable: function (frm) {
-		mark_change_in_item(frm);
-	},
-
-	item_group: function(frm) {
-		mark_change_in_item(frm);
-	},
-
-	description: function(frm) {
-		mark_change_in_item(frm);
-	},
-
-	medical_department: function(frm) {
-		mark_change_in_item(frm);
-	},
-
 });
-
-let mark_change_in_item = function(frm) {
-	if (!frm.doc.__islocal) {
-		frm.doc.change_in_item = 1;
-	}
-};
 
 let change_template_code = function(doc) {
 	let d = new frappe.ui.Dialog({
@@ -111,3 +83,55 @@ let change_template_code = function(doc) {
 		'item_code': doc.item_code
 	});
 };
+
+
+frappe.ui.form.on('Clinical Procedure Item', {
+	qty: function (frm, cdt, cdn) {
+		let d = locals[cdt][cdn];
+		frappe.model.set_value(cdt, cdn, 'transfer_qty', d.qty * d.conversion_factor);
+		console.log(d.qty, d.conversion_factor, d.transfer_qty);
+	},
+
+	uom: function (doc, cdt, cdn) {
+		let d = locals[cdt][cdn];
+		if (d.uom && d.item_code) {
+			return frappe.call({
+				method: 'erpnext.stock.doctype.stock_entry.stock_entry.get_uom_details',
+				args: {
+					item_code: d.item_code,
+					uom: d.uom,
+					qty: d.qty
+				},
+				callback: function (r) {
+					if (r.message) {
+						frappe.model.set_value(cdt, cdn, r.message);
+					}
+				}
+			});
+		}
+	},
+
+	item_code: function (frm, cdt, cdn) {
+		let d = locals[cdt][cdn];
+		if (d.item_code) {
+			let args = {
+				'item_code': d.item_code,
+				'transfer_qty': d.transfer_qty,
+				'quantity': d.qty
+			};
+			return frappe.call({
+				method: 'healthcare.healthcare.doctype.therapy_type.therapy_type.get_item_details',
+				args: { args: args },
+				callback: function (r) {
+					if (r.message) {
+						let d = locals[cdt][cdn];
+						$.each(r.message, function (k, v) {
+							d[k] = v;
+						});
+						refresh_field('items');
+					}
+				}
+			});
+		}
+	}
+});

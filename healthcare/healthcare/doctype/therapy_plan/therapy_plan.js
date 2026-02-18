@@ -3,16 +3,54 @@
 
 frappe.ui.form.on('Therapy Plan', {
 	setup: function(frm) {
-		frm.get_field('therapy_plan_details').grid.editable_fields = [
-			{fieldname: 'therapy_type', columns: 6},
-			{fieldname: 'no_of_sessions', columns: 2},
-			{fieldname: 'sessions_completed', columns: 2}
+        console.log("setup")
+		let value = [
+				{
+					"fieldname": "therapy_type",
+					"columns": 2
+				},
+				{
+					"fieldname": "no_of_days",
+					"columns": 2
+				},
+				{
+					"fieldname": "no_of_sessions_per_day",
+					"columns": 2
+				},
+				{
+					"fieldname": "no_of_sessions",
+					"columns": 2
+				},
+				{fieldname: 'sessions_completed', columns: 2}
 		];
+		frappe.model.user_settings.save("Therapy Plan Detail", "GridView", null).then((r) => {
+			frappe.model.user_settings["Therapy Plan Detail"] = r.message || r;
+		});
+		frappe.model.user_settings.save("Therapy Plan Detail", "GridView", value).then((r) => {
+			frappe.model.user_settings["Therapy Plan Detail"] = r.message || r;
+		});
 	},
-
+	onload:(frm)=>{
+		if(!frm.doc.__islocal){
+			frappe.call({
+				method : "healthcare.healthcare.doctype.therapy_plan.therapy_plan.get_invoiced_details",
+				args : {
+					self : frm.doc,
+					on_referesh : true
+				},
+				callback:(r)=>{
+					frm.set_df_property("invoice_details", "options", r.message.html)
+					frm.refresh_field("invoice_json")
+				}
+			})
+		}
+	},
 	refresh: function(frm) {
+		frm.refresh_field("invoice_json")
 		if (!frm.doc.__islocal) {
+			frm.dashboard.refresh()
 			frm.trigger('show_progress_for_therapies');
+			frm.trigger('prepare_dashboard');
 			if (frm.doc.status != 'Completed') {
 				let therapy_types = (frm.doc.therapy_plan_details || []).map(function(d){ return d.therapy_type; });
 				const fields = [{
@@ -49,14 +87,39 @@ frappe.ui.form.on('Therapy Plan', {
 					}, __('Select Therapy Type'), __('Create'));
 				}, __('Create'));
 			}
-
-			if (frm.doc.therapy_plan_template && !frm.doc.invoiced) {
+			
+			if (frm.doc.total_sessions  > frm.doc.total_invoiced_session){
 				frm.add_custom_button(__('Sales Invoice'), function() {
-					frm.trigger('make_sales_invoice');
+						frm.trigger('make_sales_invoice');
+					}, __('Create'));
+			}
+			if(frm.doc.status != "Completed"){
+				frm.add_custom_button(__('Patient Appointment'), function() {
+					frm.trigger('make_patient_appointment');
 				}, __('Create'));
 			}
+			frm.add_custom_button(__("Clinical Note"), function() {
+				frappe.route_options = {
+					"patient": frm.doc.patient,
+					"reference_doc": "Therapy Plan",
+					"reference_name": frm.doc.name,
+					"practitioner": frm.doc.practitioner
+				}
+				frappe.new_doc("Clinical Note");
+			},__('Create'));
+			
+			document.querySelectorAll('button[data-doctype="Therapy Session"]').forEach(btn => {
+				btn.style.display = 'none';
+			});
+			document.querySelectorAll('button[data-doctype="Patient Appointment"]').forEach(btn => {
+				btn.style.display = 'none';
+			});
+			document.querySelectorAll('button[data-doctype="Sales Invoice"]').forEach(btn => {
+				btn.style.display = 'none';
+			});
+			
 		}
-
+		
 		if (frm.doc.therapy_plan_template) {
 			frm.fields_dict.therapy_plan_details.grid.update_docfield_property(
 				'therapy_type', 'read_only', 1
@@ -65,22 +128,87 @@ frappe.ui.form.on('Therapy Plan', {
 				'no_of_sessions', 'read_only', 1
 			);
 		}
+		if(!frm.is_new() && !frm.__islocal){
+			frm.trigger("create_reurring_appointments")
+		}
 	},
-
+	create_reurring_appointments: function(frm){
+		if(!frm.is_new() && !frm.__islocal){
+			frm.add_custom_button(__("Repeat Appointment"), ()=>{
+				if(frm.doc.__unsaved){
+					frappe.msgprint("First save the document")
+					return
+				}
+				window.show_recurring_dialog(frm.doc)
+			})
+		}
+	},
 	make_sales_invoice: function(frm) {
-		frappe.call({
-			args: {
-				'reference_name': frm.doc.name,
-				'patient': frm.doc.patient,
-				'company': frm.doc.company,
-				'therapy_plan_template': frm.doc.therapy_plan_template
+		let fields_ = [
+			{
+				"fieldname" : "therapy_type",
+				"label" : "Therapy Type",
+				"fieldtype" : "Link",
+				"options" : "Therapy Type",
+				"read_only" : 1,
+				"in_list_view" :1
 			},
-			method: 'healthcare.healthcare.doctype.therapy_plan.therapy_plan.make_sales_invoice',
-			callback: function(r) {
-				var doclist = frappe.model.sync(r.message);
-				frappe.set_route('Form', doclist[0].doctype, doclist[0].name);
+			{
+				"fieldname" : "sessions",
+				"label" : "Sessions",
+				"fieldtype" : "Int",
+				"in_list_view" :1
 			}
-		});
+		]
+		
+		frappe.call({
+			method : "healthcare.healthcare.doctype.therapy_plan.therapy_plan.get_services_details",
+			args : {
+				'self' : frm.doc
+			},
+			callback:(r)=>{
+				let data = r.message
+				let dialog = new frappe.ui.Dialog({
+					title: __("Update Items"),
+					size: "extra-large",
+					fields: [
+						{
+							fieldname: "item",
+							fieldtype: "Table",
+							label: "Billing For",
+							cannot_add_rows: true,
+							in_place_edit: false,
+							data: data,
+							get_data: () => {
+								return data;
+							},
+							fields: fields_,
+						},
+					],
+					primary_action: function () {
+						frappe.call({
+							args: {
+								'reference_name': frm.doc.name,
+								'patient': frm.doc.patient,
+								'company': frm.doc.company,
+								'items' : dialog.get_value("item"),
+								'therapy_plan_template': frm.doc.therapy_plan_template,
+
+							},
+							method: 'healthcare.healthcare.doctype.therapy_plan.therapy_plan.make_sales_invoice',
+							callback: function(r) {
+								var doclist = frappe.model.sync(r.message);
+								frappe.set_route('Form', doclist[0].doctype, doclist[0].name);
+							}
+						});
+					},
+					primary_action_label: __("Create"),
+				})
+				dialog.show();
+			}
+		})
+		
+		
 	},
 
 	therapy_plan_template: function(frm) {
@@ -119,15 +247,73 @@ frappe.ui.form.on('Therapy Plan', {
 		message = title;
 		frm.dashboard.add_progress(__('Status'), bars, message);
 	},
+	prepare_dashboard : (frm)=>{
+		frappe.call({
+			method : "healthcare.healthcare.doctype.therapy_plan.therapy_plan.get_invoice_details",
+			args : {
+				therapy_plan : frm.doc.name
+			},
+			callback :(r)=>{
+				if (r.message){
+					frm.dashboard.refresh()
+					let not_invoiced = frm.doc.total_plan_amount - frm.doc.invoiced_amount
+					frm.dashboard.add_indicator(`<b>Total Plan Amount :&nbsp;</b> ₹ ${frm.doc.total_plan_amount || 0}`, "blue");
+					frm.dashboard.add_indicator(`<b>Plan Paid Amount :&nbsp;</b> ₹ ${r.message.paid_amount || 0}`, "green");
+					frm.dashboard.add_indicator(`<b>Plan Unpaid Amount :&nbsp;</b> ₹ ${frm.doc.total_plan_amount - r.message.paid_amount || 0}`, "orange");
+					document.querySelectorAll('.col-sm-3.indicator-column').forEach(function(el) {
+						el.classList.remove('col-sm-3');
+						el.classList.add('col-4', 'mb-4');
+					});
+					frm.trigger('show_progress_for_therapies');
+				}
+			}
+		})
+	},
+	make_patient_appointment : (frm)=>{
+		frappe.model.open_mapped_doc({
+			method: "healthcare.healthcare.doctype.therapy_plan.therapy_plan.make_patient_appointment",
+			frm: cur_frm,
+		});
+	}
 });
 
 frappe.ui.form.on('Therapy Plan Detail', {
-	no_of_sessions: function(frm) {
-		let total = 0;
-		$.each(frm.doc.therapy_plan_details, function(_i, e) {
-			total += e.no_of_sessions;
-		});
-		frm.set_value('total_sessions', total);
-		refresh_field('total_sessions');
-	}
+	// no_of_sessions: function(frm) {
+	// 	let total = 0;
+	// 	$.each(frm.doc.therapy_plan_details, function(_i, e) {
+	// 		total += e.no_of_sessions;
+	// 	});
+	// 	frm.set_value('total_sessions', total);
+	// 	refresh_field('total_sessions');
+	// },
+	no_of_days:(frm, cdt, cdn)=>{
+        let d = locals[cdt][cdn]
+		if(d.no_of_days < 1){
+			frappe.model.set_value(cdt, cdn, 'no_of_days', '')
+		}
+        if(d['no_of_days'] && d['no_of_sessions_per_day']){
+            frappe.model.set_value(cdt, cdn, 'no_of_sessions', d.no_of_days * d.no_of_sessions_per_day)
+            frm.refresh_field("therapies")
+        }else{
+			frappe.model.set_value(cdt, cdn, 'no_of_sessions','')
+            frm.refresh_field("therapies")	
+		}
+    },
+    no_of_sessions_per_day:(frm, cdt, cdn)=>{
+        let d = locals[cdt][cdn]
+		if(d.no_of_sessions_per_day < 1){
+			frappe.model.set_value(cdt, cdn, 'no_of_sessions_per_day', '')
+		}
+        if(d['no_of_days'] && d['no_of_sessions_per_day']){
+            frappe.model.set_value(cdt, cdn, 'no_of_sessions', d.no_of_days * d.no_of_sessions_per_day)
+            frm.refresh_field("therapies")
+        }else{
+			frappe.model.set_value(cdt, cdn, 'no_of_sessions', '')
+            frm.refresh_field("therapies")	
+		}
+    }
 });
+
+function callback(r){
+	return r.message
+} 

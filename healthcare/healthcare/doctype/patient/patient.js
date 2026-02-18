@@ -61,8 +61,81 @@ frappe.ui.form.on('Patient', {
 		} else {
 			$(frm.fields_dict['age_html'].wrapper).html('');
 		}
-	}
+	},
+	validate:(frm)=>{
+		if(frm.is_dirty()){
+			let missing = []
+			cur_frm.fields.forEach(r=>{ 
+				if(r.df.reqd && !frm.doc[r.df.fieldname] && !r.df.hidden){
+					missing.push(r.df.label)
+				}
+			})
+			message = __("Mandatory fields required in {0}", [__(frm.doc.doctype)]);
+
+			message = message + "<br><br><ul><li>" + missing.join("</li><li>") + "</ul>";
+			console.log(missing)
+			if (missing.length){
+				frappe.throw({
+					message: message,
+					indicator: "red",
+					title: __("Missing Fields"),
+				});
+			}
+		}
+	},
+	before_save: function(frm) {
+		// Client-side validation to check for duplicates before saving
+		if (frm.is_new()) {
+			return new Promise((resolve, reject) => {
+				frappe.call({
+					method: "healthcare.healthcare.utils.check_patient_duplicates",
+					args: {
+						patient: frm.doc
+					},
+					callback: function(r) {
+						if (r.message && r.message.status === "warn") {
+							show_duplicate_warning(frm, r.message, resolve, reject);
+						} else if (r.message && r.message.status === "disallow") {
+							show_duplicate_error(frm, r.message);
+							reject();
+						} else {
+							resolve();
+						}
+					}
+				});
+			});
+		}
+	},
+	
+	mobile : function (frm) {
+		let field_value = frm.doc.mobile;
+        if (field_value && /[a-zA-Z]/.test(field_value)) {
+            frappe.throw(__('Only numbers are allowed in the Mobile No field.'));
+        }
+	},
+	phone : function (frm) {
+		let field_value = frm.doc.phone;
+        if (field_value && /[a-zA-Z]/.test(field_value)) {
+            frappe.throw(__('Only numbers are allowed in the Phone No field.'));
+        }
+	},
+
+	first_name: function (frm) {
+        if (frm.doc.first_name) {
+            frm.set_value('first_name', capitalizeWords(frm.doc.first_name));
+        }
+    },
+
+	last_name: function (frm) {
+        if (frm.doc.last_name) {
+            frm.set_value('last_name', capitalizeWords(frm.doc.last_name));
+        }
+    },
 });
+
+function capitalizeWords(name) {
+    return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+}
 
 frappe.ui.form.on('Patient', 'dob', function(frm) {
 	if (frm.doc.dob) {
@@ -136,11 +209,94 @@ let invoice_registration = function (frm) {
 		method: 'invoice_patient_registration',
 		callback: function(data) {
 			if (!data.exc) {
-				if (data.message.invoice) {
-					frappe.set_route('Form', 'Sales Invoice', data.message.invoice);
+				if (data.message) {
+					var doc = frappe.model.sync(data.message);
+					frappe.set_route("Form", doc[0].doctype, doc[0].name);
 				}
-				cur_frm.reload_doc();
 			}
 		}
 	});
 };
+
+// Functions for handling duplicate patients
+function show_duplicate_warning(frm, data, resolve, reject) {
+	// Create a dialog showing potential duplicates
+	let d = new frappe.ui.Dialog({
+		title: __('Potential Duplicate Patient Records Found'),
+		fields: [
+			{
+				fieldtype: 'HTML',
+				fieldname: 'duplicate_list',
+				options: get_duplicate_html(data.matches)
+			}
+		],
+		primary_action_label: __('Create New Patient Anyway'),
+		primary_action: function() {
+			d.hide();
+			if (resolve) resolve();
+		},
+		secondary_action_label: __('Cancel'),
+		secondary_action: function() {
+			d.hide();
+			if (reject) reject();
+		}
+	});
+	
+	d.show();
+}
+
+function show_duplicate_error(frm, data) {
+	// Create a dialog showing duplicates that prevent creation
+	let d = new frappe.ui.Dialog({
+		title: __('Duplicate Patient Records Found'),
+		fields: [
+			{
+				fieldtype: 'HTML',
+				fieldname: 'duplicate_list',
+				options: get_duplicate_html(data.matches)
+			}
+		],
+		primary_action_label: __('View Existing Patient'),
+		primary_action: function() {
+			if (data.matches && data.matches.length) {
+				frappe.set_route('Form', 'Patient', data.matches[0].name);
+			}
+			d.hide();
+		},
+		secondary_action_label: __('OK'),
+		secondary_action: function() {
+			d.hide();
+		}
+	});
+	
+	d.show();
+}
+
+function get_duplicate_html(matches) {
+	// Generate HTML table of matches
+	let html = `<div class="results">
+		<table class="table table-bordered" style="margin-top: 15px;">
+			<thead>
+				<tr>
+					<th style="width: 20%">${__('Patient ID')}</th>
+					<th style="width: 30%">${__('Patient Name')}</th>
+					<th style="width: 15%">${__('Gender')}</th>
+					<th style="width: 15%">${__('Date of Birth')}</th>
+					<th style="width: 20%">${__('Mobile')}</th>
+				</tr>
+			</thead>
+			<tbody>`;
+	
+	matches.forEach(function(match) {
+		html += `<tr>
+			<td><a href="#Form/Patient/${match.name}">${match.name}</a></td>
+			<td>${match.patient_name || ''}</td>
+			<td>${match.sex || ''}</td>
+			<td>${match.dob ? frappe.datetime.str_to_user(match.dob) : ''}</td>
+			<td>${match.mobile || ''}</td>
+		</tr>`;
+	});
+	
+	html += `</tbody></table></div>`;
+	return html;
+}

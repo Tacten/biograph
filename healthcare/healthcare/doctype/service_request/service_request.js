@@ -11,7 +11,8 @@ frappe.ui.form.on('Service Request', {
 				"Clinical Procedure Template",
 				"Appointment Type",
 				"Observation Template",
-				"Healthcare Activity"];
+				"Healthcare Activity",
+				"Healthcare Practitioner"];
 			return {
 				filters: {
 					name: ['in', order_template_doctypes]
@@ -96,6 +97,26 @@ frappe.ui.form.on('Service Request', {
 				frm.trigger('make_observation');
 			}, __('Create'));
 
+		} else if (frm.doc.template_dt === "Appointment Type") {
+			frm.add_custom_button(__("Appointment"), function () {
+				frappe.db.get_value("Patient Appointment", { service_request: frm.doc.name, status: ["!=", "Cancelled"] }, "name")
+					.then(r => {
+						if (Object.keys(r.message).length == 0) {
+							frappe.model.open_mapped_doc({
+								method: "healthcare.healthcare.doctype.service_request.service_request.make_appointment",
+								frm: frm,
+							});
+						} else {
+							if (r.message && r.message.name) {
+								frappe.set_route("Form", "Patient Appointment", r.message.name);
+								frappe.show_alert({
+									message: __("Patient Appointment is already created"),
+									indicator: "info",
+								});
+							}
+						}
+					})
+			}, __("Create"));
 		}
 
 		frm.page.set_inner_btn_group_as_primary(__('Create'));

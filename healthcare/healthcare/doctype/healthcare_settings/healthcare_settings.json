@@ -14,6 +14,7 @@
   "default_google_calendar",
   "column_break_9",
   "collect_registration_fee",
+  "registration_item",
   "registration_fee",
   "show_payment_popup",
   "enable_free_follow_ups",
@@ -46,6 +47,12 @@
   "receivable_account",
   "order_details_section",
   "process_service_request_only_if_paid",
+  "validate_medication_quantity_in_invoice",
+  "patient_duplicate_check_tab",
+  "duplicate_check_section",
+  "enable_patient_duplicate_check",
+  "duplicate_check_rules_section",
+  "patient_duplicate_check_rules",
   "alerts_tab",
   "out_patient_sms_alerts",
   "send_registration_msg",
@@ -228,7 +235,7 @@
    "fieldname": "patient_name_by",
    "fieldtype": "Select",
    "label": "Patient Name By",
-   "options": "Patient Name\nNaming Series"
+   "options": "Patient Name\nNaming Series\nAuto Name"
   },
   {
    "default": "0",
@@ -401,11 +408,55 @@
    "fieldname": "orders_tab",
    "fieldtype": "Tab Break",
    "label": "Orders"
+  },
+  {
+   "depends_on": "eval:doc.collect_registration_fee == 1",
+   "fieldname": "registration_item",
+   "fieldtype": "Link",
+   "label": "Registration Item",
+   "mandatory_depends_on": "eval:doc.collect_registration_fee == 1",
+   "options": "Item"
+  },
+  {
+   "fieldname": "patient_duplicate_check_tab",
+   "fieldtype": "Tab Break",
+   "label": "Patient Duplicate Check"
+  },
+  {
+   "fieldname": "duplicate_check_section",
+   "fieldtype": "Section Break",
+   "label": "Settings"
+  },
+  {
+   "default": "0",
+   "description": "Enable checking for duplicate patient records when creating new patients",
+   "fieldname": "enable_patient_duplicate_check",
+   "fieldtype": "Check",
+   "label": "Enable Patient Duplicate Check"
+  },
+  {
+   "depends_on": "eval:doc.enable_patient_duplicate_check",
+   "fieldname": "duplicate_check_rules_section",
+   "fieldtype": "Section Break",
+   "label": "Rules"
+  },
+  {
+   "depends_on": "eval:doc.enable_patient_duplicate_check",
+   "fieldname": "patient_duplicate_check_rules",
+   "fieldtype": "Table",
+   "label": "Patient Duplicate Check Rules",
+   "options": "Patient Duplicate Check Rule Link"
+  },
+  {
+   "default": "0",
+   "fieldname": "validate_medication_quantity_in_invoice",
+   "fieldtype": "Check",
+   "label": "Validate Medication Quantity In invoice"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2023-11-06 14:20:22.424895",
+ "modified": "2025-11-05 15:45:05.268654",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Healthcare Settings",
@@ -424,6 +475,8 @@
  ],
  "quick_entry": 1,
  "restrict_to_domain": "Healthcare",
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

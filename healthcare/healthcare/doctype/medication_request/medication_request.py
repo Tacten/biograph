@@ -74,7 +74,8 @@ class MedicationRequest(ServiceRequestController):
 		medication_request_doc.save(ignore_permissions=True)
 
 	def validate_invoiced_qty(self):
-		if self.qty_invoiced > self.total_dispensable_quantity:
+		is_validate = frappe.db.get_single_value("Healthcare Settings", "validate_medication_quantity_in_invoice")
+		if self.qty_invoiced > self.total_dispensable_quantity and is_validate:
 			frappe.throw(
 				_("Maximum billable quantity exceeded by {0}").format(
 					frappe.bold(self.qty_invoiced - self.total_dispensable_quantity)

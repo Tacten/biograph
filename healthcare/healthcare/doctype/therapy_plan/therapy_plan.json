@@ -6,6 +6,10 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "section_break_hkst",
+  "invoice_json",
+  "invoice_details",
+  "section_break_zupr",
   "naming_series",
   "patient",
   "patient_name",
@@ -20,8 +24,13 @@
   "title",
   "section_break_9",
   "total_sessions",
+  "total_invoiced_session",
   "column_break_11",
-  "total_sessions_completed"
+  "total_sessions_completed",
+  "section_break_zmve",
+  "total_plan_amount",
+  "column_break_dryw",
+  "invoiced_amount"
  ],
  "fields": [
   {
@@ -84,6 +93,7 @@
    "fieldname": "total_sessions",
    "fieldtype": "Int",
    "label": "Total Sessions",
+   "no_copy": 1,
    "read_only": 1
   },
   {
@@ -94,6 +104,7 @@
    "fieldname": "total_sessions_completed",
    "fieldtype": "Int",
    "label": "Total Sessions Completed",
+   "no_copy": 1,
    "read_only": 1
   },
   {
@@ -126,13 +137,74 @@
    "no_copy": 1,
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "invoice_json",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Invoice Json",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_zmve",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_dryw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_hkst",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "invoice_details",
+   "fieldtype": "HTML",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_zupr",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "total_plan_amount",
+   "fieldtype": "Currency",
+   "label": "Total Plan Amount",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "invoiced_amount",
+   "fieldtype": "Currency",
+   "label": "Invoiced Amount",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_invoiced_session",
+   "fieldtype": "Int",
+   "label": "Total Invoiced Session",
+   "no_copy": 1,
+   "read_only": 1
   }
  ],
- "links": [],
- "modified": "2020-11-04 18:13:13.564999",
+ "grid_page_length": 50,
+ "links": [
+  {
+   "group": "Therapy Sessions",
+   "link_doctype": "Therapy Session",
+   "link_fieldname": "therapy_plan"
+  },
+  {
+   "link_doctype": "Clinical Note",
+   "link_fieldname": "reference_name"
+  }
+ ],
+ "modified": "2025-09-27 21:14:22.974335",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Therapy Plan",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -171,9 +243,11 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "search_fields": "patient",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "patient",
  "track_changes": 1
 }

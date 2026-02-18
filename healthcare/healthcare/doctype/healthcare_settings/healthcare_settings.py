@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2017, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
@@ -12,6 +11,9 @@ from frappe.model.document import Document
 
 
 class HealthcareSettings(Document):
+	def onload(self):
+		self.get_journal_entry_naming_series()
+
 	def validate(self):
 		for key in [
 			"collect_registration_fee",
@@ -33,6 +35,10 @@ class HealthcareSettings(Document):
 			validate_service_item(self.op_consulting_charge_item)
 		if self.clinical_procedure_consumable_item:
 			validate_service_item(self.clinical_procedure_consumable_item)
+
+	def get_journal_entry_naming_series(self):
+		meta = frappe.get_meta("Journal Entry")
+		self.set_onload("naming_series_for_journal_entry", meta.get_field("naming_series").options)
 
 
 def validate_service_item(item):
@@ -103,3 +109,32 @@ def get_account(parent_type, parent_field, parent, company):
 		return frappe.db.get_value(
 			"Party Account", {"parentfield": parent_field, "parent": parent, "company": company}, "account"
 		)
+
+
+@frappe.whitelist()
+def check_payments_app():
+	installed_apps = frappe.get_installed_apps()
+	if "payments" not in installed_apps:
+		return False
+	else:
+		filters = {
+			"doctype_or_field": "DocField",
+			"doc_type": "Healthcare Settings",
+			"field_name": "payment_gateway",
+		}
+		if frappe.db.exists("Property Setter", filters):
+			return True
+
+		link_property = frappe.new_doc("Property Setter")
+		link_property.update(filters)
+		link_property.property = "fieldtype"
+		link_property.value = "Link"
+		link_property.save()
+
+		options_property = frappe.new_doc("Property Setter")
+		options_property.update(filters)
+		options_property.property = "options"
+		options_property.value = "Payment Gateway"
+		options_property.save()
+
+		return True

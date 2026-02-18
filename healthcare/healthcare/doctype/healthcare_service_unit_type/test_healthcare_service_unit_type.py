@@ -1,13 +1,12 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
 
 import frappe
-from frappe.tests.utils import FrappeTestCase
+from frappe.tests import IntegrationTestCase
 
 
-class TestHealthcareServiceUnitType(FrappeTestCase):
+class TestHealthcareServiceUnitType(IntegrationTestCase):
 	def test_item_creation(self):
 		unit_type = get_unit_type()
 		self.assertTrue(frappe.db.exists("Item", unit_type.item))

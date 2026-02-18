@@ -56,11 +56,18 @@
   "column_break_25",
   "marital_status",
   "allergy_medical_and_surgical_history",
+  "legacy_section",
   "allergies",
   "medication",
-  "column_break_20",
   "medical_history",
   "surgical_history",
+  "family_history",
+  "structured_medical_history_section",
+  "patient_madical_history",
+  "patient_medication_history",
+  "patient_surgery_history",
+  "family_medical_history",
+  "social_history",
   "risk_factors",
   "tobacco_past_use",
   "tobacco_current_use",
@@ -236,36 +243,40 @@
    "label": "Allergies, Medical and Surgical History"
   },
   {
+   "fieldname": "legacy_section",
+   "fieldtype": "Column Break",
+   "label": "Legacy Medical History"
+  },
+  {
    "fieldname": "allergies",
    "fieldtype": "Small Text",
    "ignore_xss_filter": 1,
-   "label": "Allergies",
-   "no_copy": 1
+   "label": "Allergies (Legacy)"
   },
   {
    "fieldname": "medication",
    "fieldtype": "Small Text",
    "ignore_xss_filter": 1,
-   "label": "Medication",
-   "no_copy": 1
-  },
-  {
-   "fieldname": "column_break_20",
-   "fieldtype": "Column Break"
+   "label": "Medication (Legacy)"
   },
   {
    "fieldname": "medical_history",
    "fieldtype": "Small Text",
    "ignore_xss_filter": 1,
-   "label": "Medical History",
+   "label": "Medical History (Legacy)",
    "no_copy": 1
   },
   {
    "fieldname": "surgical_history",
    "fieldtype": "Small Text",
    "ignore_xss_filter": 1,
-   "label": "Surgical History",
+   "label": "Surgical History (Legacy)",
    "no_copy": 1
+  },
+  {
+   "fieldname": "structured_medical_history_section",
+   "fieldtype": "Column Break",
+   "label": "Structured Medical History"
   },
   {
    "fieldname": "personal_and_social_history",
@@ -483,16 +494,153 @@
    "fieldname": "medical_history_tab",
    "fieldtype": "Tab Break",
    "label": "Medical History"
+  },
+  {
+   "fieldname": "family_medical_history",
+   "fieldtype": "Table MultiSelect",
+   "label": "Family History",
+   "options": "Patient Encounter Diagnosis"
+  },
+  {
+   "fieldname": "patient_madical_history",
+   "fieldtype": "Table MultiSelect",
+   "label": "Medical History",
+   "options": "Patient Encounter Diagnosis"
+  },
+  {
+   "fieldname": "patient_medication_history",
+   "fieldtype": "Table MultiSelect",
+   "label": "Medication",
+   "options": "Medication History Item"
+  },
+  {
+   "fieldname": "patient_surgery_history",
+   "fieldtype": "Table MultiSelect",
+   "label": "Surgical History",
+   "options": "Surgery History Item"
+  },
+  {
+   "fieldname": "social_history",
+   "fieldtype": "Long Text",
+   "label": "Social History"
+  },
+  {
+   "fieldname": "family_history",
+   "fieldtype": "Small Text",
+   "label": "Family History (Legacy)"
   }
  ],
+ "grid_page_length": 50,
  "icon": "fa fa-user",
  "image_field": "image",
- "links": [],
+ "links": [
+  {
+   "group": "Appointments and Encounters",
+   "link_doctype": "Patient Appointment",
+   "link_fieldname": "patient"
+  },
+  {
+   "group": "Appointments and Encounters",
+   "link_doctype": "Vital Signs",
+   "link_fieldname": "patient"
+  },
+  {
+   "group": "Appointments and Encounters",
+   "link_doctype": "Patient Encounter",
+   "link_fieldname": "patient"
+  },
+  {
+   "group": "Orders",
+   "link_doctype": "Medication Request",
+   "link_fieldname": "patient"
+  },
+  {
+   "group": "Orders",
+   "link_doctype": "Service Request",
+   "link_fieldname": "patient"
+  },
+  {
+   "group": "Surgery and Nursing",
+   "link_doctype": "Clinical Procedure",
+   "link_fieldname": "patient"
+  },
+  {
+   "group": "Surgery and Nursing",
+   "link_doctype": "Nursing Task",
+   "link_fieldname": "patient"
+  },
+  {
+   "group": "Surgery and Nursing",
+   "link_doctype": "Clinical Note",
+   "link_fieldname": "patient"
+  },
+  {
+   "group": "Rehab and Physiotherapy",
+   "link_doctype": "Therapy Session",
+   "link_fieldname": "patient"
+  },
+  {
+   "group": "Rehab and Physiotherapy",
+   "link_doctype": "Therapy Plan",
+   "link_fieldname": "patient"
+  },
+  {
+   "group": "Rehab and Physiotherapy",
+   "link_doctype": "Patient Assessment",
+   "link_fieldname": "patient"
+  },
+  {
+   "group": "Admissions",
+   "link_doctype": "Inpatient Record",
+   "link_fieldname": "patient"
+  },
+  {
+   "group": "Admissions",
+   "link_doctype": "Inpatient Medication Order",
+   "link_fieldname": "patient"
+  },
+  {
+   "group": "Admissions",
+   "link_doctype": "Inpatient Medication Entry",
+   "link_fieldname": "patient"
+  },
+  {
+   "group": "Diagnostics",
+   "link_doctype": "Observation",
+   "link_fieldname": "patient"
+  },
+  {
+   "group": "Diagnostics",
+   "link_doctype": "Sample Collection",
+   "link_fieldname": "patient"
+  },
+  {
+   "group": "Diagnostics",
+   "link_doctype": "Lab Test",
+   "link_fieldname": "patient"
+  },
+  {
+   "group": "Billing & Payments",
+   "link_doctype": "Sales Invoice",
+   "link_fieldname": "patient"
+  },
+  {
+   "group": "Billing & Payments",
+   "link_doctype": "Payment Entry",
+   "link_fieldname": "party"
+  },
+  {
+   "group": "Others",
+   "link_doctype": "Fee Validity",
+   "link_fieldname": "patient"
+  }
+ ],
  "max_attachments": 50,
- "modified": "2023-01-13 17:48:59.069268",
+ "modified": "2025-09-02 13:04:27.771400",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Patient",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -546,6 +694,7 @@
  ],
  "quick_entry": 1,
  "restrict_to_domain": "Healthcare",
+ "row_format": "Dynamic",
  "search_fields": "patient_name,mobile,email,phone,uid",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
