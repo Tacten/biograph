@@ -54,6 +54,7 @@ data = {
 				"insert_after": "total",
 				"read_only": True,
 				"no_copy": True,
+				"in_standard_filter": 1,
 			},
 			{
 				"fieldname": "patient_payable_amount",
