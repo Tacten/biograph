@@ -1,7 +1,9 @@
 # isort: skip_file
 import frappe
-from erpnext.setup.utils import insert_record
 from frappe import _
+from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+
+from erpnext.setup.utils import insert_record
 
 data = {
 	"desktop_icons": [
@@ -53,14 +55,30 @@ data = {
 				"insert_after": "customer",
 			},
 			{
-				"fieldname": "service_unit",
+			"fieldname": "service_unit",
 				"label": "Service Unit",
 				"fieldtype": "Link",
 				"options": "Healthcare Service Unit",
 				"insert_after": "customer_name",
 			},
+			{
+				"fieldname": "total_insurance_coverage_amount",
+				"label": "Total Insurance Coverage Amount",
+				"fieldtype": "Currency",
+				"insert_after": "total",
+				"read_only": True,
+				"no_copy": True,
+			},
+			{
+				"fieldname": "patient_payable_amount",
+				"label": "Patient Payable Amount",
+				"fieldtype": "Currency",
+				"insert_after": "total_insurance_coverage_amount",
+				"read_only": True,
+				"no_copy": True,
+			},
 		],
-		"Sales Invoice Item": [
+		"Sales Invoice Item":[
 			{
 				"fieldname": "reference_dt",
 				"label": "Reference DocType",
@@ -92,15 +110,82 @@ data = {
 				"read_only": True,
 			},
 			{
-				"fieldname": "service_unit",
+			"fieldname": "service_unit",
 				"label": "Service Unit",
 				"fieldtype": "Link",
 				"options": "Healthcare Service Unit",
 				"insert_after": "medical_department",
 				"read_only": True,
 			},
+			{
+				"fieldname": "healthcare_insurance_section",
+				"fieldtype": "Section Break",
+				"insert_after": "is_free_item",
+			},
+			{
+				"fieldname": "coverage_rate",
+				"label": "Insurance Coverage Approved Rate",
+				"fieldtype": "Currency",
+				"insert_after": "healthcare_insurance_section",
+				"read_only": True,
+				"no_copy": True,
+			},
+			{
+				"fieldname": "coverage_qty",
+				"label": "Insurance Coverage Approved Qty",
+				"fieldtype": "Float",
+				"insert_after": "coverage_rate",
+				"read_only": True,
+				"no_copy": True,
+			},
+			{
+				"fieldname": "coverage_percentage",
+				"label": "Insurance Coverage %",
+				"fieldtype": "Percent",
+				"insert_after": "coverage_qty",
+				"read_only": True,
+				"no_copy": True,
+			},
+			{
+				"fieldname": "insurance_coverage_amount",
+				"label": "Insurance Coverage Amount",
+				"fieldtype": "Currency",
+				"insert_after": "coverage_percentage",
+				"read_only": True,
+				"no_copy": True,
+			},
+			{
+				"fieldname": "healthcare_insurance_col_break",
+				"fieldtype": "Column Break",
+				"insert_after": "insurance_coverage_amount",
+			},
+			{
+				"fieldname": "patient_insurance_policy",
+				"label": "Patient Insurance Policy Number",
+				"fieldtype": "Data",
+				"read_only": True,
+				"insert_after": "healthcare_insurance_col_break",
+			},
+			{
+				"fieldname": "insurance_coverage",
+				"label": "Patient Insurance Coverage",
+				"fieldtype": "Link",
+				"read_only": True,
+				"insert_after": "patient_insurance_policy",
+				"options": "Patient Insurance Coverage",
+				"no_copy": True,
+			},
+			{
+				"fieldname": "insurance_payor",
+				"label": "Insurance Payor",
+				"fieldtype": "Link",
+				"read_only": True,
+				"insert_after": "insurance_coverage",
+				"options": "Insurance Payor",
+				"no_copy": True,
+			},
 		],
-		"Stock Entry": [
+		"Stock Entry":[
 			{
 				"fieldname": "inpatient_medication_entry",
 				"label": "Inpatient Medication Entry",
@@ -141,18 +226,41 @@ data = {
 				"label": "Package Subscription",
 				"fieldtype": "Link",
 				"options": "Package Subscription",
-				"insert_after": "payment_order",
-				"read_only": True,
-			},
-            {
-				"fieldname": "package_subscription",
-				"label": "Package Subscription",
-				"fieldtype": "Link",
-				"options": "Package Subscription",
 				"insert_after": "treatment_counselling",
 				"read_only": True,
 			},
-		]
+		],
+		"Payment Entry Reference": [
+			{
+				"fieldname": "insurance_claim",
+				"label": "Insurance Claim",
+				"fieldtype": "Link",
+				"options": "Insurance Claim",
+				"insert_after": "reference_name",
+				"read_only": True,
+				"no_copy": True,
+			},
+			{
+				"fieldname": "insurance_claim_coverage",
+				"label": "Insurance Claim Coverage",
+				"fieldtype": "Link",
+				"options": "Insurance Claim Coverage",
+				"insert_after": "insurance_claim",
+				"read_only": True,
+				"no_copy": True,
+			},
+		],
+		"Journal Entry": [
+			{
+				"fieldname": "insurance_coverage",
+				"label": "For Insurance Coverage",
+				"fieldtype": "Link",
+				"options": "Patient Insurance Coverage",
+				"insert_after": "due_date",
+				"read_only": True,
+				"no_copy": True,
+			}
+		],
 	},
 	"on_setup": "healthcare.setup.setup_healthcare",
 }
@@ -162,6 +270,9 @@ def setup_healthcare():
 	if frappe.db.exists("Medical Department", "Cardiology"):
 		# already setup
 		return
+
+	if data.get("custom_fields"):
+		create_custom_fields(data.get("custom_fields"), ignore_validate=True)
 
 	from healthcare.regional.india.abdm.setup import setup as abdm_setup
 
