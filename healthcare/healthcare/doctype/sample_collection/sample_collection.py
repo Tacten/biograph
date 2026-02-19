@@ -29,8 +29,8 @@ class SampleCollection(Document):
 							},
 						)
 
-		if self.get("appointment"):
-			frappe.db.set_value("Patient Appointment", self.get("appointment"), "status", "Closed")
+		if self.appointment:
+			frappe.db.set_value("Patient Appointment", self.appointment, "status", "Closed")
 
 	def validate(self):
 		if self.observation_sample_collection:

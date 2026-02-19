@@ -38,6 +38,7 @@
   "service_request",
   "reference_doc",
   "reference_name",
+  "appointment",
   "amended_from"
  ],
  "fields": [
@@ -287,6 +288,12 @@
    "label": "Referring Practitioner",
    "options": "Healthcare Practitioner",
    "read_only_depends_on": "referring_practitioner"
+  },
+  {
+   "fieldname": "appointment",
+   "fieldtype": "Link",
+   "label": "Appointment",
+   "options": "Patient Appointment"
   },
   {
    "fieldname": "amended_from",
