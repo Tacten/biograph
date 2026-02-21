@@ -174,6 +174,7 @@ frappe.ui.form.on('Clinical Procedure', {
 			frm.add_fetch('procedure_template', 'medical_department', 'medical_department');
 			frm.set_value('start_time', null);
 		}
+		set_defaults(frm);
 	},
 
 	patient: function(frm) {
@@ -504,4 +505,20 @@ let show_procedure_templates = function(frm, result){
 		$(repl('<div class="text-left">%(msg)s</div>', {msg: msg})).appendTo(html_field);
 	}
 	d.show();
+};
+
+let set_defaults = function(frm) {
+	if (frm.is_new()) {
+		frappe.db
+			.get_single_value("Stock Settings", "default_warehouse")
+			.then(value => {
+				frm.set_value("warehouse", value);
+			});
+
+		frappe.db
+			.get_single_value("Selling Settings", "selling_price_list")
+			.then(value => {
+				frm.set_value("price_list", value);
+			});
+	}
 };

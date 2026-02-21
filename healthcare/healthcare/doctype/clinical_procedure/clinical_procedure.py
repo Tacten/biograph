@@ -6,7 +6,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils import flt, get_link_to_form, now_datetime, nowdate, nowtime
+from frappe.utils import add_to_date, flt, get_link_to_form, now_datetime, nowdate, nowtime
 
 from erpnext.stock.get_item_details import get_item_details
 from erpnext.stock.stock_ledger import get_previous_sle
@@ -24,19 +24,17 @@ class ClinicalProcedure(Document):
 	def validate(self):
 		self.set_status()
 		self.set_title()
-		if self.consume_stock:
-			self.set_actual_qty()
+		self.set_planned_start_date_and_time()
+		self.set_planned_endtime()
 
 		if self.items:
 			self.invoice_separately_as_consumables = False
 			for item in self.items:
 				if item.invoice_separately_as_consumables:
 					self.invoice_separately_as_consumables = True
+					break
 
 	def before_insert(self):
-		if self.consume_stock:
-			self.set_actual_qty()
-
 		if self.service_request:
 			therapy_session = frappe.db.exists(
 				"Clinical Procedure",
@@ -48,8 +46,10 @@ class ClinicalProcedure(Document):
 						frappe.bold(get_link_to_form("Clinical Procedure", therapy_session)),
 						frappe.bold(get_link_to_form("Service Request", self.service_request)),
 					),
-					title=_("Already Exist"),
+				title=_("Already Exist"),
 				)
+
+		self.set_price_list()
 
 	def on_cancel(self):
 		if self.service_request:
@@ -74,8 +74,7 @@ class ClinicalProcedure(Document):
 				patient = frappe.get_doc("Patient", self.patient)
 				sample_collection = create_sample_doc(template, patient, None, self.company)
 				self.db_set("sample", sample_collection.name)
-
-		self.reload()
+				self.notify_update()
 
 	def on_submit(self):
 		self.create_nursing_tasks(post_event=False)
@@ -92,19 +91,47 @@ class ClinicalProcedure(Document):
 				"Clinical Procedure Template", self.procedure_template, "pre_op_nursing_checklist_template"
 			)
 			# pre op tasks to be created on Clinical Procedure submit, use scheduled date
-			start_time = frappe.utils.get_datetime(f"{self.start_date} {self.start_time}")
+			start_time = frappe.utils.get_datetime(f"{self.start_date} {self.start_time or nowtime()}")
 
 		if template:
 			NursingTask.create_nursing_tasks_from_template(
 				template, self, start_time=start_time, post_event=post_event
 			)
 
-		template_doc = frappe.get_doc("Clinical Procedure Template", self.procedure_template)
-		if template_doc.sample:
-			patient = frappe.get_doc("Patient", self.patient)
-			sample_collection = create_sample_doc(template_doc, patient, None, self.company)
-			self.db_set("sample", sample_collection.name)
-			self.reload()
+	def set_price_list(self):
+		if self.price_list:
+			return
+
+		customer = frappe.db.get_value("Patient", self.patient, "customer")
+		if customer:
+			self.price_list = frappe.db.get_value("Customer", customer, "default_price_list")
+
+		if not self.price_list:
+			self.price_list = frappe.db.get_single_value("Selling Settings", "selling_price_list")
+
+	def set_planned_start_date_and_time(self):
+		if not self.appointment:
+			return
+
+		if not self.start_date or not self.start_time:
+			d, t = frappe.db.get_value(
+				"Patient Appointment", self.appointment, ["appointment_date", "appointment_time"]
+			)
+			self.start_date = d
+			self.start_time = t
+
+	def set_planned_endtime(self):
+		if not self.procedure_template or not self.start_time:
+			return
+
+		duration = frappe.db.get_value(
+			"Clinical Procedure Template", self.procedure_template, "default_duration"
+		)
+		if duration:
+			self.planned_end_datetime = add_to_date(
+				frappe.utils.get_datetime(f"{self.start_date} {self.start_time}"),
+				seconds=duration,
+			)
 
 	def set_status(self):
 		if self.docstatus == 0:
@@ -122,54 +149,58 @@ class ClinicalProcedure(Document):
 
 	@frappe.whitelist()
 	def complete_procedure(self):
+		stock_entry = None
 		if self.consume_stock and self.items:
 			stock_entry = make_stock_entry(self)
+
+		update_fields = {}
 
 		if self.items:
 			consumable_total_amount = 0
 			consumption_details = False
 			customer = frappe.db.get_value("Patient", self.patient, "customer")
-			if customer:
-				for item in self.items:
-					if item.invoice_separately_as_consumables:
-						price_list, price_list_currency = frappe.db.get_values(
-							"Price List", {"selling": 1}, ["name", "currency"]
-						)[0]
-						args = {
-							"doctype": "Sales Invoice",
-							"item_code": item.item_code,
-							"company": self.company,
-							"warehouse": self.warehouse,
-							"customer": customer,
-							"selling_price_list": price_list,
-							"price_list_currency": price_list_currency,
-							"plc_conversion_rate": 1.0,
-							"conversion_rate": 1.0,
-						}
-						item_details = get_item_details(args)
-						item_price = item_details.price_list_rate * item.qty
-						item_consumption_details = (
-							item_details.item_name + " " + str(item.qty) + " " + item.uom + " " + str(item_price)
-						)
-						consumable_total_amount += item_price
-						if not consumption_details:
-							consumption_details = _("Clinical Procedure ({0}):").format(self.name)
-						consumption_details += "\n\t" + item_consumption_details
-
-				if consumable_total_amount > 0:
-					frappe.db.set_value(
-						"Clinical Procedure", self.name, "consumable_total_amount", consumable_total_amount
-					)
-					frappe.db.set_value(
-						"Clinical Procedure", self.name, "consumption_details", consumption_details
-					)
-			else:
+			if not customer:
 				frappe.throw(
 					_("Please set Customer in Patient {0}").format(frappe.bold(self.patient)),
 					title=_("Customer Not Found"),
 				)
 
-		self.db_set("status", "Completed")
+			if not self.price_list:
+				frappe.throw(_("Price List is mandatory"), title=_("Price List Not Set"))
+
+			price_list_currency = frappe.db.get_value("Price List", self.price_list, "currency")
+
+			for item in self.items:
+				if item.invoice_separately_as_consumables:
+					args = {
+						"doctype": "Sales Invoice",
+						"item_code": item.item_code,
+						"company": self.company,
+						"warehouse": self.warehouse,
+						"customer": customer,
+						"selling_price_list": self.price_list,
+						"price_list_currency": price_list_currency,
+						"plc_conversion_rate": 1.0,
+						"conversion_rate": 1.0,
+					}
+					item_details = get_item_details(args)
+					item_price = item_details.price_list_rate * item.qty
+					item_consumption_details = (
+						item_details.item_name + " " + str(item.qty) + " " + item.uom + " " + str(item_price)
+					)
+					consumable_total_amount += item_price
+					if not consumption_details:
+						consumption_details = _("Clinical Procedure ({0}):").format(self.name)
+					consumption_details += "\n\t" + item_consumption_details
+
+			if consumable_total_amount > 0:
+				update_fields["consumable_total_amount"] = consumable_total_amount
+				update_fields["consumption_details"] = consumption_details
+
+		update_fields["status"] = "Completed"
+		update_fields["actual_end_datetime"] = now_datetime()
+
+		self.db_set(update_fields)
 
 		if self.service_request:
 			frappe.db.set_value(
@@ -185,31 +216,36 @@ class ClinicalProcedure(Document):
 
 	@frappe.whitelist()
 	def start_procedure(self):
-		allow_start = self.set_actual_qty()
+		allow_start = self.has_required_qty()
 
-		if allow_start:
+		if not self.consume_stock or allow_start:
 			validate_nursing_tasks(self)
 
-			self.db_set("status", "In Progress")
+			self.db_set(
+				{
+					"status": "In Progress",
+					"actual_start_datetime": now_datetime(),
+				}
+			)
+			self.notify_update()
 			return "success"
 
 		return "insufficient stock"
 
-	def set_actual_qty(self):
+	def has_required_qty(self):
 		allow_negative_stock = frappe.db.get_single_value("Stock Settings", "allow_negative_stock")
+		if allow_negative_stock:
+			return True
 
-		allow_start = True
 		for d in self.get("items"):
-			d.actual_qty = get_stock_qty(d.item_code, self.warehouse)
-			# validate qty
-			if not allow_negative_stock and d.actual_qty < d.qty:
-				allow_start = False
-				break
+			actual_qty = get_stock_qty(d.item_code, self.warehouse)
+			if actual_qty < d.qty:
+				return False
 
-		return allow_start
+		return True
 
 	@frappe.whitelist()
-	def make_material_receipt(self, submit=False):
+	def make_material_receipt(self, submit: bool = False) -> dict:
 		stock_entry = frappe.new_doc("Stock Entry")
 
 		stock_entry.stock_entry_type = "Material Receipt"
@@ -217,6 +253,7 @@ class ClinicalProcedure(Document):
 		stock_entry.company = self.company
 		expense_account = get_account(None, "expense_account", "Healthcare Settings", self.company)
 		for item in self.items:
+			item.actual_qty = get_stock_qty(item.item_code, self.warehouse)
 			if item.qty > item.actual_qty:
 				se_child = stock_entry.append("items")
 				se_child.item_code = item.item_code
