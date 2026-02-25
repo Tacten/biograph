@@ -14,7 +14,10 @@ on:
 jobs:
   sync_latest_from_upstream:
     runs-on: ubuntu-latest
-    name: Sync latest commits from upstream repo
+    name: Sync ${{ matrix.branch }} from upstream repo
+    strategy:
+      matrix:
+        branch: ['develop', 'version-16']
 
     steps:
     # REQUIRED step
@@ -35,10 +38,10 @@ jobs:
       id: sync
       uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.1
       with:
-        target_sync_branch: "'develop', 'version-16'"
+        target_sync_branch: ${{ matrix.branch }}
         # REQUIRED 'target_repo_token' exactly like this!
         target_repo_token: ${{ secrets.GITHUB_TOKEN }}
-        upstream_sync_branch: "'develop', 'version-16'"
+        upstream_sync_branch: ${{ matrix.branch }}
         upstream_sync_repo: earthians/marley
 
         # Set test_mode true during manual dispatch to run tests instead of the true action!!
