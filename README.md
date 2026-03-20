@@ -22,7 +22,7 @@ Biograph (a fork and enhancements of Marley Health) enables the health domain in
 
 ### Key Features
 <div align="center">
-    <img src="https://www.fossibleworks.com/hero-illustration.svg" alt="Key Features" width="100%" max-width="800">
+    <img src="https://www.fossibleworks.com/hero-illustration.svg" alt="Key Features" width="70%" max-width="600">
 </div>
 
 Key feature sets include Patient management, Outpatient / Inpatient management, Clinical Procedures, Rehabilitation and Physiotherapy, Laboratory management etc. and supports configuring multiple Medical Code Standards. It allows mapping any healthcare facility as Service Units and specialities as Medical Departments.
