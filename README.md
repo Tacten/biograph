@@ -5,7 +5,7 @@
     <p>Open source & easy-to-use hospital information system(HIS) for all healthcare organisations.</p>
   </p>
 
-  [Biograph](https://tacten.co/digitalhealth)
+  [Biograph]([https://tacten.co/digitalhealth](https://www.fossibleworks.com/products/biograph/)
 
  <div align="center" style="max-height: 40px;">
     <a href="https://frappecloud.com/biograph/signup">
@@ -22,7 +22,7 @@ Biograph (a fork and enhancements of Marley Health) enables the health domain in
 
 ### Key Features
 
-![Key Features](https://raw.githubusercontent.com/frappe/health/develop/key-features.png)
+![Key Features](https://www.fossibleworks.com/hero-illustration.svg)
 
 Key feature sets include Patient management, Outpatient / Inpatient management, Clinical Procedures, Rehabilitation and Physiotherapy, Laboratory management etc. and supports configuring multiple Medical Code Standards. It allows mapping any healthcare facility as Service Units and specialities as Medical Departments.
 
