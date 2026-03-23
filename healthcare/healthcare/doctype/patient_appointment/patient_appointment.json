@@ -82,8 +82,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Patient",
+   "mandatory_depends_on": "eval:doc.appointment_type !== 'Unavailable'",
    "options": "Patient",
-   "reqd": 1,
    "search_index": 1,
    "set_only_once": 1
   },
