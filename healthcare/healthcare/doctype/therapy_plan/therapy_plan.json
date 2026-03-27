@@ -16,6 +16,7 @@
   "invoiced",
   "column_break_4",
   "company",
+  "practitioner",
   "status",
   "start_date",
   "section_break_3",
@@ -121,6 +122,12 @@
    "label": "Company",
    "options": "Company",
    "reqd": 1
+  },
+  {
+   "fieldname": "practitioner",
+   "fieldtype": "Link",
+   "label": "Healthcare Practitioner",
+   "options": "Healthcare Practitioner"
   },
   {
    "fieldname": "therapy_plan_template",
