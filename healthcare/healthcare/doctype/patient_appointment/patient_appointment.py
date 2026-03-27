@@ -1547,6 +1547,8 @@ def get_events(start, end, filters=None):
 		left join `tabAppointment Type` on `tabPatient Appointment`.appointment_type=`tabAppointment Type`.name
 		where
 		(`tabPatient Appointment`.appointment_date between %(start)s and %(end)s)
+		and `tabPatient Appointment`.appointment_date is not null
+		and `tabPatient Appointment`.appointment_time is not null
 		and `tabPatient Appointment`.status != 'Cancelled' and `tabPatient Appointment`.docstatus < 2 {conditions}""".format(
 			conditions=conditions
 		),
@@ -1556,6 +1558,8 @@ def get_events(start, end, filters=None):
 	)
 
 	for item in data:
+		if item.start is None or item.duration is None:
+			continue
 		item.end = item.start + timedelta(minutes=item.duration)
 		
 		# Special handling for unavailability appointments
