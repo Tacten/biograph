@@ -1,1 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="116" height="116" viewBox="0 0 24 24" fill="none" stroke="#14d9c4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart-handshake-icon lucide-heart-handshake"><path d="M19.414 14.414C21 12.828 22 11.5 22 9.5a5.5 5.5 0 0 0-9.591-3.676.6.6 0 0 1-.818.001A5.5 5.5 0 0 0 2 9.5c0 2.3 1.5 4 3 5.5l5.535 5.362a2 2 0 0 0 2.879.052 2.12 2.12 0 0 0-.004-3 2.124 2.124 0 1 0 3-3 2.124 2.124 0 0 0 3.004 0 2 2 0 0 0 0-2.828l-1.881-1.882a2.41 2.41 0 0 0-3.409 0l-1.71 1.71a2 2 0 0 1-2.828 0 2 2 0 0 1 0-2.828l2.823-2.762"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56" fill="none">
+	<!-- Biograph desk icon — 56×56 matches Frappe desktop tile (~54px CSS) -->
+	<rect width="56" height="56" rx="13" fill="#4A89E8"/>
+	<path d="M14 16.5h7c3.866 0 7 3.134 7 7v0c0 3.866-3.134 7-7 7H14V16.5z" fill="white"/>
+	<path d="M14 30.5h7c3.866 0 7 3.134 7 7v0c0 3.866-3.134 7-7 7H14V30.5z" fill="white" opacity="0.8"/>
+	<circle cx="37.3" cy="23.3" r="3.7" fill="white"/>
+	<circle cx="37.3" cy="35" r="2.3" fill="white" opacity="0.7"/>
+	<line x1="37.3" y1="27" x2="37.3" y2="32.7" stroke="white" stroke-width="1.2" opacity="0.5"/>
+</svg>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56" fill="none">
+  <!-- Frappe-style app icon — teal rounded square with Biograph B mark -->
+  <rect width="56" height="56" rx="13" fill="#4A89E8"/>
+  <path d="M14 16.5h7c3.866 0 7 3.134 7 7v0c0 3.866-3.134 7-7 7H14V16.5z" fill="white"/>
+  <path d="M14 30.5h7c3.866 0 7 3.134 7 7v0c0 3.866-3.134 7-7 7H14V30.5z" fill="white" opacity="0.8"/>
+  <circle cx="37.3" cy="23.3" r="3.7" fill="white"/>
+  <circle cx="37.3" cy="35" r="2.3" fill="white" opacity="0.7"/>
+  <line x1="37.3" y1="27" x2="37.3" y2="32.7" stroke="white" stroke-width="1.2" opacity="0.5"/>
+</svg>
