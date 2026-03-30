@@ -22,7 +22,6 @@
   "column_break_8",
   "email",
   "mobile_number",
-  "country",
   "insurance_details_section",
   "insurance_payor",
   "policy_expiry_date",
@@ -133,15 +132,6 @@
    "fieldname": "birth_date",
    "fieldtype": "Date",
    "label": "Birth Date",
-   "read_only": 1
-  },
-  {
-   "depends_on": "patient",
-   "fetch_from": "patient.country",
-   "fieldname": "country",
-   "fieldtype": "Link",
-   "label": "Country",
-   "options": "Country",
    "read_only": 1
   },
   {
