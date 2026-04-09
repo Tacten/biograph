@@ -107,6 +107,9 @@ after_migrate = "healthcare.after_migrate.execute_migrate"
 # has_permission = {
 # 	"Event": "frappe.desk.doctype.event.event.has_permission",
 # }
+has_permission = {
+	"*": "healthcare.permissions.check_permission",
+}
 
 # DocType Class
 # ---------------

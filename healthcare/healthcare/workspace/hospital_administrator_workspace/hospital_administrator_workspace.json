@@ -1,0 +1,265 @@
+{
+ "app": "healthcare",
+ "charts": [
+  {
+   "chart_name": "Inpatient Occupancy",
+   "label": "Inpatient Occupancy"
+  }
+ ],
+ "content": "[{\"id\":\"Pw8dZZneAw\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">OPD Efficiency</span>\",\"col\":12}},{\"id\":\"UCsR5Tzzkd\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Avg Consultation TAT (Min)\",\"col\":4}},{\"id\":\"1r7Pl7A5Hq\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Total Patients Today\",\"col\":4}},{\"id\":\"CkKuqiUuK6\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Delayed Appointments\",\"col\":4}},{\"id\":\"Dr7Iv4n934\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Waiting Patients\",\"col\":4}},{\"id\":\"atLM0FxdPl\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Completed Consultations\",\"col\":4}},{\"id\":\"Q7i-XOGq3o\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"In Consultation\",\"col\":4}},{\"id\":\"XiDhU6yI9U\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">IPD Utilization</span>\",\"col\":12}},{\"id\":\"9zlTXIm8fR\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Bed Occupancy Rate (%)\",\"col\":6}},{\"id\":\"ag2IZ16ogb\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Average Length of Stay (Days)\",\"col\":6}},{\"id\":\"OPyY5HaYQ7\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Total Beds\",\"col\":6}},{\"id\":\"RvcLS768GY\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Bed Turnover Rate\",\"col\":6}},{\"id\":\"eTLeEvAADm\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Inpatient Occupancy\",\"col\":12}},{\"id\":\"VmANdv2k6A\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Diagnostics Performance<b></b></span>\",\"col\":12}},{\"id\":\"IUlErKugrH\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Tests Ordered\",\"col\":6}},{\"id\":\"V_SkNzvJiM\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Reports Completed\",\"col\":6}},{\"id\":\"p3LxBG7PGT\",\"type\":\"paragraph\",\"data\":{\"text\":\"Staff Availability\",\"col\":12}},{\"id\":\"3emjvqaoN5\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Staff Scheduled\",\"col\":3}},{\"id\":\"sn5sEOEyWX\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Late Check-ins\",\"col\":3}},{\"id\":\"UkL7ttXOxO\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Absent Staff\",\"col\":3}},{\"id\":\"wBlHb9nd2f\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Present Staff\",\"col\":3}},{\"id\":\"948q6CzIDF\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Finance<b></b></span>\",\"col\":12}},{\"id\":\"f2JafuTje0\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Revenue Today\",\"col\":6}},{\"id\":\"SbW5gidYWx\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Pending Bills\",\"col\":6}},{\"id\":\"elkc036loF\",\"type\":\"paragraph\",\"data\":{\"text\":\"Your Shortcuts\",\"col\":12}},{\"id\":\"Vy6Du32JbD\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Patient\",\"col\":4}},{\"id\":\"RJlir6Xop6\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Patient Appointment\",\"col\":4}},{\"id\":\"B7h5eSqbyJ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Inpatient Record\",\"col\":4}},{\"id\":\"FeVMYIUjOR\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Practitioner Schedule\",\"col\":4}},{\"id\":\"8mNAlCKuto\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Reports\",\"col\":4}},{\"id\":\"cAj0UWQXr3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Dashboard\",\"col\":4}},{\"id\":\"ifyzu8OciG\",\"type\":\"card\",\"data\":{\"card_name\":\"Operations\",\"col\":4}},{\"id\":\"2FJ5yuixxE\",\"type\":\"card\",\"data\":{\"card_name\":\"Resource Management\",\"col\":4}},{\"id\":\"2FXZN6pgne\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}}]",
+ "creation": "2026-04-06 11:30:26.261967",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 1,
+ "icon": "user-lock",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Hospital Administrator Workspace",
+ "link_type": "DocType",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Operations",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Patient Appointment",
+   "link_count": 0,
+   "link_to": "Patient Appointment",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Inpatient Record",
+   "link_count": 0,
+   "link_to": "Inpatient Record",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Resource Management",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Healthcare Practitioner",
+   "link_count": 0,
+   "link_to": "Healthcare Practitioner",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Practitioner Schedule",
+   "link_count": 0,
+   "link_to": "Practitioner Schedule",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Healthcare Service Unit",
+   "link_count": 0,
+   "link_to": "Healthcare Service Unit",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Settings",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Healthcare Settings",
+   "link_count": 0,
+   "link_to": "Healthcare Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Patient History Settings",
+   "link_count": 0,
+   "link_to": "Patient History Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-04-08 19:02:31.866280",
+ "modified_by": "Administrator",
+ "module": "Healthcare",
+ "name": "Hospital Administrator Workspace",
+ "number_cards": [
+  {
+   "label": "Bed Turnover Rate",
+   "number_card_name": "Bed Turnover Rate"
+  },
+  {
+   "label": "Total Beds",
+   "number_card_name": "Total Beds"
+  },
+  {
+   "label": "Waiting Patients",
+   "number_card_name": "Waiting Patients"
+  },
+  {
+   "label": "Completed Consultations",
+   "number_card_name": "Completed Consultations"
+  },
+  {
+   "label": "In Consultation",
+   "number_card_name": "In Consultation"
+  },
+  {
+   "label": "Staff Scheduled",
+   "number_card_name": "Staff Scheduled"
+  },
+  {
+   "label": "Revenue Today",
+   "number_card_name": "Revenue Today"
+  },
+  {
+   "label": "Bed Occupancy Rate (%)",
+   "number_card_name": "Bed Occupancy Rate (%)"
+  },
+  {
+   "label": "Avg Consultation TAT (Min)",
+   "number_card_name": "Avg Consultation TAT (Min)"
+  },
+  {
+   "label": "Total Patients Today",
+   "number_card_name": "Total Today Patients"
+  },
+  {
+   "label": "Tests Ordered",
+   "number_card_name": "Tests Ordered"
+  },
+  {
+   "label": "Late Check-ins",
+   "number_card_name": "Late Check-ins"
+  },
+  {
+   "label": "Average Length of Stay (Days)",
+   "number_card_name": "Average Length of Stay"
+  },
+  {
+   "label": "Reports Completed",
+   "number_card_name": "Reports Completed"
+  },
+  {
+   "label": "Absent Staff",
+   "number_card_name": "Absent Staff"
+  },
+  {
+   "label": "Present Staff",
+   "number_card_name": "Present Staff"
+  },
+  {
+   "label": "Delayed Appointments",
+   "number_card_name": "Delayed Appointments"
+  },
+  {
+   "label": "Pending Bills",
+   "number_card_name": "Pending Bills"
+  }
+ ],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "restrict_to_domain": "Healthcare",
+ "roles": [
+  {
+   "role": "Hospital Admin"
+  },
+  {
+   "role": "Healthcare Administrator"
+  }
+ ],
+ "sequence_id": 23.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Patient Appointment",
+   "link_to": "Patient Appointment",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Inpatient Record",
+   "link_to": "Inpatient Record",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Reports",
+   "link_to": "Report",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Patient",
+   "link_to": "Patient",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Dashboard",
+   "link_to": "Dashboard",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Practitioner Schedule",
+   "link_to": "Practitioner Schedule",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Hospital Administrator Workspace",
+ "type": "Workspace"
+}
