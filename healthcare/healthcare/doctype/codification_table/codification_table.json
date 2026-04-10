@@ -8,6 +8,7 @@
  "engine": "InnoDB",
  "field_order": [
   "code_system",
+  "code_value_set",
   "system",
   "is_fhir_defined",
   "oid",
@@ -28,6 +29,14 @@
    "options": "Code System",
    "read_only_depends_on": "code_value",
    "reqd": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "code_value_set",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Code Value Set",
+   "options": "Code Value Set"
   },
   {
    "columns": 2,

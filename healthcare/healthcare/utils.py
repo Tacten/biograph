@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-utils
 # Copyright (c) 2018, earthians and contributors
 # For license information, please see license.txt
 
@@ -87,8 +86,8 @@ def get_appointments_to_invoice(patient, company):
 						"reference_type": "Patient Appointment",
 						"reference_name": appointment.name,
 						"service": appointment.procedure_template,
-						"practitioner" : appointment.practitioner,
-						"date" : appointment.appointment_date
+						"practitioner": appointment.practitioner,
+						"date": appointment.appointment_date,
 					}
 				)
 		# Consultation Appointments, should check fee validity
@@ -100,11 +99,11 @@ def get_appointments_to_invoice(patient, company):
 			practitioner_charge = 0
 			income_account = None
 			service_item = None
-			service_name=None
+			service_name = None
 			if appointment.practitioner:
 				details = get_appointment_billing_item_and_rate(appointment)
 				service_item = details.get("service_item")
-				service_name=frappe.db.get_value("Item",service_item,"item_name")
+				service_name = frappe.db.get_value("Item", service_item, "item_name")
 				practitioner_charge = details.get("practitioner_charge")
 				income_account = get_income_account(appointment.practitioner, appointment.company)
 			appointments_to_invoice.append(
@@ -112,15 +111,16 @@ def get_appointments_to_invoice(patient, company):
 					"reference_type": "Patient Appointment",
 					"reference_name": appointment.name,
 					"service": service_item,
-					"service_name":service_name,
+					"service_name": service_name,
 					"rate": practitioner_charge,
 					"income_account": income_account,
 					"practitioner": appointment.practitioner,
-					"date": appointment.appointment_date
+					"date": appointment.appointment_date,
 				}
 			)
 
 	return appointments_to_invoice
+
 
 def get_package_subscriptions_to_invoice(patient, company):
 	subscriptions_to_invoice = []
@@ -142,16 +142,27 @@ def get_package_subscriptions_to_invoice(patient, company):
 		)
 		if not item_wise_invoicing:
 			subscriptions_to_invoice.append(
-				{"reference_type": "Package Subscription", "reference_name": sub.name, "service": item, "date" : sub.valid_to}
+				{
+					"reference_type": "Package Subscription",
+					"reference_name": sub.name,
+					"service": item,
+					"date": sub.valid_to,
+				}
 			)
 		else:
 			for item in subscription_doc.package_details:
 				if not item.invoiced:
 					subscriptions_to_invoice.append(
-						{"reference_type": item.doctype, "reference_name": item.name, "service": item.item_code , "date": sub.valid_to}
+						{
+							"reference_type": item.doctype,
+							"reference_name": item.name,
+							"service": item.item_code,
+							"date": sub.valid_to,
+						}
 					)
 
 	return subscriptions_to_invoice
+
 
 def get_encounters_to_invoice(patient, company):
 	if not isinstance(patient, str):
@@ -188,7 +199,7 @@ def get_encounters_to_invoice(patient, company):
 						"service": service_item,
 						"rate": practitioner_charge,
 						"income_account": income_account,
-						"date" : encounter.encounter_date
+						"date": encounter.encounter_date,
 					}
 				)
 
@@ -215,7 +226,12 @@ def get_lab_tests_to_invoice(patient, company):
 		)
 		if is_billable:
 			lab_tests_to_invoice.append(
-				{"reference_type": "Lab Test", "reference_name": lab_test.name, "service": item, "date":lab_test.date}
+				{
+					"reference_type": "Lab Test",
+					"reference_name": lab_test.name,
+					"service": item,
+					"date": lab_test.date,
+				}
 			)
 
 	return lab_tests_to_invoice
@@ -243,7 +259,12 @@ def get_observations_to_invoice(patient, company):
 		)
 		if is_billable:
 			observations_to_invoice.append(
-				{"reference_type": "Observation", "reference_name": observation.name, "service": item, "date" : observation.posting_date}
+				{
+					"reference_type": "Observation",
+					"reference_name": observation.name,
+					"service": item,
+					"date": observation.posting_date,
+				}
 			)
 
 	return observations_to_invoice
@@ -261,7 +282,7 @@ def get_clinical_procedures_to_invoice(patient, company):
 			"docstatus": 1,
 			"service_request": "",
 		},
-		order_by="start_date desc"
+		order_by="start_date desc",
 	)
 	for procedure in procedures:
 		if not procedure.appointment:
@@ -270,7 +291,12 @@ def get_clinical_procedures_to_invoice(patient, company):
 			)
 			if procedure.procedure_template and is_billable:
 				clinical_procedures_to_invoice.append(
-					{"reference_type": "Clinical Procedure", "reference_name": procedure.name, "service": item, "date" : procedure.start_date}
+					{
+						"reference_type": "Clinical Procedure",
+						"reference_name": procedure.name,
+						"service": item,
+						"date": procedure.start_date,
+					}
 				)
 
 		# consumables
@@ -317,7 +343,7 @@ def get_inpatient_services_to_invoice(patient, company):
 				and io.parent=ip.name
 				and io.left=1
 				and io.invoiced=0
-			Order By 
+			Order By
 				ip.scheduled_date DESC
 		""",
 		(patient.name, company),
@@ -350,7 +376,7 @@ def get_inpatient_services_to_invoice(patient, company):
 					"reference_name": inpatient_occupancy.name,
 					"service": service_unit_type.item,
 					"qty": qty,
-					"date": inpatient_occupancy.scheduled_date
+					"date": inpatient_occupancy.scheduled_date,
 				}
 			)
 
@@ -369,7 +395,7 @@ def get_therapy_plans_to_invoice(patient, company):
 			"therapy_plan_template": ("!=", ""),
 			"docstatus": 1,
 		},
-		order_by="start_date desc"
+		order_by="start_date desc",
 	)
 	for plan in therapy_plans:
 		therapy_plans_to_invoice.append(
@@ -379,7 +405,7 @@ def get_therapy_plans_to_invoice(patient, company):
 				"service": frappe.db.get_value(
 					"Therapy Plan Template", plan.therapy_plan_template, "linked_item"
 				),
-				"date" : plan.start_date
+				"date": plan.start_date,
 			}
 		)
 
@@ -404,7 +430,7 @@ def get_therapy_sessions_to_invoice(patient, company):
 			"docstatus": 1,
 			"service_request": "",
 		},
-		order_by="start_date desc"
+		order_by="start_date desc",
 	)
 	for therapy in therapy_sessions:
 		if not therapy.appointment:
@@ -416,7 +442,7 @@ def get_therapy_sessions_to_invoice(patient, company):
 						"reference_type": "Therapy Session",
 						"reference_name": therapy.name,
 						"service": frappe.db.get_value("Therapy Type", therapy.therapy_type, "item"),
-						"date" : therapy.start_date
+						"date": therapy.start_date,
 					}
 				)
 
@@ -434,7 +460,7 @@ def get_service_requests_to_invoice(patient, company):
 			"billing_status": ["!=", "Invoiced"],
 			"docstatus": 1,
 		},
-		order_by= "order_date desc"
+		order_by="order_date desc",
 	)
 	for service_request in service_requests:
 		item, is_billable = frappe.get_cached_value(
@@ -458,7 +484,7 @@ def get_service_requests_to_invoice(patient, company):
 					"reference_name": service_request.name,
 					"service": item,
 					"qty": service_request.quantity if service_request.quantity else 1,
-					"date": service_request.order_date 
+					"date": service_request.order_date,
 				}
 			)
 	return orders_to_invoice
@@ -478,9 +504,7 @@ def get_appointment_billing_item_and_rate(doc):
 	is_inpatient = doc.inpatient_record
 
 	if doc.get("practitioner"):
-		service_item, practitioner_charge = get_practitioner_billing_details(
-			doc.practitioner, is_inpatient
-		)
+		service_item, practitioner_charge = get_practitioner_billing_details(doc.practitioner, is_inpatient)
 
 	if not service_item and doc.get("appointment_type"):
 		service_item, appointment_charge = get_appointment_type_billing_details(
@@ -531,7 +555,7 @@ def throw_config_service_item(is_inpatient):
 	)
 
 	msg = _(
-		("Please Configure {0} in ").format(service_item_label)
+		(f"Please Configure {service_item_label} in ")
 		+ """<b><a href='/app/Form/Healthcare Settings'>Healthcare Settings</a></b>"""
 	)
 	frappe.throw(msg, title=_("Missing Configuration"))
@@ -541,8 +565,8 @@ def throw_config_practitioner_charge(is_inpatient, practitioner):
 	charge_name = _("Inpatient Visit Charge") if is_inpatient else _("OP Consulting Charge")
 
 	msg = _(
-		("Please Configure {0} for Healthcare Practitioner").format(charge_name)
-		+ """ <b><a href='/app/Form/Healthcare Practitioner/{0}'>{0}</a></b>""".format(practitioner)
+		(f"Please Configure {charge_name} for Healthcare Practitioner")
+		+ f""" <b><a href='/app/Form/Healthcare Practitioner/{practitioner}'>{practitioner}</a></b>"""
 	)
 	frappe.throw(msg, title=_("Missing Configuration"))
 
@@ -551,8 +575,8 @@ def throw_config_appointment_type_charge(is_inpatient, appointment_type):
 	charge_name = _("Inpatient Visit Charge") if is_inpatient else _("OP Consulting Charge")
 
 	msg = _(
-		("Please Configure {0} for Appointment Type").format(charge_name)
-		+ """ <b><a href='/app/Form/Appointment type/{0}'>{0}</a></b>""".format(appointment_type)
+		(f"Please Configure {charge_name} for Appointment Type")
+		+ f""" <b><a href='/app/Form/Appointment type/{appointment_type}'>{appointment_type}</a></b>"""
 	)
 	frappe.throw(msg, title=_("Missing Configuration"))
 
@@ -635,7 +659,9 @@ def manage_invoice_submit_cancel(doc, method):
 		):
 			for item in doc.items:
 				if item.reference_dt == "Patient Appointment":
-					fee_validity = frappe.db.exists("Fee Validity", {"patient_appointment": item.reference_dn})
+					fee_validity = frappe.db.exists(
+						"Fee Validity", {"patient_appointment": item.reference_dn}
+					)
 					if fee_validity:
 						frappe.db.set_value("Fee Validity", fee_validity, "sales_invoice_ref", doc.name)
 
@@ -656,8 +682,10 @@ def manage_invoice_submit_cancel(doc, method):
 						},
 					)
 
+
 def update_therapy_plan(self, method):
 	from healthcare.healthcare.doctype.therapy_plan.therapy_plan import get_invoiced_details
+
 	for row in self.items:
 		if row.reference_dt == "Therapy Plan":
 			doc = frappe.get_doc(row.reference_dt, row.reference_dn)
@@ -666,7 +694,7 @@ def update_therapy_plan(self, method):
 			# doc.flags.ignore_permissions = True
 			# doc.save()
 			total_paid_amount = data.get("paid_amount") or data.get("grand_total")
-			no_of_session = data.get("no_of_session") 
+			no_of_session = data.get("no_of_session")
 
 			frappe.db.set_value("Therapy Plan", row.reference_dn, "invoiced_amount", total_paid_amount)
 			frappe.db.set_value("Therapy Plan", row.reference_dn, "invoice_json", data.get("data"))
@@ -681,7 +709,7 @@ def update_therapy_plan(self, method):
 				no_of_session = data.get("no_of_session")
 
 				total_paid_amount = data.get("grand_total")
-				no_of_session = data.get("no_of_session") 
+				no_of_session = data.get("no_of_session")
 
 				frappe.db.set_value("Therapy Plan", therapy_plan, "invoice_json", data.get("data"))
 				frappe.db.set_value("Therapy Plan", therapy_plan, "total_invoiced_session", no_of_session)
@@ -694,9 +722,7 @@ def set_invoiced(item, method, ref_invoice=None):
 		invoiced = True
 
 	if item.reference_dt == "Clinical Procedure":
-		service_item = frappe.db.get_single_value(
-			"Healthcare Settings", "clinical_procedure_consumable_item"
-		)
+		service_item = frappe.db.get_single_value("Healthcare Settings", "clinical_procedure_consumable_item")
 		if service_item == item.item_code:
 			frappe.db.set_value(item.reference_dt, item.reference_dn, "consumption_invoiced", invoiced)
 		else:
@@ -713,9 +739,7 @@ def set_invoiced(item, method, ref_invoice=None):
 		manage_doc_for_appointment(dt_from_appointment, item.reference_dn, invoiced)
 
 	elif item.reference_dt == "Lab Prescription":
-		manage_prescriptions(
-			invoiced, item.reference_dt, item.reference_dn, "Lab Test", "lab_test_created"
-		)
+		manage_prescriptions(invoiced, item.reference_dt, item.reference_dn, "Lab Test", "lab_test_created")
 
 	elif item.reference_dt == "Procedure Prescription":
 		manage_prescriptions(
@@ -734,7 +758,7 @@ def set_invoiced(item, method, ref_invoice=None):
 			template_map = {
 				"Clinical Procedure Template": "Clinical Procedure",
 				"Therapy Type": "Therapy Session",
-				"Lab Test Template": "Lab Test"
+				"Lab Test Template": "Lab Test",
 				# 'Healthcare Service Unit': 'Inpatient Occupancy'
 			}
 
@@ -783,9 +807,7 @@ def manage_prescriptions(invoiced, ref_dt, ref_dn, dt, created_check_field):
 
 
 def manage_doc_for_appointment(dt_from_appointment, appointment, invoiced):
-	dn_from_appointment = frappe.db.get_value(
-		dt_from_appointment, filters={"appointment": appointment}
-	)
+	dn_from_appointment = frappe.db.get_value(dt_from_appointment, filters={"appointment": appointment})
 	if dn_from_appointment:
 		frappe.db.set_value(dt_from_appointment, dn_from_appointment, "invoiced", invoiced)
 
@@ -821,7 +843,9 @@ def get_drugs_to_invoice(encounter, customer, link_customer=False):
 
 				description = ""
 				if medication_request.dosage and medication_request.period:
-					description = _("{0} for {1}").format(medication_request.dosage, medication_request.period)
+					description = _("{0} for {1}").format(
+						medication_request.dosage, medication_request.period
+					)
 
 				if medication_request.medication_item and is_billable:
 					billable_order_qty = medication_request.get("quantity", 1) - medication_request.get(
@@ -835,7 +859,8 @@ def get_drugs_to_invoice(encounter, customer, link_customer=False):
 							billable_order_qty = medication_request.get("quantity", 1)
 						else:
 							billable_order_qty = (
-								medication_request.total_dispensable_quantity - medication_request.get("qty_invoiced", 0)
+								medication_request.total_dispensable_quantity
+								- medication_request.get("qty_invoiced", 0)
 							)
 
 					orders_to_invoice.append(
@@ -891,7 +916,7 @@ def get_children(doctype, parent=None, company=None, is_root=False):
 				},
 			)
 			# set occupancy status of group node
-			each["occupied_of_available"] = f"{str(occupied_count)} Occupied of {str(available_count)}"
+			each["occupied_of_available"] = f"{occupied_count!s} Occupied of {available_count!s}"
 
 	return service_units
 
@@ -941,21 +966,19 @@ def render_doc_as_html(doctype, docname, exclude_fields=None):
 				doc_html += section_html + html + "</div>"
 
 			elif has_data and not col_on and sec_on:
-				doc_html += """
+				doc_html += f"""
 					<br>
 					<div class='row'>
 						<div class='col-md-12 col-sm-12'>
-							<b>{0}</b>
+							<b>{section_label}</b>
 						</div>
 					</div>
 					<div class='row'>
 						<div class='col-md-12 col-sm-12'>
-							{1} {2}
+							{section_html} {html}
 						</div>
 					</div>
-				""".format(
-					section_label, section_html, html
-				)
+				"""
 
 			# close divs for columns
 			while col_on:
@@ -974,34 +997,30 @@ def render_doc_as_html(doctype, docname, exclude_fields=None):
 		# on column break append html to section html or doc html
 		if df.fieldtype == "Column Break":
 			if sec_on and not col_on and has_data:
-				section_html += """
+				section_html += f"""
 					<br>
 					<div class='row'>
 						<div class='col-md-12 col-sm-12'>
-							<b>{0}</b>
+							<b>{section_label}</b>
 						</div>
 					</div>
 					<div class='row'>
 						<div class='col-md-4 col-sm-4'>
-							{1}
+							{html}
 						</div>
-				""".format(
-					section_label, html
-				)
+				"""
 			elif col_on == 1 and has_data:
 				section_html += "<div class='col-md-4 col-sm-4'>" + html + "</div>"
 			elif col_on > 1 and has_data:
 				doc_html += "<div class='col-md-4 col-sm-4'>" + html + "</div>"
 			else:
-				doc_html += """
+				doc_html += f"""
 					<div class='row'>
 						<div class='col-md-12 col-sm-12'>
-							{0}
+							{html}
 						</div>
 					</div>
-				""".format(
-					html
-				)
+				"""
 
 			html = ""
 			col_on += 1
@@ -1039,21 +1058,17 @@ def render_doc_as_html(doctype, docname, exclude_fields=None):
 				table_row += "</tr>"
 
 			if sec_on:
-				section_html += """
+				section_html += f"""
 					<table class='table table-condensed bordered'>
-						{0} {1}
+						{table_head} {table_row}
 					</table>
-				""".format(
-					table_head, table_row
-				)
+				"""
 			else:
-				html += """
+				html += f"""
 					<table class='table table-condensed table-bordered'>
-						{0} {1}
+						{table_head} {table_row}
 					</table>
-				""".format(
-					table_head, table_row
-				)
+				"""
 			continue
 
 		# on any other field type add label and value to html
@@ -1064,7 +1079,7 @@ def render_doc_as_html(doctype, docname, exclude_fields=None):
 			and df.fieldname not in exclude_fields
 		):
 			formatted_value = format_value(doc.get(df.fieldname), meta.get_field(df.fieldname), doc)
-			html += "<br>{0} : {1}".format(df.label or df.fieldname, formatted_value)
+			html += f"<br>{df.label or df.fieldname} : {formatted_value}"
 
 			if not has_data:
 				has_data = True
@@ -1072,15 +1087,13 @@ def render_doc_as_html(doctype, docname, exclude_fields=None):
 	if sec_on and col_on and has_data:
 		doc_html += section_html + html + "</div></div>"
 	elif sec_on and not col_on and has_data:
-		doc_html += """
+		doc_html += f"""
 			<div class='col-md-12 col-sm-12'>
 				<div class='col-md-12 col-sm-12'>
-					{0} {1}
+					{section_html} {html}
 				</div>
 			</div>
-		""".format(
-			section_html, html
-		)
+		"""
 	return {"html": doc_html}
 
 
@@ -1202,6 +1215,7 @@ def get_medical_codes(template_dt, template_dn, code_standard=None):
 			"system",
 			"definition",
 			"code_system",
+			"code_value_set",
 		],
 	)
 
@@ -1279,7 +1293,10 @@ def create_sample_collection_and_observation(doc):
 		if meta.has_field("patient"):
 			sample_collection = create_sample_collection(doc, patient)
 			for obs in out_data[grp]:
-				(sample_collection, diag_report_required,) = insert_observation_and_sample_collection(
+				(
+					sample_collection,
+					diag_report_required,
+				) = insert_observation_and_sample_collection(
 					doc, patient, obs, sample_collection, obs.get("child")
 				)
 			if sample_collection and len(sample_collection.get("observation_sample_collection")) > 0:
@@ -1454,9 +1471,7 @@ def insert_observation_and_sample_collection(
 
 def has_direct_leaf_component(template_name):
 	"""Return True if the given template has at least one direct leaf child."""
-	sample_reqd_component_obs, non_sample_reqd_component_obs = get_observation_template_details(
-		template_name
-	)
+	sample_reqd_component_obs, non_sample_reqd_component_obs = get_observation_template_details(template_name)
 	all_components = sample_reqd_component_obs + non_sample_reqd_component_obs
 
 	for comp in all_components:
@@ -1506,59 +1521,74 @@ def add_node():
 	frappe.get_doc(args).insert()
 
 
+@frappe.whitelist()
+def get_codification_row_code_data(code_value, code_system=None):
+	if not code_value:
+		frappe.throw(_("Code Value is required"))
+
+	filters = {"name": code_value}
+	if code_system:
+		filters["code_system"] = code_system
+
+	row_data = frappe.db.get_value("Code Value", filters, ["value_set", "code_system"], as_dict=True)
+	if not row_data:
+		frappe.throw(_("Invalid Code Value: {0}").format(code_value))
+
+	return {"row_data": row_data}
+
+
 class PatientDuplicateChecker:
 	def __init__(self, patient_doc):
 		self.patient = patient_doc
 		self.settings = frappe.get_doc("Healthcare Settings")
 		self.duplicate_check_enabled = self.settings.get("enable_patient_duplicate_check", 0)
-		
+
 	def check_duplicates(self):
 		"""Check for duplicate patients based on configured rules"""
 		if not self.duplicate_check_enabled:
 			return {"status": "allow", "matches": []}
-			
+
 		# Get the configuration
 		rule_links = self.settings.get("patient_duplicate_check_rules", [])
-		
+
 		if not rule_links:
 			return {"status": "allow", "matches": []}
-			
+
 		# Get all rules and sort by priority
 		rules = []
 		for rule_link in rule_links:
 			if rule_link.rule_configuration:
-				rule_doc = frappe.get_doc("Patient Duplicate Check Rule Configuration", rule_link.rule_configuration)
+				rule_doc = frappe.get_doc(
+					"Patient Duplicate Check Rule Configuration", rule_link.rule_configuration
+				)
 				rules.append(rule_doc)
-		
+
 		if not rules:
 			return {"status": "allow", "matches": []}
-			
+
 		# Sort rules by priority
 		sorted_rules = sorted(rules, key=lambda x: x.priority)
-		
+
 		# Check each rule
 		for rule in sorted_rules:
 			result = self._check_rule(rule)
 			if result["status"] != "allow":
 				return result
-				
+
 		return {"status": "allow", "matches": []}
-	
+
 	def _check_rule(self, rule):
 		"""Check a specific rule against existing patients"""
-		if not hasattr(rule, 'duplicate_fields') or not rule.duplicate_fields:
+		if not hasattr(rule, "duplicate_fields") or not rule.duplicate_fields:
 			return {"status": "allow", "matches": []}
-		
+
 		filters = {}
-		
+
 		# Build filters based on rule fields
 		filters = {}
 
 		# Collect all field values
-		field_values = {
-			f.field_name: self.patient.get(f.field_name)
-			for f in rule.duplicate_fields
-		}
+		field_values = {f.field_name: self.patient.get(f.field_name) for f in rule.duplicate_fields}
 
 		# Check if all required fields have values
 		if all(value not in (None, "") for value in field_values.values()):
@@ -1567,36 +1597,34 @@ class PatientDuplicateChecker:
 			# If any field is missing, skip filters or handle accordingly
 			filters = {}
 
-		
 		if not filters:
 			return {"status": "allow", "matches": []}
-			
+
 		# Add filter to exclude current patient if it exists
 		if self.patient.name and not self.patient.flags.is_new_doc:
 			filters["name"] = ["!=", self.patient.name]
-			
+
 		# Query for matching patients
 		matches = frappe.get_all(
-			"Patient", 
-			filters=filters, 
-			fields=["name", "patient_name", "sex", "dob", "mobile", "email"]
+			"Patient", filters=filters, fields=["name", "patient_name", "sex", "dob", "mobile", "email"]
 		)
 
 		if matches:
 			return {
 				"status": rule.action.lower(),
 				"message": rule.message or _("Duplicate patient record(s) found"),
-				"matches": matches
+				"matches": matches,
 			}
-			
+
 		return {"status": "allow", "matches": []}
+
 
 @frappe.whitelist()
 def check_patient_duplicates(patient):
 	"""Utility function to check for patient duplicates from frontend"""
 	if isinstance(patient, str):
 		patient = frappe.parse_json(patient)
-		
+
 	doc = frappe.get_doc(dict(patient))
 	checker = PatientDuplicateChecker(doc)
 	return checker.check_duplicates()
