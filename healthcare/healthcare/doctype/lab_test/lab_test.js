@@ -123,7 +123,7 @@ frappe.ui.form.on("Lab Test", {
 								child.code_value = val.code_value;
 								child.code_system = val.code_system;
 								child.code = val.code;
-								child.description = val.description;
+								child.definition = val.definition;
 								child.system = val.system;
 								child.code_value_set = val.code_value_set;
 							}

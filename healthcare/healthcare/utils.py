@@ -1522,16 +1522,17 @@ def add_node():
 
 
 @frappe.whitelist()
-def get_codification_row_code_data(code, code_system=None):
-	if not code_system:
-		frappe.throw("Code System is required")
+def get_codification_row_code_data(code_value, code_system=None):
+	if not code_value:
+		frappe.throw(_("Code Value is required"))
 
-	row_data = frappe.get_list(
-		"Code Value",
-		fields=["value_set"],
-		filters={"code_system": code_system, "code_value": code},
-		limit_page_length=1,
-	)
+	filters = {"name": code_value}
+	if code_system:
+		filters["code_system"] = code_system
+
+	row_data = frappe.db.get_value("Code Value", filters, ["value_set", "code_system"], as_dict=True)
+	if not row_data:
+		frappe.throw(_("Invalid Code Value: {0}").format(code_value))
 
 	return {"row_data": row_data}
 

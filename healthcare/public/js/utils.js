@@ -41,17 +41,23 @@ healthcare.utils.set_codification_table_query = function (frm) {
 };
 
 healthcare.utils.before_save_check = async function (frm) {
-	for (const row of frm.doc.codification_table) {
+	const codification_rows = frm.doc.codification_table || [];
+
+	for (const row of codification_rows) {
+		if (!row.code_value) {
+			continue;
+		}
+
 		try {
 			const response = await frappe.call({
 				method: "healthcare.healthcare.utils.get_codification_row_code_data",
 				args: {
-					code: row.code,
+					code_value: row.code_value,
 					code_system: row.code_system,
 				},
 			});
 
-			const server_value_set = response?.message?.row_data?.[0]?.value_set;
+			const server_value_set = response?.message?.row_data?.value_set;
 
 			if (row.code_value_set && row.code_value_set !== server_value_set) {
 				frappe.msgprint(__("Mismatch in Code-data for row {0}", [row.idx]));
@@ -64,6 +70,8 @@ healthcare.utils.before_save_check = async function (frm) {
 			return false;
 		}
 	}
+
+	return true;
 };
 
 healthcare.utils.auto_table_code_val_set = function (frm, cdt, cdn) {
@@ -74,7 +82,10 @@ healthcare.utils.auto_table_code_val_set = function (frm, cdt, cdn) {
 			method: "frappe.client.get_value",
 			args: {
 				doctype: "Code Value",
-				filters: { code_value: row.code },
+				filters: {
+					name: row.code_value,
+					code_system: row.code_system,
+				},
 				fieldname: ["value_set"],
 			},
 			callback: function (response) {
