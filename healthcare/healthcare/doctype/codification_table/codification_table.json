@@ -15,6 +15,7 @@
   "code_value",
   "code",
   "display",
+  "code_value_set",
   "section_break_5",
   "definition"
  ],
@@ -84,6 +85,13 @@
    "in_list_view": 1,
    "label": "Display",
    "read_only": 1
+  },
+  {
+   "fieldname": "code_value_set",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Code Value Set",
+   "options": "Code Value Set"
   },
   {
    "fieldname": "section_break_5",
