@@ -53,6 +53,30 @@ Any schema change to `Code Value`, `Code Value Set`, or `Codification Table` mus
 
 ## Phase 1: Hierarchy Support in Code Systems
 
+### What this means for end users
+
+Today, all codes in a Code System are stored as a flat list. A clinician searching for a diagnosis code sees every code in ICD-10 or SNOMED CT at the same level — there's no way to browse from a broad category down to a specific condition.
+
+With hierarchy support, codes can be organized as a tree. For example, in SNOMED CT:
+
+```
+Disorder of cardiovascular system
+  └── Heart disease
+        ├── Ischemic heart disease
+        │     ├── Angina pectoris
+        │     └── Acute myocardial infarction
+        └── Heart failure
+              ├── Left heart failure
+              └── Right heart failure
+```
+
+This means:
+- **Healthcare administrators** setting up code systems can import hierarchical terminologies (SNOMED CT, ICD-10) with their native parent-child structure intact, rather than flattening them into a long list
+- **Clinicians** benefit indirectly — downstream features (like Dynamic Value Sets in Phase 2) can use the hierarchy to automatically group related codes, so a clinician selecting "Heart disease" related codes gets all the specific sub-types without someone manually curating a list
+- **Reporting and analytics** teams can aggregate data at any level of the hierarchy — e.g., count all encounters coded under "Disorder of cardiovascular system" and its children, rather than listing every specific code individually
+
+The existing flat code lists continue to work exactly as before. Hierarchy is opt-in per Code System.
+
 ### Schema Changes
 
 #### [MODIFY] `healthcare/doctype/code_value/code_value.json`
@@ -104,6 +128,23 @@ Add field `hierarchy_meaning`:
 ---
 
 ## Phase 2: Dynamic Value Sets
+
+### What this means for end users
+
+Today, a Code Value Set is a static label. To group codes into a value set, an administrator must individually open each Code Value record and set its `value_set` field. If a new code is added to the system — say a new ICD-10 code for a recently classified condition — an administrator must remember to manually assign it to every relevant value set. This is error-prone and doesn't scale for large terminologies.
+
+With dynamic value sets, an administrator can define **rules** instead of manually tagging each code. For example:
+
+- *"Include all SNOMED codes that are a type of Heart disease"* — uses the hierarchy from Phase 1 to automatically pull in Angina, MI, Heart failure, and any future sub-types added later
+- *"Include these specific LOINC codes: 2093-3, 2571-8, 13457-7"* — a curated list for a lab panel
+- *"Include all ICD-10 codes under chapter IX (Diseases of the circulatory system)"* — a broad category-based grouping
+
+**Practical impact:**
+- **Healthcare administrators** save significant time when setting up or maintaining value sets. Instead of tagging hundreds of codes one by one, they write a single rule. When new codes are added to the code system, dynamic value sets automatically include them if they match the rule.
+- **Clinicians** see more accurate and up-to-date code dropdowns in their forms. When a Codification Table row has a dynamic value set selected, the code dropdown automatically shows all codes matching the rules — no stale or missing entries.
+- **Compliance teams** can define value sets that mirror regulatory groupings (e.g., CMS-required code sets) and trust that they stay current as the underlying code system is updated.
+
+Existing static value sets (where codes are manually tagged) continue to work unchanged. The `Is Dynamic` checkbox is off by default.
 
 ### New DocType
 
@@ -167,6 +208,16 @@ Add fields:
 
 ## Phase 3: Cascading Filter Integration
 
+### What this means for end users
+
+This phase connects the hierarchy and dynamic value set capabilities from Phases 1 and 2 to the actual clinical forms that clinicians use every day. Without this phase, the new features would exist in the backend but wouldn't change the user experience.
+
+**What changes for clinicians filling out forms:**
+- When a clinician adds a medical code row in a Patient Encounter, Lab Test, or any other clinical document, the workflow stays the same: pick a Code System, optionally pick a Code Value Set, then pick a Code Value. The difference is that if the selected Code Value Set is dynamic, the Code Value dropdown now automatically shows all codes matching the value set's rules — including hierarchical sub-types — rather than only codes that were manually tagged.
+- The form still validates data before saving, but now correctly accepts codes that belong to a dynamic value set through a rule match, not just through a direct static link.
+
+**What doesn't change:** If no Code Value Set is selected, or if a static value set is used, the form behaves exactly as it does today (post-PR #252). This phase is invisible to users who don't use dynamic value sets.
+
 ### Logic Changes
 
 #### [MODIFY] `public/js/utils.js` — `set_codification_table_query()`
@@ -193,18 +244,30 @@ Update to handle dynamic value sets: when a `code_value_set` is dynamic, skip th
 ## What to DEFER
 
 ### ConceptMap (Gap 4) — Defer to separate future phase
+
+**What it would give end users:** The ability to translate codes between different systems. For example, a hospital might code diagnoses in ICD-10 for billing but use SNOMED CT for clinical documentation. A ConceptMap would let the system automatically translate "I25.10" (ICD-10: Atherosclerotic heart disease) to "413844008" (SNOMED CT: Chronic ischemic heart disease), with an equivalence level indicating whether it's an exact match, a broader term, or a narrower one. This is essential for interoperability — sending data to a payer who requires ICD-10 while the clinician documented in SNOMED CT.
+
+**Why defer:**
 - Current `canonical_mapping` on Code Value has no programmatic consumers (no Python code references it)
 - Full ConceptMap requires a new doctype with source/target pairs, equivalence levels, bidirectional traversal — significant scope with no immediate workflow need
 - Can be added independently later without affecting Phases 1-3
 
 ### Designations / Properties (Gap 3) — Defer
+
+**What it would give end users:** Multiple names and translations for the same code. A single concept like SNOMED CT code "22298006" could have designations: "Myocardial infarction" (preferred), "Heart attack" (synonym), "MI" (abbreviation), and "Infarctus du myocarde" (French translation). This helps clinicians find codes by searching any common term, and supports multi-language deployments where form labels need to appear in the user's language.
+
+**Why defer:**
 - No current UI or workflow uses synonyms or translations
 - Can be added as child tables to Code Value later (purely additive, zero breaking change)
 - Worth revisiting when multi-language support or synonym search becomes a requirement
 
 ### FHIR Operations ($validate-code, $expand, $lookup) — Defer
+
+**What it would give end users:** Standard FHIR API endpoints that external systems (EHRs, labs, pharmacies) can call to validate whether a code is valid in a given value set (`$validate-code`), retrieve all codes in a value set (`$expand`), or look up the display text for a code (`$lookup`). These are the standard interoperability operations that allow Biograph to act as a terminology server for other systems in a health information exchange.
+
+**Why defer:**
 - These are API-level operations typically needed for FHIR interop endpoints
-- The internal methods (`get_expanded_codes`, `get_descendants`) provide the underlying logic
+- The internal methods (`get_expanded_codes`, `get_descendants`) built in Phases 1-2 provide the underlying logic
 - Wrapping them in FHIR-compliant operation endpoints can be done when a FHIR API layer is built
 
 ---
