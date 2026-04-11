@@ -2,9 +2,30 @@
 
 ## Context
 
-Biograph's terminology model (`Code System`, `Code Value`, `Code Value Set`, `Codification Table`) provides a solid foundation for medical coding but falls short of FHIR terminology service standards in four areas: hierarchy support, dynamic value sets, concept designations, and concept mapping. The recent PR adding `code_value_set` to the Codification Table (not yet merged on current branch) establishes the groundwork for value-set-level codification. This plan extends that work toward full FHIR parity while preserving backward compatibility across the **16 doctypes** that consume the `Codification Table` child table.
+Biograph's terminology model (`Code System`, `Code Value`, `Code Value Set`, `Codification Table`) provides a solid foundation for medical coding but falls short of FHIR terminology service standards in four areas: hierarchy support, dynamic value sets, concept designations, and concept mapping. **PR #252** (merged) added `code_value_set` to the Codification Table and introduced shared codification client utilities, establishing the groundwork for value-set-level codification. This plan extends that work toward full FHIR parity while preserving backward compatibility across the **16 doctypes** that consume the `Codification Table` child table.
 
 **Goal:** Bring Biograph to parity with standard FHIR terminology services (CodeSystem hierarchy, dynamic ValueSet compose/include, terminology operations) without regressing any existing codification workflows.
+
+---
+
+## What PR #252 Already Delivered
+
+PR #252 has been merged and provides the foundation this plan builds upon:
+
+### Schema
+- Added `code_value_set` (Link → Code Value Set) to `codification_table.json`, positioned immediately after `code_system` for UX clarity
+
+### Shared Client Utilities (`public/js/utils.js`)
+- **`set_codification_table_query(frm)`** — Cascading filters: `code_system → code_value_set → code_value`. When both `code_system` and `code_value_set` are set, `code_value` is filtered by both; when only `code_system` is set, the original single-filter behavior is preserved
+- **`before_save_check(frm)`** — Before-save consistency validation that calls `get_codification_row_code_data()` to verify `code_value_set` matches the server-side `value_set` on the linked Code Value
+- **`auto_table_code_val_set(frm, cdt, cdn)`** — Auto-populates `code_value_set` from the selected `code_value`'s `value_set` field when no value set is manually chosen
+
+### Backend (`healthcare/utils.py`)
+- **`get_codification_row_code_data(code_value, code_system)`** — Whitelisted method returning `value_set` and `code_system` for a given Code Value; used by `before_save_check`
+- **`get_medical_codes()`** — Now includes `code_value_set` in its return fields, so template copy flows propagate the value set
+
+### Consumer DocType Integration
+All 15 consumer JS files (Patient Encounter, Diagnosis, Lab Test, Clinical Procedure, Observation, Medication, Service Request, Therapy Session, etc.) updated with `Codification Table` event handlers that delegate to the shared utilities for `code_value_set`, `code_system`, and `code_value` field changes.
 
 ---
 
@@ -20,22 +41,13 @@ Any schema change to `Code Value`, `Code Value Set`, or `Codification Table` mus
 | **Templates** | Observation Template, Lab Test Template, Clinical Procedure Template, Therapy Type |
 
 **Critical auto-population flows that must not break:**
-1. `Patient Encounter.set_codification_table_from_diagnosis()` — copies codes from Diagnosis via `get_medical_codes()` (`patient_encounter.py:656-671`)
+1. `Patient Encounter.set_codification_table_from_diagnosis()` — copies codes from Diagnosis via `get_medical_codes()` (now includes `code_value_set`)
 2. `Service Request.validate()` — copies template's codification_table rows (`service_request.py:24-30`)
-3. Client-side JS in ~10 doctypes calling `healthcare.healthcare.utils.get_medical_codes` and using `set_query("code_value", "codification_table", ...)` cascading filters
+3. Shared client utility `set_codification_table_query()` in `public/js/utils.js` — provides cascading filters (`code_system → code_value_set → code_value`) for all 15 consumer doctypes
+4. `before_save_check()` — validates `code_value_set` consistency against server-side Code Value data
+5. `auto_table_code_val_set()` — auto-populates `code_value_set` from selected `code_value`
 
 **Safety principle:** All new fields are optional with backward-compatible defaults. Existing records and workflows continue to work unchanged.
-
----
-
-## Phase 0: Prerequisite — Merge Pending Code Value Set PR
-
-The pending PR adds `code_value_set` to `Codification Table` and shared codification client utilities. This must land first as it establishes the `code_system → code_value_set → code_value` cascading filter chain that Phases 1-3 build upon.
-
-**Verify before proceeding:**
-- All 16 consumer doctypes render correctly with the new column
-- `get_medical_codes()` return value includes `code_value_set`
-- Template copy flows (Service Request, Patient Encounter) propagate `code_value_set`
 
 ---
 
@@ -157,21 +169,24 @@ Add fields:
 
 ### Logic Changes
 
-#### [MODIFY] Shared codification client utilities (JS, from pending PR)
-Update the `code_value` filter in codification tables:
+#### [MODIFY] `public/js/utils.js` — `set_codification_table_query()`
+The shared utility (already delivered by PR #252) currently filters `code_value` by `{code_system, value_set}` using a static link match. Update the `code_value` query to support dynamic value sets:
+
 ```javascript
-// When code_value_set is selected, check if it's dynamic
-// If dynamic: call get_value_set_codes() to get valid code list
-// If static (or no value set): use existing code_system filter (unchanged)
+// Current (PR #252): filters code_value by { code_system, value_set: row.code_value_set }
+// Updated: When code_value_set is selected, check if it's dynamic via server call
+// If dynamic: call get_value_set_codes() to get expanded code list, filter by name IN [...]
+// If static (or no value set): keep existing filter behavior unchanged
 ```
 
-This is the **single integration point** — all 16 consumer doctypes inherit the behavior from the shared utility. No individual doctype JS files need modification.
+This is the **single integration point** — all 15 consumer doctype JS files already delegate to this shared utility via their `Codification Table` event handlers. No individual doctype JS changes needed.
 
-#### [MODIFY] `healthcare/utils.py` — `get_medical_codes()`
-Add optional `code_value_set` to the returned field list so template copy flows propagate the value set reference.
+#### [MODIFY] `public/js/utils.js` — `before_save_check()`
+Update to handle dynamic value sets: when a `code_value_set` is dynamic, skip the strict `code_value_set !== server_value_set` mismatch check since the code may belong to the value set via a rule rather than a direct `value_set` link on Code Value.
 
 ### Regression Risk: LOW
-- The shared utility adds a conditional path: if `code_value_set` is selected AND dynamic, use expanded codes. Otherwise, fall through to existing filter. Existing behavior is the default path.
+- The shared utility adds a conditional path: if `code_value_set` is dynamic, use expanded codes. Otherwise, fall through to existing filter. Existing behavior is the default path.
+- `get_medical_codes()` already includes `code_value_set` in its return fields (PR #252), so template copy flows already propagate the value set reference.
 
 ---
 
@@ -217,8 +232,8 @@ Add optional `code_value_set` to the returned field list so template copy flows 
 ### Phase 3
 | Action | File |
 |--------|------|
-| MODIFY | Shared codification client JS utility — dynamic value set resolution in cascading filters |
-| MODIFY | `healthcare/utils.py` — extend `get_medical_codes()` field list |
+| MODIFY | `public/js/utils.js` — update `set_codification_table_query()` for dynamic value set resolution |
+| MODIFY | `public/js/utils.js` — update `before_save_check()` to handle dynamic value sets |
 
 ---
 
@@ -239,6 +254,7 @@ Add optional `code_value_set` to the returned field list so template copy flows 
 
 ### Phase 3 Tests
 1. **Integration**: In Codification Table, select a dynamic `code_value_set` — verify `code_value` dropdown shows only expanded codes
-2. **Integration**: In Codification Table, select a static `code_value_set` or none — verify existing filter behavior unchanged
-3. **Integration**: Template copy flow (Lab Test Template → Lab Test) propagates `code_value_set`
-4. **Integration**: Run through Patient Encounter → Diagnosis → auto-populate codification flow end-to-end
+2. **Integration**: In Codification Table, select a static `code_value_set` or none — verify existing filter behavior unchanged (same as PR #252 behavior)
+3. **Integration**: Verify `before_save_check()` passes for a code that belongs to a dynamic value set via rule (not direct `value_set` link)
+4. **Integration**: Template copy flow (Lab Test Template → Lab Test) propagates `code_value_set` (already works via PR #252's `get_medical_codes()`)
+5. **Integration**: Run through Patient Encounter → Diagnosis → auto-populate codification flow end-to-end, verify `code_value_set` is populated via `auto_table_code_val_set()`
