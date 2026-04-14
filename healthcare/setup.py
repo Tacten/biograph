@@ -2,8 +2,8 @@
 import frappe
 from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
-
-from erpnext.setup.utils import insert_record
+from healthcare.healthcare.setup.patient_duplicate_check import setup_patient_duplicate_check_rules
+from erpnext.setup.utils import insert_record	
 
 
 data = {
@@ -273,6 +273,7 @@ def setup_healthcare():
 
 	create_custom_records()
 	create_default_root_service_units()
+	setup_patient_duplicate_check_rules()
 
 	setup_domain()
 
