@@ -281,6 +281,7 @@ def get_availability(scheduled_details, practitioner, service_unit=None):
     :param date: Date to check in schedule
     :param practitioner: Name of the practitioner
     :return: dict containing a list of available slots, list of appointments and time of appointments
+	Add Overlap logic
     """
     for schedule in scheduled_details:
         date = getdate(schedule.get("date"))
