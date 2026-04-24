@@ -77,7 +77,7 @@ def book_appointments(data):
 def get_recurring_appointment_dates(data):
     try:
         data = frappe._dict(json.loads(data))
-    except:
+    except Exception:
         data = data
 
     time_obj = datetime.strptime(data.get("from_time"), "%H:%M:%S").time()
@@ -271,61 +271,68 @@ def get_recurring_appointment_dates(data):
         "available" : available_any
     }
 
-
-
-@frappe.whitelist()
 def get_availability(scheduled_details, practitioner, service_unit=None):
     """
-    requirement parameters : date, practitioner, appointment
-    Get availability data of 'practitioner' on 'date'
-    :param date: Date to check in schedule
-    :param practitioner: Name of the practitioner
-    :return: dict containing a list of available slots, list of appointments and time of appointments
-	Add Overlap logic
+    Check each scheduled slot against existing appointments.
+
+    Overlap logic:
+    - Fetch overlap_appointments and service_unit_capacity from the
+      Healthcare Service Unit.
+    - If overlap is allowed and the count of overlapping appointments is
+      less than the capacity, the slot is still available (booking_flage=False).
+    - Otherwise the slot is marked as booked (booking_flage=True).
     """
     for schedule in scheduled_details:
         date = getdate(schedule.get("date"))
-        weekday = date.strftime("%A")
-
         practitioner_doc = frappe.get_doc("Healthcare Practitioner", practitioner)
 
         check_employee_wise_availability(date, practitioner_doc)
 
+        slot_details = []
         if practitioner_doc.practitioner_schedules:
-            service_unit = None
-            slot_details = get_available_slots(practitioner_doc, date, service_unit=service_unit)
-        
-        appointments = []
-        for row in slot_details:
-            for d in row.get("appointments"):
-                appointments.append(d)
-        
-        if appointments:
-            booked = False
-            for row in appointments:
-                time_obj = datetime.strptime(schedule.get("from_time"), "%H:%M").time()
-                from_time = timedelta(hours=time_obj.hour, minutes=time_obj.minute, seconds=time_obj.second)
-                time_obj = datetime.strptime(schedule.get("to_time"), "%H:%M").time()
-                to_time = timedelta(hours=time_obj.hour, minutes=time_obj.minute, seconds=time_obj.second)
-                
-                if (from_time <= row.get("appointment_time") < to_time):
-                    booked=True
-                if (from_time < row.get("end_time") <= to_time):
-                    booked=True 
-                if (from_time >= row.get("appointment_time") < to_time and 
-                    from_time < row.get("end_time") > to_time):
-                    booked=True
-                if (from_time >= row.get("appointment_time") < to_time and 
-                    from_time < row.get("end_time") <= to_time):
-                    booked=True
-                if booked:
-                    schedule.update({"booking_flage" : True})
-                    break
-            if not booked:
-                schedule.update({"booking_flage" : False})
+            slot_details = get_available_slots(practitioner_doc, date, service_unit=None)
+
+        # Collect overlap settings for the requested service unit
+        allow_overlap = 0
+        service_unit_capacity = 0
+        all_appointments = []
+
+        for slot in slot_details:
+            print(slot,"slot details")
+            all_appointments.extend(slot.get("appointments") or [])
+            if service_unit and slot.get("service_unit") == service_unit:
+                allow_overlap = slot.get("allow_overlap", 0)
+                service_unit_capacity = slot.get("service_unit_capacity", 0)
+
+        # Parse requested window
+        time_obj = datetime.strptime(schedule.get("from_time"), "%H:%M").time()
+        from_time = timedelta(hours=time_obj.hour, minutes=time_obj.minute, seconds=time_obj.second)
+        time_obj = datetime.strptime(schedule.get("to_time"), "%H:%M").time()
+        to_time = timedelta(hours=time_obj.hour, minutes=time_obj.minute, seconds=time_obj.second)
+
+        # Only count appointments in the same service unit (when specified)
+        relevant = [
+            a for a in all_appointments
+            if not service_unit or a.get("service_unit") == service_unit
+        ]
+
+        # Standard interval overlap: A overlaps B when A.start < B.end AND B.start < A.end
+        overlap_count = sum(
+            1 for a in relevant
+            if a.get("appointment_time") is not None
+            and a.get("end_time") is not None
+            and from_time < a["end_time"]
+            and a["appointment_time"] < to_time
+        )
+
+        if overlap_count == 0:
+            schedule.update({"booking_flage": False})
+        elif allow_overlap and service_unit_capacity and overlap_count < int(service_unit_capacity):
+            # Capacity not yet exhausted — slot is still bookable
+            schedule.update({"booking_flage": False})
         else:
-            schedule.update({"booking_flage" : False})
-    
+            schedule.update({"booking_flage": True})
+
     return scheduled_details
 
 @frappe.whitelist()
