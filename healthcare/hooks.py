@@ -59,6 +59,11 @@ doctype_js = {
 # 	"Role": "home_page"
 # }
 
+# Dynamic, per-role login redirect: reads `home_page` live from the Role
+# doctype on every login, so admin changes in the Role UI take effect
+# immediately without any code change.
+on_login = "healthcare.healthcare.auth.set_role_based_home_page"
+
 # Generators
 # ----------
 
@@ -160,6 +165,7 @@ scheduler_events = {
 		"healthcare.healthcare.doctype.patient_appointment.patient_appointment.update_appointment_status",
 		"healthcare.healthcare.doctype.fee_validity.fee_validity.update_validity_status",
 		"healthcare.healthcare.doctype.inpatient_record.inpatient_record.add_occupied_service_unit_in_ip_to_billables",
+		"healthcare.healthcare.doctype.medication_request.medication_request.update_expired_medication_requests",
 	],
 }
 

@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 
 import frappe
 from frappe import _
+from frappe.utils import add_days, getdate
 
 from healthcare.controllers.service_request_controller import ServiceRequestController
 
@@ -87,3 +88,49 @@ class MedicationRequest(ServiceRequestController):
 @frappe.whitelist()
 def set_medication_request_status(medication_request, status):
 	frappe.db.set_value("Medication Request", medication_request, "status", status)
+
+
+def update_expired_medication_requests():
+	"""Daily job: mark active Medication Requests as completed once their period has elapsed."""
+	active_status = "active-Medication Request Status"
+	completed_status = "completed-Medication Request Status"
+
+	requests = frappe.get_all(
+		"Medication Request",
+		filters={
+			"docstatus": 1,
+			"status": active_status,
+			"period": ["is", "set"],
+			"order_date": ["is", "set"],
+		},
+		fields=["name", "order_date", "period"],
+	)
+
+	today = getdate()
+	duration_days_cache = {}
+
+	for request in requests:
+		try:
+			days = duration_days_cache.get(request.period)
+			if days is None:
+				duration = frappe.get_cached_doc("Prescription Duration", request.period)
+				days = duration.get_days() or 0
+				duration_days_cache[request.period] = days
+
+			if days <= 0:
+				continue
+
+			end_date = add_days(getdate(request.order_date), days)
+			if today >= end_date:
+				frappe.db.set_value(
+					"Medication Request",
+					request.name,
+					"status",
+					completed_status,
+					update_modified=False,
+				)
+		except Exception:
+			frappe.log_error(
+				title=f"Medication Request expiry update failed: {request.name}",
+				message=frappe.get_traceback(),
+			)
