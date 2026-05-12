@@ -1,4 +1,4 @@
-// Debug: Check if file is loaded
+​// Debug: Check if file is loaded
 console.log("mark_unavailable.js loaded!");
 
 frappe.provide("healthcare.appointment");
@@ -14,36 +14,22 @@ healthcare.appointment.show_unavailability_dialog = function() {
     let d = new frappe.ui.Dialog({
         title: __("Mark Time as Unavailable"),
         fields: [
-            {
-                fieldname: "unavailability_for",
-                label: __("Unavailability For"),
-                fieldtype: "Select",
-                options: ["Practitioner", "Service Unit"],
-                reqd: 1,
-                hidden: 1,
-                default: "Practitioner",
-                onchange: function() {
-                    if (this.value === "Practitioner") {
-                        d.set_df_property("practitioner", "hidden", 0);
-                        d.set_df_property("practitioner", "reqd", 1);
-                        d.set_df_property("service_unit", "hidden", 1);
-                        d.set_df_property("service_unit", "reqd", 0);
-                    } else {
-                        d.set_df_property("practitioner", "hidden", 1);
-                        d.set_df_property("practitioner", "reqd", 0);
-                        d.set_df_property("service_unit", "hidden", 0);
-                        d.set_df_property("service_unit", "reqd", 1);
-                    }
-                }
-            },
+            { fieldtype: 'Section Break' },
             {
                 fieldname: "practitioner",
                 label: __("Healthcare Practitioner"),
                 fieldtype: "Link",
                 options: "Healthcare Practitioner",
                 reqd: 0,
-                hidden: 1,
-                onchange: function() {
+                onchange: function() 
+                {
+                    d.set_value("service_unit", "");
+                    let su_field = d.fields_dict["service_unit"];
+                    if (su_field) {
+                        su_field.refresh && su_field.refresh();
+                        if (su_field.$input) su_field.$input.val("");
+                    }
+
                     if (this.value) {
                         frappe.call({
                             method: "frappe.client.get",
@@ -53,69 +39,164 @@ healthcare.appointment.show_unavailability_dialog = function() {
                             },
                             callback: function(r) {
                                 if (r.message && r.message.practitioner_schedules) {
-                                    let service_units = [];
+                                    let child_units = [];
                                     r.message.practitioner_schedules.forEach(function(schedule) {
-                                        if (schedule.service_unit) {
-                                            service_units.push(schedule.service_unit);
+                                        if (schedule.service_unit && !child_units.includes(schedule.service_unit)) {
+                                            child_units.push(schedule.service_unit);
                                         }
                                     });
-                                    
-                                    if (service_units.length > 0) {
-                                        d.set_df_property("service_unit_info", "hidden", 0);
-                                        d.set_value("service_unit_info", 
-                                            __("Note: This practitioner is associated with the following service units: ") +
-                                            service_units.join(", ")
-                                        );
+
+                                    if (child_units.length > 0) {
+                                        all_service_units = child_units.slice().sort();
+                                        refresh_service_unit_options();
                                     } else {
-                                        d.set_df_property("service_unit_info", "hidden", 1);
+                                        all_service_units = [];
+                                        d.set_df_property("service_unit", "options", "");
+                                        d.fields_dict["service_unit"].set_data([]);
+                                        frappe.show_alert({
+                                            message: __("No service units linked to this practitioner."),
+                                            indicator: "orange"
+                                        }, 4);
                                     }
                                 }
                             }
                         });
+                    } else {
+                        load_all_service_units();
                     }
                 }
             },
+            { fieldtype: 'Column Break' },
             {
                 fieldname: "service_unit",
                 label: __("Healthcare Service Unit"),
-                fieldtype: "Link",
-                options: "Healthcare Service Unit",
+                fieldtype: "MultiSelect",
+                options: "",
                 reqd: 0,
-                hidden: 1,
-                get_query: function() {
-                    return {
-                        filters: {
-                            "allow_appointments": 1
+                onchange: function() {
+                    let raw = d.get_value("service_unit") || "";
+                    let parts = raw.split(",").map(s => s.trim()).filter(Boolean);
+                    let unique = [...new Set(parts)];
+                    let normalised = unique.length ? unique.join(",") + "," : " ";
+                    if (normalised !== raw) {
+                        d.set_value("service_unit", normalised);
+                    }
+                    // Remove already-selected units from dropdown options
+                    setTimeout(function() {
+                        refresh_service_unit_options();
+                        // Re-trigger input to auto-open the dropdown
+                        let su_field = d.fields_dict["service_unit"];
+                        if (su_field && su_field.$input) {
+                            su_field.$input.trigger("input");
                         }
-                    };
+                    }, 150);
                 }
             },
+
+            // ── Row 2: Start Date + From Time | To Time ──────────────────────
+            { fieldtype: 'Section Break' },
             {
-                fieldname: "service_unit_info",
-                fieldtype: "HTML",
-                hidden: 1
-            },
-            {
-                fieldname: "date",
-                label: __("Date"),
+                fieldname: "from_date",
+                label: __("Start Date"),
                 fieldtype: "Date",
                 reqd: 1,
-                default: frappe.datetime.get_today()
-            },
-            {
-                fieldname: "from_time",
-                label: __("From Time"),
-                fieldtype: "Time",
-                reqd: 1,
-                default: "09:00:00"
+                onchange: function() {
+                    if (this.value) {
+                        let _p = this.value.split("-");
+                        let _sel = new Date(parseInt(_p[0]), parseInt(_p[1]) - 1, parseInt(_p[2]));
+                        if (_sel.getDay() === 0) {  // Sunday — weekoff
+                            _sel.setDate(_sel.getDate() + 1);  // advance to Monday
+                            let _monday = _sel.getFullYear() + "-"
+                                + String(_sel.getMonth() + 1).padStart(2, "0") + "-"
+                                + String(_sel.getDate()).padStart(2, "0");
+                            frappe.show_alert({
+                                message: __("Sunday is weekoff. Start Date moved to Monday."),
+                                indicator: "orange"
+                            }, 4);
+                            d.set_value("from_date", _monday);
+                            return;
+                        }
+                        if (this.value < frappe.datetime.get_today()) {
+                            frappe.show_alert({
+                                message: __("Start Date cannot be a past date."),
+                                indicator: "red"
+                            }, 4);
+                            d.set_value("from_date", frappe.datetime.get_today());
+                        }
+                    }
+                }
             },
             {
                 fieldname: "to_time",
                 label: __("To Time"),
                 fieldtype: "Time",
                 reqd: 1,
-                default: "17:00:00"
+                default: "20:00:00"
             },
+            { fieldtype: 'Column Break' },
+            {
+                fieldname: "from_time",
+                label: __("From Time"),
+                fieldtype: "Time",
+                reqd: 1,
+                default: "07:00:00"
+            },
+            { fieldtype: 'Section Break' },
+            {
+                fieldname: "repeat_on",
+                label: __("Repeat On"),
+                fieldtype: "Select",
+                options: "Daily\nWeekly\nMonthly\nYearly",
+                reqd: 1,
+                onchange: function () {
+                    let selected = d.get_value("repeat_on");
+                    if (selected === "Daily") {
+                        d.set_value("repeat_interval", 1);
+                        d.set_df_property("repeat_interval", "hidden", 1);
+                    } else {
+                        d.set_value("repeat_interval", 1);
+                        d.set_df_property("repeat_interval", "hidden", 0);
+                    }
+                    d.set_df_property("week_days", "hidden", selected !== "Weekly");
+                }
+            },
+            {
+                fieldname: "repeat_interval",
+                label: __("Repeat Every (days)"),
+                fieldtype: "Int",
+                default: 1,
+                hidden: 1,
+                reqd: 0,
+            },
+            { fieldtype: 'Column Break' },
+            {
+                fieldname: "repeat_till",
+                label: __("Repeat Till"),
+                fieldtype: "Date",
+                reqd: 0,
+                onchange: function() {
+                    let from = d.get_value("from_date") || frappe.datetime.get_today();
+                    if (this.value && this.value < from) {
+                        frappe.show_alert({
+                            message: __("Repeat Till cannot be before the Start Date."),
+                            indicator: "red"
+                        }, 4);
+                        d.set_value("repeat_till", from);
+                    }
+                }
+            },
+            { fieldtype: 'Section Break', fieldname: 'week_days', hidden: 1, label: __("Select Days") },
+            { fieldtype: 'Check', fieldname: 'monday',    label: __('Monday') },
+            { fieldtype: 'Check', fieldname: 'tuesday',   label: __('Tuesday') },
+            { fieldtype: 'Column Break', fieldname: 'day_break2' },
+            { fieldtype: 'Check', fieldname: 'wednesday', label: __('Wednesday') },
+            { fieldtype: 'Check', fieldname: 'thursday',  label: __('Thursday') },
+            { fieldtype: 'Column Break', fieldname: 'day_break4' },
+            { fieldtype: 'Check', fieldname: 'friday',    label: __('Friday') },
+            { fieldtype: 'Check', fieldname: 'saturday',  label: __('Saturday') },
+            { fieldtype: 'Column Break', fieldname: 'day_break6' },
+            { fieldtype: 'Check', fieldname: 'sunday',    label: __('Sunday'), hidden: 1 },  // permanent holiday
+            { fieldtype: 'Section Break' },
             {
                 fieldname: "reason",
                 label: __("Reason for Unavailability"),
@@ -125,49 +206,57 @@ healthcare.appointment.show_unavailability_dialog = function() {
         primary_action_label: __("Check Conflicts"),
         primary_action: function() {
             let values = d.get_values();
-            
+
             if (!values) return;
-            
+
             if (values.from_time >= values.to_time) {
                 frappe.throw(__("From Time must be before To Time"));
                 return;
             }
-            
-            if (values.from_time && typeof values.from_time === 'string') {
-                if (!values.from_time.includes(':')) {
-                    values.from_time = values.from_time + ":00";
+
+            // For Weekly repeat, at least one day must be selected
+            if (values.repeat_on === "Weekly") {
+                let day_fields = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
+                let selected_days = day_fields.filter(day => values[day]);
+                if (!selected_days.length) {
+                    frappe.throw(__("Please select at least one day for Weekly recurrence."));
+                    return;
                 }
-                if (values.from_time.split(':').length === 2) {
-                    values.from_time = values.from_time + ":00";
-                }
+                values.week_days = selected_days;
             }
-            
-            if (values.to_time && typeof values.to_time === 'string') {
-                if (!values.to_time.includes(':')) {
-                    values.to_time = values.to_time + ":00";
+
+            // Normalise times to HH:MM:SS
+            ["from_time", "to_time"].forEach(function(key) {
+                if (values[key] && typeof values[key] === "string") {
+                    if (!values[key].includes(":")) {
+                        values[key] += ":00:00";
+                    } else if (values[key].split(":").length === 2) {
+                        values[key] += ":00";
+                    }
                 }
-                if (values.to_time.split(':').length === 2) {
-                    values.to_time = values.to_time + ":00";
-                }
-            }
-            
+            });
+
+            // Backend expects 'date' (start) and 'to_date' (end of recurrence range)
+            values.date    = values.from_date;
+            values.to_date = values.repeat_till || values.from_date;
+
+            // Duration per occurrence (minutes)
             try {
-                let from_datetime = frappe.datetime.str_to_obj(values.date + " " + values.from_time);
-                let to_datetime = frappe.datetime.str_to_obj(values.date + " " + values.to_time);
-                let duration_minutes = (to_datetime - from_datetime) / (1000 * 60);
-                values.duration = duration_minutes;
+                let fd = frappe.datetime.str_to_obj(values.from_date + " " + values.from_time);
+                let td = frappe.datetime.str_to_obj(values.from_date + " " + values.to_time);
+                values.duration = (td - fd) / (1000 * 60);
             } catch (e) {
                 console.error("Error calculating duration:", e);
             }
-            
+
             frappe.show_alert({
                 message: __("Checking for conflicts..."),
                 indicator: "blue"
             });
-            
+
             let formValues = {...values};
             d.hide();
-            
+
             frappe.call({
                 method: "healthcare.healthcare.doctype.patient_appointment.patient_appointment.check_unavailability_conflicts",
                 args: {
@@ -177,70 +266,112 @@ healthcare.appointment.show_unavailability_dialog = function() {
                     if (r.message && Array.isArray(r.message) && r.message.length > 0) {
                         healthcare.appointment.show_conflict_dialog(formValues, r.message);
                     } else {
-                        frappe.confirm(
-                            __("Are you sure you want to mark this time as unavailable?"),
-                            function() {
-                                healthcare.appointment.create_unavailability(formValues);
-                            }
-                        );
+                        healthcare.appointment.show_dates_confirmation_dialog(formValues);
                     }
                 }
             });
         }
     });
-    
+
     // Add custom styling to match the design
     d.$wrapper.find('.modal-dialog').css({
         'max-width': '600px',
         'margin': '1.75rem auto'
     });
-    
+
     d.$wrapper.find('.modal-content').css({
         'border-radius': '8px'
     });
-    
+
     d.$wrapper.find('.modal-body').css({
         'padding': '20px'
     });
-    
+
     d.$wrapper.find('.frappe-control').css({
         'margin-bottom': '15px'
     });
-    
-    d.$wrapper.find('input, select, textarea').css({
+
+    d.$wrapper.find('input, textarea').css({
         'background-color': '#f8f9fa',
         'border': '1px solid #dee2e6',
         'border-radius': '4px',
         'padding': '8px 12px'
     });
-    
+    d.$wrapper.find('select').css({
+        'background-color': '#f8f9fa',
+        'border': '1px solid #dee2e6',
+        'border-radius': '4px'
+    });
+
     d.$wrapper.find('.btn-primary').css({
         'background-color': '#000',
         'border-color': '#000',
         'border-radius': '4px',
         'padding': '8px 20px'
     });
-    
+
     d.show();
-    
-    // Set initial visibility of fields
-    d.set_df_property("practitioner", "hidden", 0);
-    d.set_df_property("practitioner", "reqd", 1);
-    d.set_df_property("service_unit", "hidden", 1);
+
+    // Block past dates and Sundays (weekoff) on the datepicker widgets
+    let today_obj = frappe.datetime.str_to_obj(frappe.datetime.get_today());
+    let _dp_opts = {
+        minDate: today_obj,
+        onRenderCell({ date, cellType }) {
+            if (cellType === "day" && date.getDay() === 0) {
+                return { disabled: true, classes: "sunday-weekoff" };
+            }
+        }
+    };
+    let from_date_field = d.fields_dict["from_date"];
+    if (from_date_field && from_date_field.datepicker) {
+        from_date_field.datepicker.update(_dp_opts);
+    }
+    let repeat_till_field = d.fields_dict["repeat_till"];
+    if (repeat_till_field && repeat_till_field.datepicker) {
+        repeat_till_field.datepicker.update(_dp_opts);
+    }
+
+    // Tracks the full list of available service units for the current context
+    let all_service_units = [];
+
+    // Helper: refresh MultiSelect options excluding already-selected units
+    function refresh_service_unit_options() {
+        let raw = d.get_value("service_unit") || "";
+        let selected = raw.split(",").map(s => s.trim()).filter(Boolean);
+        let remaining = all_service_units.filter(u => !selected.includes(u));
+        let opts = remaining.join("\n");
+        d.set_df_property("service_unit", "options", opts);
+        d.fields_dict["service_unit"].set_data(opts);
+    }
+
+    // Load all service units as initial MultiSelect options
+    load_all_service_units();
+
+    function load_all_service_units() {
+        frappe.call({
+            method: "healthcare.healthcare.doctype.patient_appointment.patient_appointment.get_all_service_units",
+            callback: function(r) {
+                console.log("Healthcare Service Units fetched:", r.message);
+                if (r.message && r.message.length > 0) {
+                    all_service_units = r.message.map(function(su) { return su.name; });
+                } else {
+                    all_service_units = [];
+                }
+                refresh_service_unit_options();
+            },
+            error: function(err) {
+                console.error("Failed to fetch Healthcare Service Units:", err);
+            }
+        });
+    }
 };
 
 // Function to show the conflict resolution dialog
 healthcare.appointment.show_conflict_dialog = function(values, conflicts) {
     // Ensure conflicts is an array and not empty
     if (!conflicts || !Array.isArray(conflicts) || conflicts.length === 0) {
-        // If no conflicts exist, show confirmation and proceed
-        frappe.confirm(
-            __("Are you sure you want to mark this time as unavailable?"),
-            function() {
-                // Proceed with creating the unavailability with no conflicts
-                healthcare.appointment.create_unavailability(values);
-            }
-        );
+        // If no conflicts exist, show date confirmation and proceed
+        healthcare.appointment.show_dates_confirmation_dialog(values);
         return;
     }
     
@@ -302,104 +433,214 @@ healthcare.appointment.show_conflict_dialog = function(values, conflicts) {
     d.show();
 };
 
+// Function to preview all recurrence dates and confirm before creating unavailability
+healthcare.appointment.show_dates_confirmation_dialog = function(values) {
+    // Parse a YYYY-MM-DD string into a local Date without timezone shift
+    function parse_date(s) {
+        let p = s.split("-");
+        return new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]));
+    }
+
+    let from_date = parse_date(values.from_date || values.date);
+    let to_date   = parse_date(values.repeat_till || values.to_date || values.from_date || values.date);
+    let repeat_on = values.repeat_on || "Daily";
+    let interval  = Math.max(parseInt(values.repeat_interval) || 1, 1);
+    let week_days = values.week_days || [];
+
+    const day_map  = { monday:1, tuesday:2, wednesday:3, thursday:4, friday:5, saturday:6, sunday:0 };
+    const day_abbr = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    const mon_abbr = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+    // Compute all matching dates client-side (mirrors backend _get_recurrence_dates)
+    let dates = [];
+    let current = new Date(from_date);
+
+    if (repeat_on === "Weekly") {
+        let selected = new Set(week_days.map(d => day_map[d.toLowerCase()]));
+        while (current <= to_date) {
+            if (selected.has(current.getDay())) dates.push(new Date(current));
+            current.setDate(current.getDate() + 1);
+        }
+    } else if (repeat_on === "Monthly") {
+        let target_day = from_date.getDate();
+        while (current <= to_date) {
+            dates.push(new Date(current));
+            let m = current.getMonth() + interval;
+            let y = current.getFullYear() + Math.floor(m / 12);
+            m = m % 12;
+            let max_d = new Date(y, m + 1, 0).getDate();
+            current = new Date(y, m, Math.min(target_day, max_d));
+        }
+    } else if (repeat_on === "Yearly") {
+        while (current <= to_date) {
+            dates.push(new Date(current));
+            current = new Date(current.getFullYear() + interval, current.getMonth(), current.getDate());
+        }
+    } else {
+        // Daily (default)
+        while (current <= to_date) {
+            dates.push(new Date(current));
+            current.setDate(current.getDate() + interval);
+        }
+    }
+
+    // Remove Sundays — permanent holiday
+    dates = dates.filter(dt => dt.getDay() !== 0);
+
+    // Build summary info lines
+    let practitioner_line = values.practitioner
+        ? `<tr><td><strong>${__("Practitioner")}</strong></td><td>${values.practitioner}</td></tr>` : "";
+    let su_raw = values.service_unit || "";
+    let sus = su_raw.split(",").map(s => s.trim()).filter(Boolean);
+    let su_line = sus.length
+        ? `<tr><td><strong>${__("Service Unit(s)")}</strong></td><td>${sus.join(", ")}</td></tr>` : "";
+    let time_line = `<tr><td><strong>${__("Time")}</strong></td><td>${values.from_time || ""} – ${values.to_time || ""}</td></tr>`;
+    let repeat_desc = repeat_on;
+    if (repeat_on === "Weekly" && week_days.length) {
+        repeat_desc += ` (${week_days.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(", ")})`;
+    } else if (interval > 1) {
+        repeat_desc += ` (every ${interval})`;
+    }
+    let repeat_line = `<tr><td><strong>${__("Recurrence")}</strong></td><td>${repeat_desc}</td></tr>`;
+
+    // Render date badges
+    function render_date_badges(dates) {
+        return dates.map(function(dt) {
+            return `<span style="display:inline-block;margin:2px 3px;padding:3px 8px;border-radius:4px;
+                                background:#f0f0f0;border:1px solid #ccc;color:#333;
+                                font-size:12px;font-weight:500;">
+                        ${day_abbr[dt.getDay()]}, ${dt.getDate()} ${mon_abbr[dt.getMonth()]} ${dt.getFullYear()}
+                    </span>`;
+        }).join("");
+    }
+
+    let date_badges = render_date_badges(dates);
+    let html = `
+        <table class="table table-borderless" style="margin-bottom:10px;font-size:13px;">
+            <tbody>${practitioner_line}${su_line}${time_line}${repeat_line}</tbody>
+        </table>
+        <div style="margin-bottom:8px;font-size:13px;">
+            <strong>${dates.length} ${dates.length === 1 ? __("date") : __("dates")} ${__("in selected range")}:</strong>
+        </div>
+        <div style="max-height:180px;overflow-y:auto;padding:8px;background:#f8f9fa;
+                    border:1px solid #dee2e6;border-radius:4px;">
+            ${date_badges || `<em>${__("No dates calculated")}</em>`}
+        </div>`;
+
+    let confirm_dialog = new frappe.ui.Dialog({
+        title: __("Confirm: Mark as Unavailable"),
+        fields: [{ fieldtype: "HTML", fieldname: "preview_html", options: html }],
+        primary_action_label: __("Confirm & Proceed"),
+        secondary_action_label: __("Go Back"),
+        primary_action: function() {
+            confirm_dialog.hide();
+            healthcare.appointment.create_unavailability(values);
+        },
+        secondary_action: function() {
+            confirm_dialog.hide();
+            healthcare.appointment.show_unavailability_dialog();
+        }
+    });
+    confirm_dialog.show();
+};
+
 // Function to create an unavailability appointment
 healthcare.appointment.create_unavailability = function(values) {
-    console.log("Creating unavailability with values:", values);
-    
-    // Ensure times have proper format with seconds
-    if (values.from_time && typeof values.from_time === 'string') {
-        // Make sure from_time is in the HH:MM:SS format
-        if (!values.from_time.includes(':')) {
-            values.from_time = values.from_time + ":00";
+    // Ensure times have proper format HH:MM:SS
+    ["from_time", "to_time"].forEach(function(key) {
+        if (values[key] && typeof values[key] === "string") {
+            if (!values[key].includes(":")) {
+                values[key] += ":00:00";
+            } else if (values[key].split(":").length === 2) {
+                values[key] += ":00";
+            }
         }
-        if (values.from_time.split(':').length === 2) {
-            values.from_time = values.from_time + ":00";
-        }
-        console.log("Formatted from_time:", values.from_time);
-    }
-    
-    if (values.to_time && typeof values.to_time === 'string') {
-        // Make sure to_time is in the HH:MM:SS format
-        if (!values.to_time.includes(':')) {
-            values.to_time = values.to_time + ":00";
-        }
-        if (values.to_time.split(':').length === 2) {
-            values.to_time = values.to_time + ":00";
-        }
-        console.log("Formatted to_time:", values.to_time);
-    }
-    
-    // Calculate duration to verify it's correct
-    if (values.from_time && values.to_time && values.date) {
-        try {
-            let from_datetime = frappe.datetime.str_to_obj(values.date + " " + values.from_time);
-            let to_datetime = frappe.datetime.str_to_obj(values.date + " " + values.to_time);
-            let duration_minutes = (to_datetime - from_datetime) / (1000 * 60);
-            console.log(`Duration calculated: ${duration_minutes} minutes`);
-            
-            // Set the duration explicitly
-            values.duration = duration_minutes;
-        } catch (e) {
-            console.error("Error calculating duration:", e);
-        }
-    }
-    
-    // Log the final data being sent to the server
-    console.log("Final data for unavailability creation:", {
-        date: values.date,
-        from_time: values.from_time,
-        to_time: values.to_time,
-        duration: values.duration
     });
-    
-    // Show freeze message to prevent user interaction during creation
-    frappe.show_alert({
-        message: __("Creating unavailability record..."),
-        indicator: "blue"
-    });
-    
-    // Create the unavailability appointment
+
+    // Ensure date and to_date are set
+    values.date    = values.date    || values.from_date;
+    values.to_date = values.to_date || values.repeat_till || values.from_date;
+
+    // Recalculate duration (per occurrence, in minutes)
+    try {
+        let fd = frappe.datetime.str_to_obj(values.date + " " + values.from_time);
+        let td = frappe.datetime.str_to_obj(values.date + " " + values.to_time);
+        values.duration = (td - fd) / (1000 * 60);
+    } catch (e) {
+        console.error("Error calculating duration:", e);
+    }
+
+    frappe.show_alert({ message: __("Submitting unavailability request..."), indicator: "blue" });
+
     frappe.call({
-        method: "healthcare.healthcare.doctype.patient_appointment.patient_appointment.create_unavailability_appointment",
-        args: {
-            data: values
-        },
-        freeze: true,
-        freeze_message: __("Creating unavailability record..."),
+        method: "healthcare.healthcare.doctype.patient_appointment.patient_appointment.schedule_unavailability_creation",
+        args: { data: values },
         callback: function(r) {
-            if (r.message) {
-                console.log("Unavailability creation response:", r.message);
-                
-                // If we have the end time in the response, store it
-                if (r.message.end_time) {
-                    console.log("End time for unavailability:", r.message.end_time);
-                }
-                
+            if (!r.message) {
+                frappe.msgprint({
+                    title: __("Error"),
+                    indicator: "red",
+                    message: __("Failed to mark time as unavailable. Please check the server logs.")
+                });
+                return;
+            }
+
+            if (r.message.queued) {
+                // Large range — job is running in background; notify when done
                 frappe.show_alert({
-                    message: __("Time marked as unavailable successfully"),
+                    message: __(
+                        "Creating {0} unavailability record(s) in the background. You will be notified when done.",
+                        [r.message.count]
+                    ),
+                    indicator: "blue"
+                }, 8);
+
+                frappe.realtime.on("unavailability_creation_done", function(data) {
+                    frappe.realtime.off("unavailability_creation_done");
+                    if (data.success) {
+                        frappe.show_alert({
+                            message: __(
+                                "{0} unavailability record(s) created successfully.",
+                                [data.count]
+                            ),
+                            indicator: "green"
+                        }, 5);
+                    } else {
+                        frappe.show_alert({
+                            message: __("Some records could not be created. Please check the Error Log."),
+                            indicator: "red"
+                        }, 8);
+                    }
+                    if (cur_list && cur_list.doctype === "Patient Appointment") {
+                        cur_list.refresh();
+                    } else if (cur_calendar && cur_calendar.doctype === "Patient Appointment") {
+                        cur_calendar.refresh();
+                    }
+                });
+
+            } else {
+                // Small range — completed synchronously
+                frappe.show_alert({
+                    message: __(
+                        r.message.count === 1
+                            ? "Time marked as unavailable successfully"
+                            : "{0} unavailability records created successfully",
+                        [r.message.count]
+                    ),
                     indicator: "green"
                 }, 5);
-                
-                // Refresh the list view or calendar view if we're on one
                 if (cur_list && cur_list.doctype === "Patient Appointment") {
                     cur_list.refresh();
                 } else if (cur_calendar && cur_calendar.doctype === "Patient Appointment") {
                     cur_calendar.refresh();
                 }
-            } else {
-                console.error("Failed to create unavailability:", r);
-                frappe.msgprint({
-                    title: __("Error"),
-                    indicator: 'red',
-                    message: __("Failed to mark time as unavailable. Please check the console and server logs.")
-                });
             }
         },
         error: function(r) {
             console.error("API error when creating unavailability:", r);
             frappe.msgprint({
                 title: __("Error"),
-                indicator: 'red',
+                indicator: "red",
                 message: __("Failed to communicate with the server. Please try again.")
             });
         }

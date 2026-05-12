@@ -3,6 +3,7 @@
 # For license information, please see license.txt
 
 
+import calendar
 import json
 from datetime import datetime, timedelta
 
@@ -111,32 +112,16 @@ class PatientAppointment(Document):
 				getdate(self.appointment_date), get_time(self.appointment_time)
 			)
 			
-			# For debugging
-			print(f"DEBUG - Appointment start time: {self.appointment_time}")
-			
-			# IMPORTANT FIX: Always use appointment_end_time if available, regardless of duration
-			# This prevents the default 60 min duration from the appointment type from overriding
 			if self.appointment_end_time:
-				# If we already have an end time, use it directly
 				end_time = get_time(self.appointment_end_time)
 				ends_on = datetime.combine(getdate(self.appointment_date), end_time)
-				print(f"DEBUG - Using appointment_end_time: {self.appointment_end_time} for event end time")
 			else:
-				# Otherwise calculate from duration
 				ends_on = starts_on + timedelta(minutes=flt(self.duration))
-				print(f"DEBUG - Calculated end time from duration {self.duration}: {ends_on.time()}")
 
-			# Ensure duration is correct based on start and end times
 			duration_minutes = (ends_on - starts_on).total_seconds() / 60
-			
-			# Force the duration to match the time difference regardless of the appointment type's default
-			if abs(duration_minutes - flt(self.duration)) > 1:  # Allow 1 minute tolerance for rounding
-				print(f"DEBUG - Duration mismatch! Stored: {self.duration}, Calculated: {duration_minutes}")
-				# Update the duration to match the actual time difference
+
+			if abs(duration_minutes - flt(self.duration)) > 1:
 				self.db_set("duration", duration_minutes)
-			
-			# Debug output
-			print(f"DEBUG - Creating event from {starts_on} to {ends_on}. Duration: {duration_minutes} minutes")
 			
 			# Use the default calendar
 			google_calendar = None
@@ -208,44 +193,23 @@ class PatientAppointment(Document):
 			# This bypasses any automatic duration calculations from appointment type
 			frappe.db.set_value("Event", event.name, "ends_on", calculated_end_time)
 			
-			# Ensure the event document was created properly by reloading it
 			event.reload()
-			print(f"DEBUG - Event created with starts_on: {event.starts_on} and ends_on: {event.ends_on}")
-			
-			# Double-check the event duration to make sure it's correct
-			event_duration = (event.ends_on - event.starts_on).total_seconds() / 60
-			print(f"DEBUG - Event duration: {event_duration} minutes")
-			
-			# If the event duration still doesn't match our expected duration, fix it again
-			if abs(event_duration - duration_minutes) > 1:  # Allow 1 minute tolerance for rounding
-				print(f"DEBUG - Event duration mismatch! Expected: {duration_minutes}, Got: {event_duration}")
-				# Try one more direct update to the event end time in the database
-				frappe.db.set_value("Event", event.name, "ends_on", calculated_end_time)
-				print(f"DEBUG - Fixed event end time again to {calculated_end_time}")
-				
-				# Verify the fix worked
-				event.reload()
-				final_duration = (event.ends_on - event.starts_on).total_seconds() / 60
-				print(f"DEBUG - Final event duration after fix: {final_duration} minutes")
-			
+
 			# Link the event to the appointment and ensure we store the end time
 			update_values = {"event": event.name}
-			
+
 			if not self.appointment_end_time:
 				end_time_str = ends_on.time().strftime("%H:%M:%S")
 				update_values.update({
 					"appointment_end_time": end_time_str,
 					"appointment_end_datetime": ends_on.strftime("%Y-%m-%d %H:%M:%S")
 				})
-				print(f"DEBUG - Updated appointment with end_time: {end_time_str}")
 			
 			self.db_set(update_values)
 			self.notify_update()
 			
 		except Exception as e:
-			error_msg = f"Error creating calendar event: {str(e)}\n{frappe.get_traceback()}"
-			print(f"ERROR - {error_msg}")
-			frappe.log_error(error_msg, "Unavailability Calendar Event Error")
+			frappe.log_error(f"Error creating calendar event: {str(e)}\n{frappe.get_traceback()}", "Unavailability Calendar Event Error")
 
 	def insert_calendar_event(self):
 		if not self.practitioner:
@@ -418,11 +382,17 @@ class PatientAppointment(Document):
 				"appointment_type": "Unavailable",
 				"practitioner": self.practitioner,
 			},
-			fields=["name", "appointment_time", "duration", "end_time"]
+			fields=["name", "appointment_time", "duration", "end_time", "service_unit"]
 		)
 		
 		for existing in unavailable_appointments:
 			if not self.status == "Unavailable":  # Only regular appointments need to avoid unavailable slots
+				# If the unavailability is scoped to a specific service unit, only block
+				# appointments at that same service unit. An unavailability with no service_unit
+				# means the practitioner is globally unavailable (all locations).
+				if existing.service_unit and existing.service_unit != (self.service_unit or ""):
+					continue
+
 				# Get existing appointment time boundaries
 				existing_start_time = get_time(existing.appointment_time)
 				
@@ -508,6 +478,8 @@ class PatientAppointment(Document):
 					/* Special check for unavailable slots for this practitioner with end_time support */
 					(
 						practitioner=%(practitioner)s AND status="Unavailable" AND appointment_type="Unavailable" AND
+						/* Only block when unavailability has no service_unit (global) or matches the appointment's service_unit */
+						(COALESCE(service_unit, '') = '' OR service_unit = %(service_unit)s) AND
 						(
 							/* Case 1: Using explicitly set end_time if available */
 							(
@@ -539,7 +511,8 @@ class PatientAppointment(Document):
 				"practitioner": self.practitioner,
 				"patient": self.patient,
 				"appointment_time": self.appointment_time,
-				"end_time": end_time.time().strftime("%H:%M:%S")
+				"end_time": end_time.time().strftime("%H:%M:%S"),
+				"service_unit": self.service_unit or "",
 			},
 			as_dict=True,
 		)
@@ -548,9 +521,19 @@ class PatientAppointment(Document):
 			return  # No overlaps, nothing to validate!
 
 		# Check for unavailable appointments specifically
-		unavailable_appointments = [appt for appt in overlapping_appointments 
-									if appt.status == "Unavailable" and appt.appointment_type == "Unavailable"
-									and appt.practitioner == self.practitioner]
+		unavailable_appointments = [
+			appointment for appointment in overlapping_appointments
+			if appointment.status == "Unavailable"
+			and appointment.appointment_type == "Unavailable"
+			and appointment.practitioner == self.practitioner
+			# Only block if the unavailability is global (no service_unit) OR
+			# is scoped to the same service_unit as the appointment being booked.
+			# An unavailability at Unit A must NOT prevent booking at Unit B.
+			and (
+				not appointment.get("service_unit")
+				or appointment.get("service_unit") == (self.service_unit or "")
+			)
+		]
 		
 		if unavailable_appointments and self.appointment_type != "Unavailable":
 			# This is a regular appointment overlapping with an unavailability period
@@ -561,6 +544,15 @@ class PatientAppointment(Document):
 				),
 				OverlapError,
 			)
+
+		# Remove ALL unavailability records from the list — they have already been
+		# evaluated above (with proper service_unit scoping).  Any that remain here
+		# would cause false-positive "cannot overlap" errors when booking at a
+		# different service unit than the one marked unavailable.
+		overlapping_appointments = [
+			appt for appt in overlapping_appointments
+			if not (appt.get("status") == "Unavailable" and appt.get("appointment_type") == "Unavailable")
+		]
 
 		if self.service_unit:  # validate service unit capacity if overlap enabled
 			allow_overlap, service_unit_capacity = frappe.get_value(
@@ -778,12 +770,10 @@ class PatientAppointment(Document):
 				
 				# Set the duration based on the time difference
 				self.duration = duration_minutes
-				print(f"Set duration to {duration_minutes} minutes based on end_time")
 				return
 			
 		# If a duration is already set, respect it
 		if self.duration:
-			print(f"Using existing duration: {self.duration} minutes")
 			return
 			
 		# Next try to get duration from schedule slot if it's available
@@ -815,23 +805,18 @@ class PatientAppointment(Document):
 										
 										# Use this slot's duration
 										self.duration = slot_duration
-										print(f"Set duration to {slot_duration} minutes based on practitioner schedule slot")
-										return
+									return
 						except Exception as e:
-							print(f"Error getting schedule: {str(e)}")
-							continue
+							frappe.log_error(f"Error reading practitioner schedule: {str(e)}", "Appointment Duration")
 		
 		# If no schedule slot found, get duration from appointment type
 		if self.appointment_type:
 			default_duration = frappe.db.get_value("Appointment Type", self.appointment_type, "default_duration")
 			if default_duration:
 				self.duration = default_duration
-				print(f"Set duration to {default_duration} minutes based on appointment type {self.appointment_type}")
 				return
 		
-		# If all else fails, set a default duration
 		self.duration = 15
-		print(f"Set default duration to 15 minutes as no other duration source was found")
 
 	@frappe.whitelist()
 	def get_therapy_types(self):
@@ -1192,8 +1177,10 @@ def get_available_slots(practitioner_doc, date):
 					        "appointment_date", "appointment_type", "end_time"],
 				)
 				
-				# Now also fetch any unavailability appointments for this practitioner
-				# This is critical - we need to ensure unavailable time slots are not shown as available
+				# Now also fetch any unavailability appointments for this practitioner.
+				# IMPORTANT: only include records that are either global (no service_unit)
+				# or scoped to *this* schedule entry's service unit, so that marking
+				# unavailable at Location A does not block slots at Location B.
 				unavailable_appointments = frappe.get_all(
 					"Patient Appointment",
 					filters={
@@ -1203,18 +1190,31 @@ def get_available_slots(practitioner_doc, date):
 						"appointment_type": "Unavailable"
 					},
 					fields=["name", "appointment_time", "duration", "status", 
-					        "appointment_date", "appointment_type", "end_time"]
+					        "appointment_date", "appointment_type", "end_time", "service_unit"]
 				)
+
+				slot_service_unit = schedule_entry.service_unit or ""
+				# Keep only: (a) global records with no service_unit, OR
+				#            (b) records explicitly scoped to this service_unit
+				unavailable_appointments = [
+					a for a in unavailable_appointments
+					if not a.get("service_unit") or a.get("service_unit") == slot_service_unit
+				]
 				
-				# Also get any block-based appointments that might overlap this practitioner's slots
+				# Also get any block-based appointments that might overlap this practitioner's slots.
+				# Scope by service_unit so appointments from other locations are not included.
+				block_filters = {
+					"practitioner": practitioner,
+					"appointment_date": date,
+					"status": ["not in", ["Cancelled"]],
+					"end_time": ["is", "set"]
+				}
+				if schedule_entry.service_unit:
+					block_filters["service_unit"] = schedule_entry.service_unit
+
 				block_appointments = frappe.get_all(
 					"Patient Appointment",
-					filters={
-						"practitioner": practitioner,
-						"appointment_date": date,
-						"status": ["not in", ["Cancelled"]],
-						"end_time": ["is", "set"]
-					},
+					filters=block_filters,
 					fields=["name", "appointment_time", "duration", "status", 
 					        "appointment_date", "appointment_type", "end_time"]
 				)
@@ -1588,99 +1588,165 @@ def update_appointment_status():
 
 # Unavailability related methods
 
+def _get_recurrence_dates(from_date, to_date, repeat_on, repeat_interval, week_days=None):
+	"""
+	Return the list of dates that fall within [from_date, to_date] matching
+	the given recurrence pattern.
+
+	repeat_on      – "Daily" | "Weekly" | "Monthly" | "Yearly"
+	repeat_interval – how many units between occurrences (e.g. 2 = every 2 days/weeks/…)
+	week_days       – list of lowercase day names ["monday", "tuesday", …] used for Weekly
+	"""
+	interval    = max(int(repeat_interval or 1), 1)
+	dates       = []
+	current     = from_date
+	day_name_to_weekday = {
+		"monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
+		"friday": 4, "saturday": 5, "sunday": 6,
+	}
+
+	if repeat_on == "Weekly":
+		selected_weekdays = set()
+		for day_name in (week_days or []):
+			wd = day_name_to_weekday.get(str(day_name).lower())
+			if wd is not None:
+				selected_weekdays.add(wd)
+		selected_weekdays.discard(6)  # Sunday is a weekoff
+		while current <= to_date:
+			if current.weekday() in selected_weekdays:
+				dates.append(current)
+			current += timedelta(days=1)
+
+	elif repeat_on == "Monthly":
+		target_day = from_date.day
+		while current <= to_date:
+			dates.append(current)
+			month = current.month + interval
+			year  = current.year + (month - 1) // 12
+			month = ((month - 1) % 12) + 1
+			max_day = calendar.monthrange(year, month)[1]
+			current = current.replace(year=year, month=month, day=min(target_day, max_day))
+
+	elif repeat_on == "Yearly":
+		while current <= to_date:
+			dates.append(current)
+			try:
+				current = current.replace(year=current.year + interval)
+			except ValueError:
+				# Feb 29 on non-leap year → use Feb 28
+				current = current.replace(year=current.year + interval, day=28)
+
+	else:
+		# Default: Daily (interval = every N days)
+		while current <= to_date:
+			dates.append(current)
+			current += timedelta(days=interval)
+
+	# Filter out Sundays — weekoff (weekday 6 = Sunday in Python)
+	return [d for d in dates if d.weekday() != 6]
+
+
+@frappe.whitelist()
+def get_all_service_units():
+	"""Return all non-group (leaf) healthcare service units."""
+	return frappe.get_all(
+		"Healthcare Service Unit",
+		filters={"is_group": 0},
+		fields=["name"],
+		order_by="name asc",
+	)
+
+
 @frappe.whitelist()
 def check_unavailability_conflicts(filters):
 	"""
-	Check for appointment conflicts when marking a practitioner or service unit as unavailable
-	Returns a list of appointments that conflict with the unavailability
+	Check for appointment conflicts when marking time as unavailable.
+	Respects the recurrence pattern (repeat_on, repeat_interval, week_days, to_date).
+	Returns a list of conflicting appointments, each with a 'date' field.
 	"""
 	filters = frappe.parse_json(filters)
-	print(f"Check unavailability conflicts with filters: {filters}")
-	
+
 	if not filters:
 		return []
-	
-	# Parse date and times
-	appointment_date = getdate(filters.get("date"))
-	from_time = get_time(filters.get("from_time"))
-	to_time = get_time(filters.get("to_time"))
-	
-	# Create base filters
-	appointment_filters = {
-		"status": ["not in", ["Cancelled", "Needs Rescheduling", "Closed"]],
-		"appointment_date": appointment_date,
-	}
 
-	if filters.get("practitioner"):
-		appointment_filters["practitioner"] = filters.get("practitioner")
-	# Add practitioner or service unit to filters based on unavailability_for
-	if filters.get("unavailability_for") == "Practitioner":
+	from_date       = getdate(filters.get("from_date") or filters.get("date"))
+	to_date         = getdate(filters.get("to_date") or filters.get("repeat_till") or from_date)
+	from_time       = get_time(filters.get("from_time"))
+	to_time         = get_time(filters.get("to_time"))
+	repeat_on       = filters.get("repeat_on") or "Daily"
+	repeat_interval = int(filters.get("repeat_interval") or 1)
+	week_days       = filters.get("week_days") or []
+
+	# Parse service units
+	service_units_raw = filters.get("service_unit") or ""
+	service_units = [s.strip() for s in service_units_raw.split(",") if s.strip()]
+
+	# Get all dates that match the recurrence pattern
+	recurrence_dates = _get_recurrence_dates(from_date, to_date, repeat_on, repeat_interval, week_days)
+
+	all_conflicts = []
+
+	for appointment_date in recurrence_dates:
+		# Build filters for this specific date
+		appointment_filters = {
+			"status": ["not in", ["Cancelled", "Needs Rescheduling", "Closed"]],
+			"appointment_date": appointment_date,
+		}
+
 		if filters.get("practitioner"):
 			appointment_filters["practitioner"] = filters.get("practitioner")
-	elif filters.get("unavailability_for") == "Service Unit":
-		if filters.get("service_unit"):
-			appointment_filters["service_unit"] = filters.get("service_unit")
-	
-	print(f"Appointment filters: {appointment_filters}")
-	
-	# Get all appointments for the date
-	appointments = frappe.get_all(
-		"Patient Appointment",
-		filters=appointment_filters,
-		fields=["name", "patient", "patient_name", "appointment_time", "appointment_type", "status", "duration"]
-	)
-	
-	print(f"Found {len(appointments)} appointments on that date")
-	
-	# Define unavailability period
-	unavailable_start = datetime.combine(appointment_date, from_time)
-	unavailable_end = datetime.combine(appointment_date, to_time)
-	
-	conflicts = []
-	
-	# Check each appointment for time conflicts
-	for appointment in appointments:
-		# Skip appointments that are already marked as unavailable
-		# if appointment.get("appointment_type") == "Unavailable":
-		# 	continue
-		
-		# Get appointment time as datetime object for comparison
-		if isinstance(appointment.appointment_time, str):
-			appt_time_str = appointment.appointment_time
-			try:
-				appt_time = datetime.strptime(appt_time_str, "%H:%M:%S").time()
-			except ValueError:
+			if service_units:
+				if len(service_units) > 1:
+					appointment_filters["service_unit"] = ["in", service_units]
+				else:
+					appointment_filters["service_unit"] = service_units[0]
+		elif service_units:
+			if len(service_units) > 1:
+				appointment_filters["service_unit"] = ["in", service_units]
+			else:
+				appointment_filters["service_unit"] = service_units[0]
+
+		appointments = frappe.get_all(
+			"Patient Appointment",
+			filters=appointment_filters,
+			fields=["name", "patient", "patient_name", "appointment_time", "appointment_type", "status", "duration"],
+		)
+
+		unavailable_start = datetime.combine(appointment_date, from_time)
+		unavailable_end   = datetime.combine(appointment_date, to_time)
+
+		for appointment in appointments:
+			if appointment.get("appointment_type") == "Unavailable":
+				continue
+
+			if isinstance(appointment.appointment_time, str):
 				try:
-					# Try alternative format
-					appt_time = datetime.strptime(appt_time_str, "%H:%M").time()
+					appt_time = datetime.strptime(appointment.appointment_time, "%H:%M:%S").time()
 				except ValueError:
-					frappe.logger().error(f"Could not parse appointment time: {appt_time_str}")
-					continue
-		elif isinstance(appointment.appointment_time, timedelta):
-			midnight = datetime.combine(appointment_date, datetime.min.time())
-			appt_time = (midnight + appointment.appointment_time).time()
-		else:
-			print(f"Unexpected appointment_time type: {type(appointment.appointment_time)}")
-			continue
-		
-		# Calculate appointment start and end datetimes
-		appt_start = datetime.combine(appointment_date, appt_time)
-		appt_end = appt_start + timedelta(minutes=appointment.duration or 15)
-		
-		# Check for overlap
-		# An overlap exists if:
-		# - Appointment starts during unavailability period
-		# - Appointment ends during unavailability period
-		# - Appointment spans the entire unavailability period
-		if (unavailable_start <= appt_start < unavailable_end) or \
-		   (unavailable_start < appt_end <= unavailable_end) or \
-		   (appt_start <= unavailable_start and appt_end >= unavailable_end):
-			
-			# Format time for display
-			appointment['appointment_time'] = appt_time.strftime("%H:%M:%S")
-			conflicts.append(appointment)
-	
-	return conflicts
+					try:
+						appt_time = datetime.strptime(appointment.appointment_time, "%H:%M").time()
+					except ValueError:
+						frappe.logger().error(f"Could not parse appointment time: {appointment.appointment_time}")
+						continue
+			elif isinstance(appointment.appointment_time, timedelta):
+				midnight  = datetime.combine(appointment_date, datetime.min.time())
+				appt_time = (midnight + appointment.appointment_time).time()
+			else:
+				continue
+
+			appt_start = datetime.combine(appointment_date, appt_time)
+			appt_end   = appt_start + timedelta(minutes=appointment.duration or 15)
+
+			if (
+				(unavailable_start <= appt_start < unavailable_end)
+				or (unavailable_start < appt_end <= unavailable_end)
+				or (appt_start <= unavailable_start and appt_end >= unavailable_end)
+			):
+				appointment["appointment_time"] = appt_time.strftime("%H:%M:%S")
+				appointment["date"] = str(appointment_date)
+				all_conflicts.append(appointment)
+
+	return all_conflicts
 
 @frappe.whitelist()
 def get_unavailability_appointments(date=None):
@@ -1706,8 +1772,8 @@ def get_unavailability_appointments(date=None):
 			"status": ["!=", "Cancelled"]
 		},
 		fields=[
-			"name", "practitioner", "practitioner_name", "service_unit", 
-			"appointment_time", "duration", "status", "notes"
+			"name", "practitioner", "practitioner_name", "service_unit",
+			"appointment_time", "end_time", "duration", "status", "notes"
 		]
 	)
 
@@ -1759,7 +1825,6 @@ def setup_appointment_type_for_unavailability():
 			"description": "System appointment type for marking unavailability"
 		})
 		appointment_type.insert(ignore_permissions=True)
-		frappe.db.commit()
 
 @frappe.whitelist()
 def create_unavailability_appointment(data):
@@ -1786,149 +1851,253 @@ def create_unavailability_appointment(data):
 	# Setup Unavailable appointment type if it doesn't exist
 	setup_appointment_type_for_unavailability()
 	
-	# Parse date and times
-	date = getdate(data.get('date'))
-	from_time = get_time(data.get('from_time'))
-	to_time = get_time(data.get('to_time'))
-	
-	# Calculate duration in minutes - very important for proper calendar display
-	from_datetime = datetime.combine(date, from_time)
-	to_datetime = datetime.combine(date, to_time)
-	duration = (to_datetime - from_datetime).total_seconds() / 60
-	
-	print(f"Creating unavailability from {from_time} to {to_time} on {date}")
-	print(f"Calculated duration: {duration} minutes")
-	
-	# Detect if there are conflicts but don't modify them
-	has_conflicts = False
-	
-	if data.get('conflicts'):
-		conflicts = data.get('conflicts')
-		if conflicts and isinstance(conflicts, list) and len(conflicts) > 0:
-			has_conflicts = True
-			print(f"Detected {len(conflicts)} conflicts, but not modifying them per user request")
-	
-	# Set the company - required field
-	# In some versions of Healthcare, practitioners might not have a company field
+	# Parse recurrence settings
+	from_date       = getdate(data.get('date') or data.get('from_date'))
+	to_date         = getdate(data.get('to_date') or data.get('repeat_till') or from_date)
+	from_time       = get_time(data.get('from_time'))
+	to_time         = get_time(data.get('to_time'))
+	repeat_on       = data.get('repeat_on') or "Daily"
+	repeat_interval = int(data.get('repeat_interval') or 1)
+	week_days       = data.get('week_days') or []
+
+	# Duration per occurrence (minutes)
+	_from_dt = datetime.combine(from_date, from_time)
+	_to_dt   = datetime.combine(from_date, to_time)
+	duration = (_to_dt - _from_dt).total_seconds() / 60
+
+	# Resolve company once
 	company = None
 	try:
 		if data.get('practitioner'):
-			# First check if the company field exists in the doctype
 			practitioner_meta = frappe.get_meta("Healthcare Practitioner")
 			if practitioner_meta.has_field("company"):
 				company = frappe.db.get_value("Healthcare Practitioner", data.get('practitioner'), "company")
 	except Exception as e:
-		print(f"Error getting company from practitioner: {str(e)}")
-		company = None
-	
-	# If we couldn't get the company from the practitioner, use the default
+		frappe.log_error(f"Error getting company from practitioner: {str(e)}", "Unavailability")
+
 	if not company:
 		company = frappe.defaults.get_user_default('company')
-		
-	# If we still don't have a company, try to get the first company in the system
 	if not company:
 		companies = frappe.get_all("Company", limit=1)
 		if companies:
 			company = companies[0].name
-			
-	# Create a new appointment document - now using standard Frappe approach
-	# instead of trying to directly manipulate the database
-	appointment = frappe.new_doc("Patient Appointment")
-	
-	# Set all the standard fields
-	appointment.naming_series = "HLC-APP-.YYYY.-"
-	appointment.appointment_type = "Unavailable"
-	appointment.status = "Unavailable"
-	appointment.company = company
-	appointment.appointment_for = data.get('unavailability_for', "Practitioner")
-	appointment.appointment_date = date
-	appointment.appointment_time = str(from_time)
-	appointment.duration = duration
-	appointment.notes = data.get('reason', "Marked as unavailable")
-	
-	# Set practitioner or service unit based on unavailability_for
-	if data.get('unavailability_for') == "Practitioner":
-		appointment.practitioner = data.get('practitioner')
-		if data.get('practitioner'):
-			try:
-				practitioner_name = frappe.db.get_value("Healthcare Practitioner", data.get('practitioner'), "practitioner_name")
-				appointment.practitioner_name = practitioner_name
-			except Exception as e:
-				print(f"Error getting practitioner name: {str(e)}")
-				try:
-					practitioner_doc = frappe.get_doc("Healthcare Practitioner", data.get('practitioner'))
-					appointment.practitioner_name = practitioner_doc.practitioner_name
-				except Exception:
-					appointment.practitioner_name = "Unknown Practitioner"
-				
-	elif data.get('unavailability_for') == "Service Unit":
-		appointment.service_unit = data.get('service_unit')
-	
-	# Set patient_name to indicate it's an unavailability record
-	# Format times for better display
-	from_time_str = from_time.strftime("%H:%M")
-	to_time_str = to_time.strftime("%H:%M")
-	time_range = f"{from_time_str} to {to_time_str}"
-	
-	if appointment.practitioner_name:
-		appointment.patient_name = f"UNAVAILABLE: {appointment.practitioner_name} ({time_range})"
-	elif appointment.service_unit:
-		appointment.patient_name = f"UNAVAILABLE: {appointment.service_unit} ({time_range})"
+
+	# Resolve practitioner name once
+	practitioner_name = None
+	if data.get('practitioner'):
+		try:
+			practitioner_name = frappe.db.get_value(
+				"Healthcare Practitioner", data.get('practitioner'), "practitioner_name"
+			) or "Unknown Practitioner"
+		except Exception:
+			practitioner_name = "Unknown Practitioner"
+
+	service_units_raw = data.get('service_unit') or ''
+	service_units = [s.strip() for s in service_units_raw.split(',') if s.strip()]
+
+	if data.get('practitioner'):
+		appointment_for = "Practitioner"
+	elif service_units:
+		appointment_for = "Service Unit"
 	else:
-		appointment.patient_name = f"UNAVAILABLE ({time_range})"
-	
-	# Explicitly set the title to match patient_name
-	appointment.title = appointment.patient_name
-	
-	# Add end time data
-	appointment.appointment_end_time = str(to_time)
-	appointment.appointment_end_datetime = to_datetime.strftime('%Y-%m-%d %H:%M:%S')
-	# Ensure end_time is properly formatted as HH:MM:SS
-	appointment.end_time = to_time.strftime('%H:%M:%S')
-	
-	# Mark this as an unavailability appointment to bypass validation
-	appointment.is_unavailability = True
-	
-	# Skip validation that would normally require a patient
-	appointment.flags.ignore_validate = True
-	appointment.flags.ignore_mandatory = True
-	
-	# Insert the document
-	appointment.insert(ignore_permissions=True)
-	
-	print(f"Created unavailability appointment: {appointment.name}")
-	print(f"Appointment duration: {duration} minutes, end time: {to_time}")
-	
-	# After insert, double-check that title matches patient_name and end_time is set
-	update_values = {}
-	if appointment.title != appointment.patient_name:
-		update_values["title"] = appointment.patient_name
-	
-	# Double-check that end_time is set correctly
-	if not appointment.end_time or appointment.end_time != to_time.strftime('%H:%M:%S'):
-		update_values["end_time"] = to_time.strftime('%H:%M:%S')
-	
-	if update_values:
-		frappe.db.set_value(
+		appointment_for = "Practitioner"
+
+	from_time_str = from_time.strftime("%H:%M")
+	to_time_str   = to_time.strftime("%H:%M")
+	time_range    = f"{from_time_str} to {to_time_str}"
+
+	# All dates that match the recurrence pattern
+	recurrence_dates = _get_recurrence_dates(from_date, to_date, repeat_on, repeat_interval, week_days)
+
+	def _insert_unavailability(current_date, service_unit=None):
+		"""Create one unavailability appointment on current_date, optionally scoped to service_unit."""
+		to_datetime_local = datetime.combine(current_date, to_time)
+
+		# Duplicate guard
+		dup_filters = {
+			"appointment_type": "Unavailable",
+			"appointment_date": current_date,
+			"status": ["!=", "Cancelled"],
+		}
+		if data.get("practitioner"):
+			dup_filters["practitioner"] = data.get("practitioner")
+		if service_unit:
+			dup_filters["service_unit"] = service_unit
+
+		existing_unavail = frappe.get_all(
 			"Patient Appointment",
-			appointment.name,
-			update_values,
-			update_modified=False
+			filters=dup_filters,
+			fields=["name", "appointment_time", "end_time", "duration"],
 		)
-		print(f"Fixed values after insert: {update_values}")
-	
-	# Notify of update to refresh any views
-	appointment.notify_update()
-	
-	# Include end_time in the response for the JavaScript
-	return {
-		"name": appointment.name,
-		"date": date.strftime('%Y-%m-%d'),
-		"from_time": from_time.strftime('%H:%M:%S'),
-		"to_time": to_time.strftime('%H:%M:%S'),
-		"end_time": to_time.strftime('%H:%M:%S'),
-		"duration": duration
-	}
+
+		for ex in existing_unavail:
+			ex_start = get_time(ex.appointment_time)
+			if ex.end_time:
+				ex_end = get_time(ex.end_time)
+			elif ex.duration:
+				ex_end = (datetime.combine(current_date, ex_start) + timedelta(minutes=flt(ex.duration))).time()
+			else:
+				continue
+			if not (to_time <= ex_start or from_time >= ex_end):
+				su_label = f" at {service_unit}" if service_unit else ""
+				frappe.throw(
+					_("An unavailability record {0} already exists for {1}{2} on {3} overlapping {4} to {5}").format(
+						frappe.bold(ex.name),
+						frappe.bold(data.get("practitioner") or service_unit or ""),
+						su_label,
+						frappe.bold(str(current_date)),
+						frappe.bold(from_time.strftime("%H:%M")),
+						frappe.bold(to_time.strftime("%H:%M")),
+					),
+					frappe.DuplicateEntryError,
+				)
+
+		appointment = frappe.new_doc("Patient Appointment")
+		appointment.naming_series  = "HLC-APP-.YYYY.-"
+		appointment.appointment_type  = "Unavailable"
+		appointment.status            = "Unavailable"
+		appointment.company           = company
+		appointment.appointment_for   = appointment_for
+		appointment.appointment_date  = current_date
+		appointment.appointment_time  = str(from_time)
+		appointment.duration          = duration
+		appointment.notes             = data.get('reason', "Marked as unavailable")
+
+		if appointment_for == "Practitioner":
+			appointment.practitioner      = data.get('practitioner')
+			appointment.practitioner_name = practitioner_name
+			if service_unit:
+				appointment.service_unit = service_unit
+		elif appointment_for == "Service Unit":
+			appointment.service_unit = service_unit
+
+		date_str = current_date.strftime('%d %b %Y')
+		if appointment.practitioner_name and appointment.service_unit:
+			appointment.patient_name = f"UNAVAILABLE: {appointment.practitioner_name} @ {appointment.service_unit} ({date_str} {time_range})"
+		elif appointment.practitioner_name:
+			appointment.patient_name = f"UNAVAILABLE: {appointment.practitioner_name} ({date_str} {time_range})"
+		elif appointment.service_unit:
+			appointment.patient_name = f"UNAVAILABLE: {appointment.service_unit} ({date_str} {time_range})"
+		else:
+			appointment.patient_name = f"UNAVAILABLE ({date_str} {time_range})"
+
+		appointment.title                   = appointment.patient_name
+		appointment.appointment_end_time    = str(to_time)
+		appointment.appointment_end_datetime = to_datetime_local.strftime('%Y-%m-%d %H:%M:%S')
+		appointment.end_time                = to_time.strftime('%H:%M:%S')
+		appointment.is_unavailability       = True
+		appointment.flags.ignore_validate   = True
+		appointment.flags.ignore_mandatory  = True
+		appointment.insert(ignore_permissions=True)
+
+		# Ensure end_time and title were persisted correctly
+		update_values = {}
+		if appointment.end_time != to_time.strftime('%H:%M:%S'):
+			update_values["end_time"] = to_time.strftime('%H:%M:%S')
+		if appointment.title != appointment.patient_name:
+			update_values["title"] = appointment.patient_name
+		if update_values:
+			frappe.db.set_value("Patient Appointment", appointment.name, update_values, update_modified=False)
+
+		appointment.notify_update()
+		return {
+			"name":      appointment.name,
+			"date":      current_date.strftime('%Y-%m-%d'),
+			"from_time": from_time.strftime('%H:%M:%S'),
+			"to_time":   to_time.strftime('%H:%M:%S'),
+			"end_time":  to_time.strftime('%H:%M:%S'),
+			"duration":  duration,
+		}
+
+	# Build the list of (date, service_unit) pairs to create
+	all_results = []
+	for appt_date in recurrence_dates:
+		try:
+			if appointment_for == "Service Unit" and service_units:
+				for su in service_units:
+					all_results.append(_insert_unavailability(appt_date, su))
+			elif appointment_for == "Practitioner" and service_units:
+				for su in service_units:
+					all_results.append(_insert_unavailability(appt_date, su))
+			else:
+				all_results.append(_insert_unavailability(appt_date))
+		except frappe.DuplicateEntryError:
+			# Skip dates that already have an overlapping record; log and continue
+			frappe.log_error(frappe.get_traceback(), f"Duplicate unavailability skipped for {appt_date}")
+			continue
+
+	if not all_results:
+		frappe.throw(_("No unavailability records were created. They may already exist for the selected dates."))
+
+	return all_results[0] if len(all_results) == 1 else all_results
+
+
+def _create_unavailability_background(data, user=None):
+	"""
+	Background job wrapper. Called by schedule_unavailability_creation for large date
+	ranges so the browser is never frozen. Notifies the user via realtime when done.
+	"""
+	try:
+		results = create_unavailability_appointment(data)
+		count = len(results) if isinstance(results, list) else 1
+		frappe.publish_realtime(
+			"unavailability_creation_done",
+			{"success": True, "count": count},
+			user=user,
+		)
+	except Exception:
+		frappe.log_error(frappe.get_traceback(), "Background Unavailability Creation Error")
+		frappe.publish_realtime(
+			"unavailability_creation_done",
+			{"success": False},
+			user=user,
+		)
+
+
+@frappe.whitelist()
+def schedule_unavailability_creation(data):
+	"""
+	Entry point called by the browser.
+
+	- For small date ranges (≤ SYNC_THRESHOLD occurrences) the work is done
+	  inline so the dialog can show an immediate success count.
+	- For larger ranges the work is pushed to the *long* background queue so
+	  the screen never freezes. The browser is notified via a realtime event
+	  (``unavailability_creation_done``) when the job finishes.
+
+	Returns::
+
+	    {"queued": False, "count": <int>}   – completed synchronously
+	    {"queued": True,  "count": <int>}   – enqueued; count = estimated records
+	"""
+	if isinstance(data, str):
+		data = json.loads(data)
+
+	SYNC_THRESHOLD = 10
+
+	from_date       = getdate(data.get("from_date"))
+	to_date         = getdate(data.get("repeat_till") or from_date)
+	repeat_on       = data.get("repeat_on")
+	repeat_interval = int(data.get("repeat_interval") or 1)
+	week_days       = data.get("week_days") or []
+
+	recurrence_dates = _get_recurrence_dates(from_date, to_date, repeat_on, repeat_interval, week_days)
+
+	frappe.log_error(f"[DEBUG] from_date={from_date}, to_date={to_date}, repeat_on={repeat_on}, interval={repeat_interval}, week_days={week_days}\nrecurrence_dates count={len(recurrence_dates)}, dates={[str(d) for d in recurrence_dates]}", "Unavailability Debug")
+
+	if len(recurrence_dates) <= SYNC_THRESHOLD:
+		result = create_unavailability_appointment(data)
+		count  = len(result) if isinstance(result, list) else 1
+		return {"queued": False, "count": count}
+	frappe.enqueue(
+		"healthcare.healthcare.doctype.patient_appointment.patient_appointment._create_unavailability_background",
+		data=data,
+		user=frappe.session.user,
+		queue="long",
+		timeout=600,
+	)
+	return {"queued": True, "count": len(recurrence_dates)}
+
 
 @frappe.whitelist()
 def update_appointment_end_times():
@@ -1936,9 +2105,6 @@ def update_appointment_end_times():
 	Utility function to update appointment end times based on duration for existing appointments.
 	Can be run as a patch or called manually to fix existing appointments.
 	"""
-	from datetime import datetime, timedelta
-	from frappe.utils import getdate, get_time, flt
-	
 	count = 0
 	# Get all appointments that have a duration but no end time
 	appointments = frappe.get_all(
@@ -1976,10 +2142,10 @@ def update_appointment_end_times():
 					frappe.db.set_value("Event", event_name, "ends_on", end_dt, update_modified=False)
 					
 			except Exception as e:
-				print(f"Error updating appointment {appointment.name}: {str(e)}")
+				frappe.log_error(f"Error updating appointment {appointment.name}: {str(e)}", "update_appointment_end_times")
 	
 	frappe.db.commit()
-	print(f"Updated end times for {count} appointments")
+	return count
 
 @frappe.whitelist()
 def update_unavailability_appointment_names():
@@ -2045,10 +2211,9 @@ def update_unavailability_appointment_names():
 				count += 1
 				
 		except Exception as e:
-			print(f"Error updating appointment {appointment.name}: {str(e)}")
+			frappe.log_error(f"Error updating appointment {appointment.name}: {str(e)}", "update_unavailability_appointment_names")
 	
 	frappe.db.commit()
-	print(f"Updated names for {count} unavailability appointments")
 	return count
 
 
