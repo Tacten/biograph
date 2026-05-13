@@ -1,4 +1,4 @@
-​// Debug: Check if file is loaded
+// Debug: Check if file is loaded
 console.log("mark_unavailable.js loaded!");
 
 frappe.provide("healthcare.appointment");
