@@ -466,10 +466,10 @@ def get_service_requests_to_invoice(patient, company):
 		item, is_billable = frappe.get_cached_value(
 			service_request.template_dt, service_request.template_dn, ["item", "is_billable"]
 		)
-		price_list, price_list_currency = frappe.db.get_values(
+		_price_list, _price_list_currency = frappe.db.get_values(
 			"Price List", {"selling": 1}, ["name", "currency"]
 		)[0]
-		args = {
+		_args = {
 			"doctype": "Sales Invoice",
 			"item_code": item,
 			"company": service_request.get("company"),
@@ -620,14 +620,20 @@ def manage_invoice_submit_cancel(doc, method):
 	if not doc.patient:
 		return
 
+	# For return invoices (Credit Notes), flip the effective method:
+	# submitting a return should un-invoice, cancelling a return should re-invoice.
+	is_return = doc.get("is_return")
+	if is_return:
+		effective_method = "on_cancel" if method == "on_submit" else "on_submit"
+	else:
+		effective_method = method
+
 	if doc.items:
-		reference_flag = False
 		for item in doc.items:
 			if item.get("reference_dt") and item.get("reference_dn"):
-				reference_flag = True
 				# TODO check
 				# if frappe.get_meta(item.reference_dt).has_field("invoiced"):
-				set_invoiced(item, method, doc.name)
+				set_invoiced(item, effective_method, doc.name)
 
 				# set patient as active if registration invoice
 				if item.get("reference_dt") == "Patient":
@@ -640,15 +646,17 @@ def manage_invoice_submit_cancel(doc, method):
 						is_registration = item.item_name == "Registration Fee"
 
 					if is_registration:
-						status = "Active" if method == "on_submit" else "Disabled"
+						status = "Active" if effective_method == "on_submit" else "Disabled"
 						frappe.db.set_value("Patient", item.reference_dn, "status", status)
 
-		if method == "on_submit" and frappe.db.get_single_value(
-			"Healthcare Settings", "create_observation_on_si_submit"
+		if (
+			effective_method == "on_submit"
+			and not is_return
+			and frappe.db.get_single_value("Healthcare Settings", "create_observation_on_si_submit")
 		):
 			create_sample_collection_and_observation(doc)
 
-	if method == "on_submit":
+	if effective_method == "on_submit" and not is_return:
 		if frappe.db.get_single_value("Healthcare Settings", "create_lab_test_on_si_submit"):
 			create_multiple("Sales Invoice", doc.name)
 
@@ -665,7 +673,7 @@ def manage_invoice_submit_cancel(doc, method):
 					if fee_validity:
 						frappe.db.set_value("Fee Validity", fee_validity, "sales_invoice_ref", doc.name)
 
-	if method == "on_cancel":
+	if effective_method == "on_cancel":
 		if doc.items and (doc.additional_discount_percentage or doc.discount_amount):
 			for item in doc.items:
 				if (
@@ -755,7 +763,7 @@ def set_invoiced(item, method, ref_invoice=None):
 
 		# service transaction linking to HSO
 		if item.reference_dt == "Service Request":
-			template_map = {
+			_template_map = {
 				"Clinical Procedure Template": "Clinical Procedure",
 				"Therapy Type": "Therapy Session",
 				"Lab Test Template": "Lab Test",
