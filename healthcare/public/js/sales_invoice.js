@@ -162,7 +162,7 @@ var get_healthcare_services_to_invoice = function (frm, link_customer) {
 				company: frm.doc.company,
 				link_customer: link_customer,
 			};
-			var columns = ["service", "reference_name", "reference_type"];
+			var columns = ["service", "date", "reference_name", "reference_type"];
 			get_healthcare_items(
 				frm,
 				true,

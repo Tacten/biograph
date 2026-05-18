@@ -323,6 +323,7 @@ def get_clinical_procedures_to_invoice(patient, company):
 					"service": service_item,
 					"rate": procedure.consumable_total_amount,
 					"description": procedure.consumption_details,
+					"date": procedure.start_date,
 				}
 			)
 
