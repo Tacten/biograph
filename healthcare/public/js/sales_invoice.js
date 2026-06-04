@@ -318,7 +318,7 @@ var get_checked_values = function ($results) {
 				} else {
 					checked_values["discount_percentage"] = false;
 				}
-				if ($(this).attr("data-insurance-coverage-qty") != "undefined") {
+				if ($(this).attr("data-insurance-coverage-rate") != "undefined") {
 					checked_values["coverage_rate"] = $(this).attr(
 						"data-insurance-coverage-rate",
 					);
