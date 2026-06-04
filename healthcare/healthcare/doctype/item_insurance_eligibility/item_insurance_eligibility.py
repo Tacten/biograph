@@ -34,7 +34,7 @@ class ItemInsuranceEligibility(Document):
 			flt(self.coverage) <= 0
 			or flt(self.coverage) > 100
 			or flt(self.discount) < 0
-			or ((flt(self.discount) + flt(self.discount)) > 100)
+			or ((flt(self.coverage) + flt(self.discount)) > 100)
 		):
 			frappe.throw(_("Invalid Coverage / Discount percentage"))
 
