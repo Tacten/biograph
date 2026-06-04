@@ -78,7 +78,7 @@ class PatientInsuranceCoverage(Document):
 			frappe.throw(
 				_(
 					"Invoiced Quantity and Invoiced Amount cannot be more than Claim Quantity {} and Claim Amount {}"
-				).format(self.qty_invoiced, self.status),
+				).format(self.qty, self.coverage_amount),
 				title=_("Not Allowed"),
 			)
 

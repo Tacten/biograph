@@ -29,7 +29,8 @@ class PatientInsurancePolicy(Document):
 			{
 				"patient": self.patient,
 				"docstatus": 1,
-				"policy_expiry_date": ["<=", self.policy_expiry_date],
+				"name": ["!=", self.name],
+				"policy_expiry_date": [">=", getdate()],
 				"insurance_payor": self.insurance_payor,
 				"insurance_plan": self.insurance_plan or "",
 			},
