@@ -80,17 +80,26 @@ class ItemInsuranceEligibility(Document):
 		)
 
 		if self.valid_till:
+			# Check overlap with dated records OR any open-ended record starting on or before our end
 			query = query.where(
-				(item_eligibility.valid_till.isnotnull())
-				& (
-					(item_eligibility.valid_from >= self.valid_from)
+				(
+					(item_eligibility.valid_till.isnotnull())
+					& (
+						(item_eligibility.valid_from <= self.valid_till)
+						& (item_eligibility.valid_till >= self.valid_from)
+					)
+				)
+				| (
+					(item_eligibility.valid_till.isnull())
 					& (item_eligibility.valid_from <= self.valid_till)
-					| (item_eligibility.valid_till >= self.valid_from)
-					& (item_eligibility.valid_till <= self.valid_till)
 				)
 			)
 		else:
-			query = query.where(item_eligibility.valid_from == self.valid_from)
+			# Open-ended new record: conflicts with any existing record that hasn't ended before our start
+			query = query.where(
+				(item_eligibility.valid_till.isnull())
+				| (item_eligibility.valid_till >= self.valid_from)
+			)
 
 		overlap = query.run(as_dict=True)
 

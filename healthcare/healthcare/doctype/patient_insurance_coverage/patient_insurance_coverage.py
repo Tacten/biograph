@@ -330,7 +330,7 @@ def make_insurance_coverage(
 		return None
 
 	if coverage.status == "Approved" and coverage.mode_of_approval == "Automatic":
-		coverage.submit()
+		coverage.submit(ignore_permissions=True)
 
 	return {"coverage": coverage.name, "coverage_status": coverage.status}
 
