@@ -275,7 +275,11 @@ def update_insurance_coverage_status(coverage):
 	"""
 	coverage_doc = frappe.get_doc("Patient Insurance Coverage", coverage.insurance_coverage)
 
-	coverage_doc.db_set({"approved_amount": coverage.approved_amount, "paid_amount": coverage.paid_amount})
+	coverage_doc.db_set({
+		"approved_amount": coverage.approved_amount,
+		"paid_amount": coverage.paid_amount,
+		"status": coverage.status,
+	})
 
 	coverage_doc.add_comment(
 		"Comment",

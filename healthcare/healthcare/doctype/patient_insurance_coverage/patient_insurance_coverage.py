@@ -239,7 +239,7 @@ class PatientInsuranceCoverage(Document):
 		if price_list_rate and not self.price_list_rate:
 			self.price_list_rate = price_list_rate
 			self.price_list = price_list
-		else:
+		elif not price_list_rate and not self.price_list_rate:
 			frappe.msgprint(
 				_("Item Price for Item {} not found").format(get_link_to_form("Item", self.item_code)),
 				alert=True,
