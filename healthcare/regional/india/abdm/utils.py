@@ -53,7 +53,7 @@ def get_authorization_token():
 		req.insert(ignore_permissions=True)
 		traceback = f"Remote URL {url}\nPayload: {payload}\nTraceback: {e}"
 		frappe.log_error(message=traceback, title="Cant create session")
-		return auth_base_url, None, None
+		return auth_base_url, None
 
 
 @frappe.whitelist()
