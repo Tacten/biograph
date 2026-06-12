@@ -162,7 +162,7 @@ class PatientInsuranceCoverage(Document):
 				field_list.extend(["medical_code", "medical_code_standard"])
 
 			if field_list:
-				details = frappe.db.get_value(self.template_dt, self.template_dn, field_list, as_dict=1)
+				details = frappe.db.get_value(self.template_dt, self.template_dn, field_list, as_dict=1) or {}
 			else:
 				details = {}
 
