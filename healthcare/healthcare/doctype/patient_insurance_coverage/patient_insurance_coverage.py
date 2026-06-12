@@ -141,7 +141,8 @@ class PatientInsuranceCoverage(Document):
 			)
 
 	def set_title(self):
-		self.title = f"{self.patient_name} - {self.template_dn} - {self.status}"
+		service_label = self.template_dn or self.item_code or ""
+		self.title = f"{self.patient_name} - {service_label} - {self.status}"
 
 	def set_and_validate_template_details(self):
 		"""
@@ -151,13 +152,21 @@ class PatientInsuranceCoverage(Document):
 		"""
 		details = {}
 		if self.template_dt and self.template_dn and self.template_dt != "Appointment Type":
-			field_list = ["is_billable", "item"]
-			if frappe.get_meta(self.template_dt).has_field("medical_code"):
+			meta = frappe.get_meta(self.template_dt)
+			field_list = []
+			if meta.has_field("is_billable"):
+				field_list.append("is_billable")
+			if meta.has_field("item"):
+				field_list.append("item")
+			if meta.has_field("medical_code"):
 				field_list.extend(["medical_code", "medical_code_standard"])
 
-			details = frappe.db.get_value(self.template_dt, self.template_dn, field_list, as_dict=1)
+			if field_list:
+				details = frappe.db.get_value(self.template_dt, self.template_dn, field_list, as_dict=1)
+			else:
+				details = {}
 
-			if not details.get("is_billable"):
+			if "is_billable" in field_list and not details.get("is_billable"):
 				frappe.throw(
 					_(
 						"Invalid Service Template, Insurance Coverage can only be created for Templates marked <b>Is Billable</b>"
@@ -165,7 +174,8 @@ class PatientInsuranceCoverage(Document):
 					title=_("Not Allowed"),
 				)
 
-			self.item_code = details.get("item")
+			if details.get("item"):
+				self.item_code = details.get("item")
 			self.medical_code = details.get("medical_code")
 			self.medical_code_standard = details.get("medical_code_standard")
 
@@ -205,6 +215,8 @@ class PatientInsuranceCoverage(Document):
 			self.mode_of_approval = eligibility.get("mode_of_approval")
 			self.coverage = eligibility.get("coverage")
 			self.discount = eligibility.get("discount")
+			if not self.item_code and eligibility.get("item_code"):
+				self.item_code = eligibility.get("item_code")
 			# reset coverage_validity_end_date if coverage validity is less than policy end date (default)
 			if eligibility.get("valid_till") and getdate(eligibility.get("valid_till")) < getdate(
 				self.coverage_validity_end_date
@@ -217,6 +229,14 @@ class PatientInsuranceCoverage(Document):
 		Fetch Item price for Price List in this order: 1: Insurance Plan 2: Insurance Payor 3: Default Selling Price List
 		Retruns True if Item Price found else show alert and return False
 		"""
+		if not self.item_code:
+			frappe.msgprint(
+				_("Cannot fetch price list rate: Item Code is missing."),
+				alert=True,
+				indicator="error",
+			)
+			return
+
 		insurance_price_lists = get_insurance_price_lists(self.insurance_policy, self.company)
 		price_list = price_list_rate = None
 
@@ -365,8 +385,8 @@ def create_insurance_eligibility(doc):
 	item_eligibility.insurance_plan = doc.insurance_plan
 	item_eligibility.template_dt = doc.template_dt
 	item_eligibility.template_dn = doc.template_dn
-	item_eligibility.item = doc.item_code
+	item_eligibility.item_code = doc.item_code
 
-	item_eligibility.start_date = doc.posting_date or getdate()
+	item_eligibility.valid_from = doc.posting_date or getdate()
 
 	return item_eligibility
