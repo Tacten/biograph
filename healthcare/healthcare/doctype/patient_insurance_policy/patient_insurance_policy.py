@@ -29,7 +29,8 @@ class PatientInsurancePolicy(Document):
 			{
 				"patient": self.patient,
 				"docstatus": 1,
-				"policy_expiry_date": ["<=", self.policy_expiry_date],
+				"name": ["!=", self.name],
+				"policy_expiry_date": [">=", getdate()],
 				"insurance_payor": self.insurance_payor,
 				"insurance_plan": self.insurance_plan or "",
 			},
@@ -68,11 +69,13 @@ class PatientInsurancePolicy(Document):
 
 def is_insurance_policy_valid(policy, on_date=None, company=None):
 	"""
-	Returns True if Patient Insurance Policy is valid
+	Returns True if Patient Insurance Policy is valid (submitted and not expired)
 	#TODO: If company is received, checks if the company has a valid contract
 	"""
-	policy_expiry = frappe.db.get_value("Patient Insurance Policy", policy, ["policy_expiry_date"])
-	if getdate(policy_expiry) >= (getdate(on_date) or getdate()):
+	policy_data = frappe.db.get_value(
+		"Patient Insurance Policy", policy, ["policy_expiry_date", "docstatus"], as_dict=True
+	)
+	if policy_data and policy_data.docstatus == 1 and getdate(policy_data.policy_expiry_date) >= (getdate(on_date) or getdate()):
 		return True
 
 	return False

@@ -78,7 +78,7 @@ class PatientInsuranceCoverage(Document):
 			frappe.throw(
 				_(
 					"Invoiced Quantity and Invoiced Amount cannot be more than Claim Quantity {} and Claim Amount {}"
-				).format(self.qty_invoiced, self.status),
+				).format(self.qty, self.coverage_amount),
 				title=_("Not Allowed"),
 			)
 
@@ -239,7 +239,7 @@ class PatientInsuranceCoverage(Document):
 		if price_list_rate and not self.price_list_rate:
 			self.price_list_rate = price_list_rate
 			self.price_list = price_list
-		else:
+		elif not price_list_rate and not self.price_list_rate:
 			frappe.msgprint(
 				_("Item Price for Item {} not found").format(get_link_to_form("Item", self.item_code)),
 				alert=True,
@@ -330,7 +330,7 @@ def make_insurance_coverage(
 		return None
 
 	if coverage.status == "Approved" and coverage.mode_of_approval == "Automatic":
-		coverage.submit()
+		coverage.submit(ignore_permissions=True)
 
 	return {"coverage": coverage.name, "coverage_status": coverage.status}
 
