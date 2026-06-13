@@ -49,6 +49,9 @@ def get(
 		.groupby(claim.insurance_payor)
 	)
 
+	if filters and filters.get("company"):
+		query = query.where(claim.company == filters.get("company"))
+
 	data = query.run(as_dict=True)
 
 	labels = []

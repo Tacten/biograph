@@ -1,91 +1,69 @@
 # Copyright (c) 2020, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
-import json
-
 import frappe
-from frappe.tests import IntegrationTestCase
 from frappe.utils import add_years, flt, getdate, nowdate, nowtime, today
 
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import (
 	get_receivable_account,
 )
 from healthcare.healthcare.doctype.insurance_payor_contract.test_insurance_payor_contract import (
-	create_insurance_payor,
 	get_new_payor_contract_doc,
 )
 from healthcare.healthcare.doctype.patient_appointment.patient_appointment import (
 	get_appointment_item,
 )
-from healthcare.healthcare.doctype.patient_appointment.test_patient_appointment import (
-	create_appointment_type,
-	create_healthcare_docs,
-	create_healthcare_service_items,
-	create_medical_department,
-)
 from healthcare.healthcare.doctype.patient_insurance_policy.test_patient_insurance_policy import (
 	get_new_insurance_policy,
 )
 from healthcare.healthcare.utils import get_appointments_to_invoice
+from healthcare.tests.utils import HealthcareTestSuite
 
 
-class TestPatientInsuranceCoverage(IntegrationTestCase):
+class TestPatientInsuranceCoverage(HealthcareTestSuite):
+	def setUp(self):
+		super().setUp()
+		self.patient = frappe.get_list("Patient", pluck="name")[0]
+		self.practitioner = frappe.get_list("Healthcare Practitioner", pluck="name")[0]
+		self.payor = frappe.get_list("Insurance Payor", pluck="name")[0]
+
 	def test_insurance_coverage(self):
-		frappe.db.sql("""delete from `tabAppointment Type` where name = '_Test Appointment'""")
+		# frappe.db.sql("""delete from `tabAppointment Type` where name = '_Test Appointment'""")
 		frappe.db.sql("""delete from `tabPatient Appointment` where appointment_type = '_Test Appointment'""")
 		frappe.db.sql(
 			"""delete from `tabInsurance Payor Contract` where insurance_payor = '_Test Insurance Payor'"""
 		)
 		frappe.db.set_single_value("Healthcare Settings", "enable_free_follow_ups", 0)
 		frappe.db.set_single_value("Healthcare Settings", "show_payment_popup", 0)
-		test_docs = create_insurance_test_docs()
+
+		eligibility_plan = create_payor_insurance_eligibility_plan()
+		contract = get_new_payor_contract_doc(today(), add_years(today(), 1))
+		contract.submit()
+
+		insurance_policy = get_new_insurance_policy(self.patient, eligibility_plan)
+		insurance_policy.submit()
+
+		appointment_type = "_Test Appointment Type"
+		create_item_insurance_eligibility("Service", "Appointment Type", appointment_type, eligibility_plan)
+
+		# Book Appointment and Invoice
+		# invoice total 400 (after 20% discount) coverage 80%
+		appointment = create_appointment(
+			self.patient, self.practitioner, nowdate(), appointment_type, insurance_policy.name
+		)
+		appointments_to_invoice = get_appointments_to_invoice(
+			frappe.get_doc("Patient", self.patient), "_Test Company"
+		)
+		sales_invoice = create_sales_invoice(appointment, appointments_to_invoice)
+
 		invoice_dict = frappe.db.get_value(
 			"Sales Invoice",
-			test_docs["Sales Invoice"],
+			sales_invoice,
 			["total_insurance_coverage_amount", "patient_payable_amount"],
 			as_dict=1,
 		)
-		self.assertEqual(invoice_dict.total_insurance_coverage_amount, 320)
-		self.assertEqual(invoice_dict.patient_payable_amount, 80)
-
-
-def create_insurance_test_docs():
-	patient, practitioner = create_healthcare_docs()
-
-	# Create Insurance Payor, Contract, Item Insurance Eligibility, Eligibility Plan, Patient Insurance Policy
-	create_insurance_payor()
-	eligibility_plan = create_payor_insurance_eligibility_plan()
-	contract = get_new_payor_contract_doc(today(), add_years(today(), 1))
-	contract.submit()
-	insurance_policy = get_new_insurance_policy(patient, eligibility_plan)
-	insurance_policy.submit()
-	medical_department = create_medical_department()
-	args = {
-		"medical_department": medical_department,
-	}
-	appointment_type = create_appointment_type(args).name
-	create_item_insurance_eligibility("Service", "Appointment Type", appointment_type, eligibility_plan)
-
-	# Book Appointment and Invoice
-	# invoice total 400 (after 20% discount) coverage 80%
-	appointment = create_appointment(
-		patient, practitioner, nowdate(), appointment_type, insurance_policy.name
-	)
-	appointments_to_invoice = get_appointments_to_invoice(frappe.get_doc("Patient", patient), "_Test Company")
-	sales_invoice = create_sales_invoice(appointment, appointments_to_invoice)
-	test_docs = {
-		"Patient": patient,
-		"customer": frappe.get_cached_value("Patient", patient, "customer"),
-		"Practitioner": practitioner,
-		"Eligibility Plan": eligibility_plan,
-		"Contract": contract.name,
-		"Insurance Policy": insurance_policy.name,
-		"Medical Department": medical_department,
-		"Patient Appointment": appointment.name,
-		"appointments_to_invoice": appointments_to_invoice,
-		"Sales Invoice": sales_invoice,
-	}
-	return test_docs
+		self.assertEqual(invoice_dict.total_insurance_coverage_amount, 192)
+		self.assertEqual(invoice_dict.patient_payable_amount, 48)
 
 
 def create_item_insurance_eligibility(eligibility_for, template_dt, template_dn, eligibility_plan):
@@ -109,14 +87,14 @@ def create_item_insurance_eligibility(eligibility_for, template_dt, template_dn,
 
 
 def create_appointment(patient, practitioner, appointment_date, appointment_type, policy=None):
-	item = create_healthcare_service_items()
+	item = "HLC-SI-001"
 	frappe.db.set_single_value("Healthcare Settings", "inpatient_visit_charge_item", item)
 	frappe.db.set_single_value("Healthcare Settings", "op_consulting_charge_item", item)
 	appointment = frappe.new_doc("Patient Appointment")
 	appointment.patient = patient
 	appointment.practitioner = practitioner
 	appointment.appointment_type = appointment_type
-	appointment.department = create_medical_department()
+	appointment.department = "_Test Medical Department"
 	appointment.appointment_date = appointment_date
 	appointment.appointment_time = nowtime()
 	appointment.company = "_Test Company"

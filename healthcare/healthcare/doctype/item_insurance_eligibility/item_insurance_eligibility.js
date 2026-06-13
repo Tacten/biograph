@@ -35,6 +35,7 @@ frappe.ui.form.on("Item Insurance Eligibility", {
 				},
 			};
 		});
+		frm.set_df_property("template_dt", "only_select", true);
 
 		frm.set_query("template_dn", function () {
 			if (frm.doc.template_dt != "Appointment Type") {
