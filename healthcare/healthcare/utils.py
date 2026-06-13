@@ -92,7 +92,8 @@ def get_valid_insurance_coverage_details(insurance_coverage, company, extra_fiel
 	if (
 		coverage_details
 		and coverage_details.status in ["Approved", "Partly Invoiced"]
-		and getdate() <= coverage_details.coverage_validity_end_date
+		and coverage_details.coverage_validity_end_date
+		and getdate() <= getdate(coverage_details.coverage_validity_end_date)
 		and company == coverage_details.company
 	):
 		return coverage_details
