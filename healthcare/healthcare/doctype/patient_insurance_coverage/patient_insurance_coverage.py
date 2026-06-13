@@ -362,6 +362,7 @@ def get_item_price_list_rate(item_code, price_list, qty, company):
 			"item_code": item_code,
 			"qty": qty,
 			"selling_price_list": price_list,
+			"currency": frappe.get_value("Price List", price_list, "currency"),
 			"company": company,
 			"plc_conversion_rate": 1.0,
 			"conversion_rate": 1.0,
