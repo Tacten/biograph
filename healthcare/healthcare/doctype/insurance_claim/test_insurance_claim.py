@@ -2,42 +2,64 @@
 # See license.txt
 
 import frappe
-from frappe.tests import IntegrationTestCase
-from frappe.utils import add_years, today
-
-from erpnext.accounts.party import get_dashboard_info
-from erpnext.accounts.utils import get_balance_on
+from frappe.utils import add_years, nowdate, today
 
 from healthcare.healthcare.doctype.insurance_claim.insurance_claim import create_payment_entry
 from healthcare.healthcare.doctype.insurance_payor_contract.test_insurance_payor_contract import (
-	create_insurance_payor,
+	get_new_payor_contract_doc,
 )
 from healthcare.healthcare.doctype.patient_insurance_coverage.test_patient_insurance_coverage import (
-	create_insurance_test_docs,
+	create_appointment,
+	create_item_insurance_eligibility,
+	create_payor_insurance_eligibility_plan,
+	create_sales_invoice,
 )
+from healthcare.healthcare.doctype.patient_insurance_policy.test_patient_insurance_policy import (
+	get_new_insurance_policy,
+)
+from healthcare.healthcare.utils import get_appointments_to_invoice
+from healthcare.tests.utils import HealthcareTestSuite
 
 
-class TestInsuranceClaim(IntegrationTestCase):
-	def test_insurance_claim(self):
+class TestInsuranceClaim(HealthcareTestSuite):
+	def setUp(self):
+		super().setUp()
+		self.patient = frappe.get_list("Patient", pluck="name")[0]
+		self.practitioner = frappe.get_list("Healthcare Practitioner", pluck="name")[0]
+
+	def test_insurance_claim_and_payment(self):
 		frappe.db.sql("""delete from `tabAppointment Type` where name = '_Test Appointment'""")
 		frappe.db.sql("""delete from `tabPatient Appointment` where appointment_type = '_Test Appointment'""")
 		frappe.db.sql(
 			"""delete from `tabInsurance Payor Contract` where insurance_payor = '_Test Insurance Payor'"""
 		)
-		test_docs = create_insurance_test_docs()
 
-		# Patient balance should be 20% of 400
-		info = get_dashboard_info("Customer", test_docs["customer"], None)
-		balance = next(item["total_unpaid"] for item in info if item["company"] == "_Test Company")
+		eligibility_plan = create_payor_insurance_eligibility_plan()
+		contract = get_new_payor_contract_doc(today(), add_years(today(), 1))
+		contract.submit()
 
-		self.assertEqual(balance, 80)
+		insurance_policy = get_new_insurance_policy(self.patient, eligibility_plan)
+		insurance_policy.submit()
+
+		appointment_type = "_Test Appointment Type"
+		create_item_insurance_eligibility("Service", "Appointment Type", appointment_type, eligibility_plan)
+
+		# Book Appointment and Invoice
+		# invoice total 400 (after 20% discount) coverage 80%
+		appointment = create_appointment(
+			self.patient, self.practitioner, nowdate(), appointment_type, insurance_policy.name
+		)
+		appointments_to_invoice = get_appointments_to_invoice(
+			frappe.get_doc("Patient", self.patient), "_Test Company"
+		)
+		create_sales_invoice(appointment, appointments_to_invoice)
 
 		# Create Insurance Claim
-		claim_name, claim_doc = create_insurance_claim(test_docs["Patient"], test_docs["Insurance Policy"])
+		claim_name, claim_doc = create_insurance_claim(self.patient, insurance_policy.name)
 
-		self.assertEqual(claim_doc.insurance_claim_amount, 320)
-		self.assertEqual(claim_doc.approved_amount, 320)
-		self.assertEqual(claim_doc.outstanding_amount, 320)
+		self.assertEqual(claim_doc.insurance_claim_amount, 192)
+		self.assertEqual(claim_doc.approved_amount, 192)
+		self.assertEqual(claim_doc.outstanding_amount, 192)
 		self.assertEqual(claim_doc.paid_amount, 0)
 
 		# Create Payment Entry of the Insurance Claim
@@ -50,13 +72,12 @@ class TestInsuranceClaim(IntegrationTestCase):
 			["approved_amount", "outstanding_amount", "paid_amount"],
 			as_dict=1,
 		)
-		self.assertEqual(claim_dict.approved_amount, 320)
+		self.assertEqual(claim_dict.approved_amount, 192)
 		self.assertEqual(claim_dict.outstanding_amount, 0)
-		self.assertEqual(claim_dict.paid_amount, 320)
+		self.assertEqual(claim_dict.paid_amount, 192)
 
 
 def create_insurance_claim(patient, insurance_policy):
-	create_insurance_payor()
 	claim = frappe.new_doc("Insurance Claim")
 	claim.insurance_payor = "_Test Insurance Payor"
 	claim.mode_of_payment = "Cash"

@@ -2,29 +2,25 @@
 # See license.txt
 
 import frappe
-from frappe.tests import IntegrationTestCase
 from frappe.utils import add_to_date, getdate
 
 from healthcare.healthcare.doctype.item_insurance_eligibility.item_insurance_eligibility import (
 	CoverageOverlapError,
 	get_insurance_eligibility,
 )
-from healthcare.healthcare.doctype.patient_appointment.test_patient_appointment import (
-	create_appointment_type,
-	create_medical_department,
-)
+from healthcare.tests.utils import HealthcareTestSuite
 
 
-class TestItemInsuranceEligibility(IntegrationTestCase):
-	def test_validate_overlap(self):
+class TestItemInsuranceEligibility(HealthcareTestSuite):
+	def test_validate_eligibility_overlap(self):
 		frappe.db.sql("""delete from `tabAppointment Type` where name = '_Test Appointment'""")
 		frappe.db.sql("""delete from `tabItem Insurance Eligibility`""")
 
-		medical_department = create_medical_department()
+		medical_department = "_Test Medical Department"
 		args = {
 			"medical_department": medical_department,
 		}
-		appointment_type = create_appointment_type(args).name
+		appointment_type = "_Test Appointment Type"
 
 		args = frappe._dict(
 			{
@@ -53,7 +49,7 @@ class TestItemInsuranceEligibility(IntegrationTestCase):
 		item_insurance_eligibility = create_insurance_eligibility(**args).insert()
 		self.assertTrue(item_insurance_eligibility)
 
-		# create an overlaping eligibility
+		# create an overlapping eligibility
 		args["valid_till"] = add_to_date(getdate(), months=1)
 
 		with self.assertRaises(CoverageOverlapError):
@@ -62,11 +58,11 @@ class TestItemInsuranceEligibility(IntegrationTestCase):
 	def test_item_insurance_eligibility(self):
 		frappe.db.sql("""delete from `tabItem Insurance Eligibility`""")
 
-		medical_department = create_medical_department()
+		medical_department = "_Test Medical Department"
 		args = {
 			"medical_department": medical_department,
 		}
-		appointment_type = create_appointment_type(args).name
+		appointment_type = "_Test Appointment Type"
 
 		args = frappe._dict(
 			{
