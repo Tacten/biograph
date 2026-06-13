@@ -2,17 +2,17 @@
 # See license.txt
 
 import frappe
-from frappe.tests import IntegrationTestCase
 from frappe.utils import add_days, add_years, getdate, today
 
 from healthcare.healthcare.doctype.insurance_payor_contract.insurance_payor_contract import (
 	OverlapError,
 )
+from healthcare.tests.utils import HealthcareTestSuite
 
 
-class TestInsurancePayorContract(IntegrationTestCase):
-	def test_overlap(self):
-		create_insurance_payor()
+class TestInsurancePayorContract(HealthcareTestSuite):
+	def test_insurance_payor_contract_overlap(self):
+		self.payor = frappe.get_list("Insurance Payor", pluck="name")[0]
 		frappe.db.sql(
 			"""delete from `tabInsurance Payor Contract` where insurance_payor = '_Test Insurance Payor'"""
 		)
@@ -32,27 +32,6 @@ class TestInsurancePayorContract(IntegrationTestCase):
 		# contract cannot have overlapping with start_date > and end_date <
 		contract = get_new_payor_contract_doc(add_days(start_date, 1), add_days(end_date, -1))
 		self.assertRaises(OverlapError, contract.save)
-
-
-def create_insurance_payor():
-	if not frappe.db.exists("Insurance Payor", "_Test Insurance Payor"):
-		insurance_payor = frappe.get_doc(
-			{
-				"doctype": "Insurance Payor",
-				"insurance_payor_name": "_Test Insurance Payor",
-				"abbr": "HIC",
-				"default_currency": "IND",
-				"country": "India",
-			}
-		)
-		insurance_payor.append(
-			"claims_receivable_accounts", {"company": "_Test Company", "account": "Debtors - _TC"}
-		)
-		insurance_payor.append(
-			"rejected_claims_expense_accounts",
-			{"company": "_Test Company", "account": "Debtors - _TC"},
-		)
-		insurance_payor.insert()
 
 
 def get_new_payor_contract_doc(start_date, end_date):
