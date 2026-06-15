@@ -22,6 +22,12 @@
   "scheduled_date",
   "admitted_datetime",
   "expected_discharge",
+  "insurance_section",
+  "insurance_policy",
+  "insurance_coverage",
+  "column_break_insurance",
+  "insurance_payor",
+  "approval_status",
   "references",
   "admission_encounter",
   "admission_practitioner",
@@ -205,6 +211,45 @@
    "fieldtype": "Date",
    "in_list_view": 1,
    "label": "Expected Discharge",
+   "read_only": 1
+  },
+  {
+   "fieldname": "insurance_section",
+   "fieldtype": "Section Break",
+   "label": "Insurance"
+  },
+  {
+   "fieldname": "insurance_policy",
+   "fieldtype": "Link",
+   "label": "Insurance Policy",
+   "options": "Patient Insurance Policy"
+  },
+  {
+   "fieldname": "insurance_coverage",
+   "fieldtype": "Link",
+   "label": "Insurance Coverage",
+   "options": "Patient Insurance Coverage",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_insurance",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "insurance_policy.insurance_payor",
+   "fieldname": "insurance_payor",
+   "fieldtype": "Link",
+   "label": "Insurance Payor",
+   "options": "Insurance Payor",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "insurance_coverage.approval_status",
+   "fetch_if_empty": 1,
+   "fieldname": "approval_status",
+   "fieldtype": "Select",
+   "label": "Claim Status",
+   "options": "\nPending\nApproved\nRejected\nInvoiced",
    "read_only": 1
   },
   {

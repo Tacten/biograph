@@ -24,6 +24,9 @@ from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings impor
 	get_income_account,
 	get_receivable_account,
 )
+from healthcare.healthcare.doctype.patient_insurance_coverage.patient_insurance_coverage import (
+	make_insurance_coverage,
+)
 from healthcare.healthcare.utils import get_appointment_billing_item_and_rate
 
 
@@ -54,15 +57,55 @@ class PatientAppointment(Document):
 		):
 			update_fee_validity(self)
 
+		doc_before_save = self.get_doc_before_save()
+		if doc_before_save and not doc_before_save.insurance_policy == self.insurance_policy:
+			self.make_insurance_coverage()
+
 	def after_insert(self):
 		self.update_prescription_details()
 		self.set_payment_details()
 		send_confirmation_msg(self)
 		self.insert_calendar_event()
 
+		if self.insurance_policy and self.appointment_type and not check_fee_validity(self):
+			if frappe.db.get_single_value("Healthcare Settings", "show_payment_popup"):
+				frappe.msgprint(
+					_(
+						"Insurance Coverage not created!<br>Not supported as <b>Automate Appointment Invoicing</b> enabled"
+					),
+					alert=True,
+					indicator="warning",
+				)
+			else:
+				self.make_insurance_coverage()
+
 		if self.service_request:
 			frappe.db.set_value(
 				"Service Request", self.service_request, "status", "completed-Request Status"
+			)
+
+	def make_insurance_coverage(self):
+		billing_detail = get_appointment_billing_item_and_rate(self)
+		if not billing_detail.get("service_item"):
+			return
+
+		coverage = make_insurance_coverage(
+			patient=self.patient,
+			policy=self.insurance_policy,
+			company=self.company,
+			template_dt="Appointment Type",
+			template_dn=self.appointment_type,
+			item_code=billing_detail.get("service_item"),
+			qty=1,
+			rate=billing_detail.get("practitioner_charge"),
+		)
+
+		if coverage and coverage.get("coverage"):
+			self.db_set(
+				{
+					"insurance_coverage": coverage.get("coverage"),
+					"coverage_status": coverage.get("coverage_status"),
+				}
 			)
 
 	def set_title(self):
