@@ -9,7 +9,9 @@
   "check_in",
   "left",
   "check_out",
-  "invoiced"
+  "invoiced",
+  "insurance_coverage",
+  "coverage_status"
  ],
  "fields": [
   {
@@ -44,6 +46,20 @@
    "fieldname": "invoiced",
    "fieldtype": "Check",
    "label": "Invoiced",
+   "read_only": 1
+  },
+  {
+   "fieldname": "insurance_coverage",
+   "fieldtype": "Link",
+   "label": "Insurance Coverage",
+   "options": "Patient Insurance Coverage",
+   "read_only": 1
+  },
+  {
+   "fieldname": "coverage_status",
+   "fieldtype": "Select",
+   "label": "Coverage Status",
+   "options": "\nPending\nApproved\nRejected\nInvoiced",
    "read_only": 1
   }
  ],
