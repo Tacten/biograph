@@ -12,6 +12,10 @@ from frappe.utils import get_link_to_form, getdate, unique
 
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import get_bank_cash_account
 
+from healthcare.healthcare.doctype.patient_insurance_coverage.patient_insurance_coverage import (
+	sync_coverage_status_to_linked_docs,
+)
+
 
 class InsuranceClaim(Document):
 	def validate(self):
@@ -286,6 +290,8 @@ def update_insurance_coverage_status(coverage):
 		"paid_amount": coverage.paid_amount,
 		"status": coverage.status,
 	})
+
+	sync_coverage_status_to_linked_docs(coverage.insurance_coverage, coverage.status)
 
 	coverage_doc.add_comment(
 		"Comment",

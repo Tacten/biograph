@@ -109,6 +109,11 @@ class PatientInsuranceCoverage(Document):
 
 		self.flags.silent = False
 
+	def on_update(self):
+		doc_before = self.get_doc_before_save()
+		if doc_before and doc_before.status != self.status:
+			sync_coverage_status_to_linked_docs(self.name, self.status)
+
 	def update_invoice_details(self, qty, amount):
 		"""
 		updates qty_invoiced, coverage_amount_invoiced and sets status
@@ -131,6 +136,7 @@ class PatientInsuranceCoverage(Document):
 				"status": status,
 			}
 		)
+		sync_coverage_status_to_linked_docs(self.name, status)
 
 	def before_cancel(self):
 		allowed = ["Draft", "Approved", "Rejected"]
@@ -353,6 +359,29 @@ def make_insurance_coverage(
 		coverage.submit(ignore_permissions=True)
 
 	return {"coverage": coverage.name, "coverage_status": coverage.status}
+
+
+def sync_coverage_status_to_linked_docs(coverage_name, status):
+	"""Push Patient Insurance Coverage status to linked healthcare documents."""
+	if not coverage_name or not status:
+		return
+
+	for doctype in ("Patient Appointment", "Service Request"):
+		for docname in frappe.get_all(
+			doctype, filters={"insurance_coverage": coverage_name}, pluck="name"
+		):
+			frappe.db.set_value(
+				doctype, docname, "coverage_status", status, update_modified=False
+			)
+
+	for row in frappe.get_all(
+		"Inpatient Occupancy",
+		filters={"insurance_coverage": coverage_name},
+		pluck="name",
+	):
+		frappe.db.set_value(
+			"Inpatient Occupancy", row, "coverage_status", status, update_modified=False
+		)
 
 
 def get_item_price_list_rate(item_code, price_list, qty, company):
