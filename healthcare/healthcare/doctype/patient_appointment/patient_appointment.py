@@ -135,16 +135,24 @@ class PatientAppointment(Document):
 		if not billing_detail.get("service_item"):
 			return
 
-		make_insurance_coverage(
+		coverage = make_insurance_coverage(
 			patient=self.patient,
+			policy=self.insurance_policy,
 			company=self.company,
-			insurance_policy=self.insurance_policy,
-			billing_item=billing_detail.get("service_item"),
+			template_dt="Appointment Type",
+			template_dn=self.appointment_type,
+			item_code=billing_detail.get("service_item"),
 			qty=1,
 			rate=billing_detail.get("practitioner_charge"),
-			reference_dt="Patient Appointment",
-			reference_dn=self.name,
 		)
+
+		if coverage and coverage.get("coverage"):
+			self.db_set(
+				{
+					"insurance_coverage": coverage.get("coverage"),
+					"coverage_status": coverage.get("coverage_status"),
+				}
+			)
 
 	def validate_practitioner_unavailability(self):
 		"""Validate that the appointment doesn't conflict with practitioner unavailability."""

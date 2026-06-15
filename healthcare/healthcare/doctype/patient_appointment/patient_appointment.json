@@ -52,6 +52,7 @@
   "section_break_16",
   "insurance_policy",
   "insurance_coverage",
+  "coverage_status",
   "mode_of_payment",
   "billing_item",
   "invoiced",
@@ -231,6 +232,13 @@
    "fieldtype": "Link",
    "label": "Insurance Coverage",
    "options": "Patient Insurance Coverage",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "insurance_coverage.status",
+   "fieldname": "coverage_status",
+   "fieldtype": "Data",
+   "label": "Coverage Status",
    "read_only": 1
   },
   {
