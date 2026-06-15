@@ -25,10 +25,7 @@ from healthcare.healthcare.doctype.nursing_task.nursing_task import NursingTask
 from healthcare.healthcare.doctype.patient_insurance_coverage.patient_insurance_coverage import (
 	make_insurance_coverage,
 )
-from healthcare.healthcare.utils import (
-	get_appointment_billing_item_and_rate,
-	validate_nursing_tasks,
-)
+from healthcare.healthcare.utils import validate_nursing_tasks
 
 
 class InpatientRecord(Document):
@@ -143,10 +140,10 @@ class InpatientRecord(Document):
 							decimal_part = actual_qty - floored_qty
 							if decimal_part > 0.5:
 								qty = rounded(floored_qty + 1, 1)
-							elif decimal_part < 0.5 and decimal_part > 0:
+							elif decimal_part > 0:
 								qty = rounded(floored_qty + 0.5, 1)
-							if qty <= 0:
-								qty = 0.5
+							else:
+								qty = max(floored_qty, 0.5)
 						coverage = self.make_insurance_coverage(service_unit_type.name, qty)
 						if coverage and coverage.get("coverage"):
 							frappe.db.set_value(
@@ -161,14 +158,12 @@ class InpatientRecord(Document):
 				frappe.throw(_("Claim already created for all Inpatient Occupancies"))
 
 	def make_insurance_coverage(self, service_unit_type, qty):
-		billing_detail = get_appointment_billing_item_and_rate(self)
 		return make_insurance_coverage(
 			patient=self.patient,
 			policy=self.insurance_policy,
 			company=self.company,
 			template_dt="Healthcare Service Unit Type",
 			template_dn=service_unit_type,
-			item_code=billing_detail.get("service_item"),
 			qty=qty,
 		)
 

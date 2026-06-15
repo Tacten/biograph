@@ -244,7 +244,7 @@
    "read_only": 1
   },
   {
-   "fetch_from": "insurance_coverage.approval_status",
+   "fetch_from": "insurance_coverage.status",
    "fetch_if_empty": 1,
    "fieldname": "approval_status",
    "fieldtype": "Select",

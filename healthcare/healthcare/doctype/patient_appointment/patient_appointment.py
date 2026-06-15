@@ -58,8 +58,18 @@ class PatientAppointment(Document):
 			update_fee_validity(self)
 
 		doc_before_save = self.get_doc_before_save()
-		if doc_before_save and not doc_before_save.insurance_policy == self.insurance_policy:
-			self.make_insurance_coverage()
+		if doc_before_save and doc_before_save.insurance_policy != self.insurance_policy:
+			if self.insurance_policy and self.appointment_type and not check_fee_validity(self):
+				if frappe.db.get_single_value("Healthcare Settings", "show_payment_popup"):
+					frappe.msgprint(
+						_(
+							"Insurance Coverage not created!<br>Not supported as <b>Automate Appointment Invoicing</b> enabled"
+						),
+						alert=True,
+						indicator="warning",
+					)
+				else:
+					self.make_insurance_coverage()
 
 	def after_insert(self):
 		self.update_prescription_details()
