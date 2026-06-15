@@ -246,7 +246,6 @@
   },
   {
    "fetch_from": "insurance_coverage.status",
-   "fetch_if_empty": 1,
    "fieldname": "coverage_status",
    "fieldtype": "Data",
    "label": "Coverage Status",
