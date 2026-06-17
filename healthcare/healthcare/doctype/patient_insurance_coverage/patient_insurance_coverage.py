@@ -356,7 +356,8 @@ def make_insurance_coverage(
 		return None
 
 	if coverage.status == "Approved" and coverage.mode_of_approval == "Automatic":
-		coverage.submit(ignore_permissions=True)
+		coverage.flags.ignore_permissions = True
+		coverage.submit()
 
 	return {"coverage": coverage.name, "coverage_status": coverage.status}
 
