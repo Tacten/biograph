@@ -61,3 +61,5 @@ section-order = [
     "first-party",
     "local-folder",
 ]
+
+indent-width = 4
