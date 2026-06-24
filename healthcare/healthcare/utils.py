@@ -805,11 +805,6 @@ def post_transfer_journal_entry_and_update_coverage(sales_invoice):
 			or not insurance_payor_details.get("receivable_account")
 			or not insurance_payor_details.get("party")
 		):
-		if (
-			not insurance_payor_details
-			or not insurance_payor_details.get("receivable_account")
-			or not insurance_payor_details.get("party")
-		):
 			frappe.throw(
 				_("Receivable Account not configured for Insurance Payor {0}").format(item.insurance_payor)
 			)
