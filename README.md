@@ -70,6 +70,7 @@ Biograph (Fork and Enhancements of Marley Health) is developed & maintained by T
   - pip install pre-commit
   - cd apps/healthcare
   - pre-commit install
+  - npm install
   - pre-commit run --all-files
 
 #### Frappe semGrep Rules

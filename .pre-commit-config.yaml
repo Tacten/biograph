@@ -668,7 +668,7 @@ repos:
             )$
 
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v8.44.0
+    rev: v10.5.0
     hooks:
       - id: eslint
         types_or: [javascript]
@@ -680,7 +680,7 @@ repos:
       - id: pip-audit
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.2.0
+    rev: v0.15.18
     hooks:
       - id: ruff
         name: "Run ruff linter and apply fixes"
