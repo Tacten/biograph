@@ -64,3 +64,17 @@ GNU GPL V3. See [license.txt](https://github.com/earthians/biograph/blob/develop
 ### Credits
 
 Biograph (Fork and Enhancements of Marley Health) is developed & maintained by Tacten and community contributors.
+
+### Development
+#### Pre-commit
+  - pip install pre-commit
+  - cd apps/healthcare
+  - pre-commit install
+  - npm install
+  - pre-commit run --all-files
+
+#### Frappe semGrep Rules
+  - git clone --depth 1 https://github.com/frappe/semgrep-rules.git .frappe-semgrep-rules
+  - pip install semgrep 
+  - semgrep --vsersion (If certification error exists with latest semgrep specify version v1.123.0 and downgrade opentelemetry-api and opentelemetry-exporter-otl to v1.35.0)
+  - semgrep ci --config ./.frappe-semgrep-rules/rules --config r/python.lang.correctness
