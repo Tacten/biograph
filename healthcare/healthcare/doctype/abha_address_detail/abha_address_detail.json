@@ -1,0 +1,136 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-06-19 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "engine": "InnoDB",
+ "field_order": [
+  "abha_record",
+  "patient",
+  "column_break_1",
+  "source",
+  "last_synced",
+  "section_break_address",
+  "address_line",
+  "district_name",
+  "district_code",
+  "column_break_address",
+  "state_name",
+  "state_code",
+  "pin_code"
+ ],
+ "fields": [
+  {
+   "fieldname": "abha_record",
+   "fieldtype": "Link",
+   "label": "ABHA Record",
+   "options": "ABHA Record",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1,
+   "description": "Parent ABHA Record — one address per record"
+  },
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "label": "Patient",
+   "options": "Patient",
+   "reqd": 1,
+   "search_index": 1,
+   "description": "Denormalised for fast IDOR checks — must match abha_record.patient"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "source",
+   "fieldtype": "Select",
+   "label": "Source",
+   "options": "ABHA API\nManual\nDL",
+   "default": "ABHA API",
+   "reqd": 1
+  },
+  {
+   "fieldname": "last_synced",
+   "fieldtype": "Datetime",
+   "label": "Last Synced",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_address",
+   "fieldtype": "Section Break",
+   "label": "Address"
+  },
+  {
+   "fieldname": "address_line",
+   "fieldtype": "Small Text",
+   "label": "Address Line",
+   "description": "Street / locality — FHIR Address.line"
+  },
+  {
+   "fieldname": "district_name",
+   "fieldtype": "Data",
+   "label": "District",
+   "description": "FHIR Address.district"
+  },
+  {
+   "fieldname": "district_code",
+   "fieldtype": "Data",
+   "label": "District LGD Code",
+   "description": "LGD (Local Government Directory) code for the district, when returned by ABDM"
+  },
+  {
+   "fieldname": "column_break_address",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "state_name",
+   "fieldtype": "Data",
+   "label": "State",
+   "description": "FHIR Address.state"
+  },
+  {
+   "fieldname": "state_code",
+   "fieldtype": "Data",
+   "label": "State LGD Code",
+   "description": "LGD (Local Government Directory) code for the state, when returned by ABDM"
+  },
+  {
+   "fieldname": "pin_code",
+   "fieldtype": "Data",
+   "label": "PIN Code",
+   "description": "FHIR Address.postalCode",
+   "max_length": 6
+  }
+ ],
+ "links": [],
+ "modified": "2026-06-19 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Healthcare",
+ "name": "ABHA Address Detail",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "role": "Healthcare User"
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "write": 1,
+   "role": "System Manager"
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "patient,abha_record",
+ "sort_field": "last_synced",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "abha_record",
+ "track_changes": 0
+}

@@ -1,0 +1,127 @@
+{
+ "actions": [],
+ "autoname": "field:care_context_reference",
+ "creation": "2026-07-09 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "engine": "InnoDB",
+ "field_order": [
+  "care_context_reference",
+  "display",
+  "column_break_1",
+  "patient",
+  "hi_type",
+  "section_break_status",
+  "encounter_date",
+  "linked_to_abha",
+  "column_break_status",
+  "link_status",
+  "fhir_encounter_id"
+ ],
+ "fields": [
+  {
+   "fieldname": "care_context_reference",
+   "fieldtype": "Data",
+   "label": "Care Context Reference",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1,
+   "search_index": 1,
+   "description": "FHIR: Encounter.id — unique per HIP"
+  },
+  {
+   "fieldname": "display",
+   "fieldtype": "Data",
+   "label": "Display",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "Human-readable label — FHIR: Encounter.serviceType.text"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "label": "Patient",
+   "options": "Patient",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1,
+   "description": "FHIR: Encounter.subject.reference — IDOR check enforced"
+  },
+  {
+   "fieldname": "hi_type",
+   "fieldtype": "Select",
+   "label": "HI Type",
+   "options": "OPConsultation\nPrescription\nDiagnosticReport\nDischargeSummary\nImmunizationRecord\nHealthDocumentRecord\nWellnessRecord",
+   "reqd": 1,
+   "description": "FHIR: Encounter.class (ABDM hi_type) — drives FHIR Bundle profile"
+  },
+  {
+   "fieldname": "section_break_status",
+   "fieldtype": "Section Break",
+   "label": "Linking Status"
+  },
+  {
+   "fieldname": "encounter_date",
+   "fieldtype": "Date",
+   "label": "Encounter Date",
+   "reqd": 1,
+   "description": "FHIR: Encounter.period.start"
+  },
+  {
+   "fieldname": "linked_to_abha",
+   "fieldtype": "Check",
+   "label": "Linked to ABHA"
+  },
+  {
+   "fieldname": "column_break_status",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "link_status",
+   "fieldtype": "Select",
+   "label": "Link Status",
+   "options": "Pending\nLinked\nFailed",
+   "default": "Pending",
+   "reqd": 1,
+   "description": "FHIR: Encounter.status"
+  },
+  {
+   "fieldname": "fhir_encounter_id",
+   "fieldtype": "Data",
+   "label": "FHIR Encounter ID",
+   "description": "FHIR: Encounter.id (FHIR-side identifier, distinct from care_context_reference)"
+  }
+ ],
+ "links": [],
+ "modified": "2026-07-09 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Healthcare",
+ "name": "Care Context",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "role": "Healthcare User"
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "write": 1,
+   "role": "System Manager"
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "patient,care_context_reference",
+ "sort_field": "encounter_date",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "display",
+ "track_changes": 1
+}

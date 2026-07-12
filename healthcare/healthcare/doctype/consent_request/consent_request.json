@@ -1,0 +1,161 @@
+{
+ "actions": [],
+ "autoname": "field:consent_id",
+ "creation": "2026-07-09 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "engine": "InnoDB",
+ "field_order": [
+  "consent_id",
+  "patient",
+  "column_break_1",
+  "requester_id",
+  "purpose",
+  "status",
+  "section_break_scope",
+  "hi_types",
+  "date_range_from",
+  "column_break_scope",
+  "date_range_to",
+  "expiry",
+  "section_break_artefact",
+  "consent_artefact_json",
+  "revocation_reason"
+ ],
+ "fields": [
+  {
+   "fieldname": "consent_id",
+   "fieldtype": "Data",
+   "label": "Consent ID",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1,
+   "search_index": 1,
+   "description": "FHIR: Consent.identifier — ABDM consent artefact ID"
+  },
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "label": "Patient",
+   "options": "Patient",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1,
+   "description": "FHIR: Consent.patient.reference — IDOR check enforced"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "requester_id",
+   "fieldtype": "Data",
+   "label": "Requester ID",
+   "reqd": 1,
+   "description": "FHIR: Consent.performer — requesting HIU ID"
+  },
+  {
+   "fieldname": "purpose",
+   "fieldtype": "Select",
+   "label": "Purpose",
+   "options": "CAREMGT\nPATRQT\nPUBHLTH\nHPAYMT\nDSRCH",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "FHIR: Consent.purpose — ABDM purpose codes"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "REQUESTED\nGRANTED\nDENIED\nREVOKED\nEXPIRED",
+   "default": "REQUESTED",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "FHIR: Consent.status"
+  },
+  {
+   "fieldname": "section_break_scope",
+   "fieldtype": "Section Break",
+   "label": "Scope"
+  },
+  {
+   "fieldname": "hi_types",
+   "fieldtype": "Code",
+   "options": "JSON",
+   "label": "HI Types",
+   "reqd": 1,
+   "description": "FHIR: Consent.scope.coding — JSON array of hi_type values"
+  },
+  {
+   "fieldname": "date_range_from",
+   "fieldtype": "Date",
+   "label": "Date Range From",
+   "reqd": 1,
+   "description": "FHIR: Consent.provision.period.start"
+  },
+  {
+   "fieldname": "column_break_scope",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "date_range_to",
+   "fieldtype": "Date",
+   "label": "Date Range To",
+   "reqd": 1,
+   "description": "FHIR: Consent.provision.period.end"
+  },
+  {
+   "fieldname": "expiry",
+   "fieldtype": "Datetime",
+   "label": "Expiry",
+   "reqd": 1,
+   "description": "FHIR: Consent.dateTime (expiry)"
+  },
+  {
+   "fieldname": "section_break_artefact",
+   "fieldtype": "Section Break",
+   "label": "Signed Artefact"
+  },
+  {
+   "fieldname": "consent_artefact_json",
+   "fieldtype": "Long Text",
+   "label": "Consent Artefact JSON",
+   "reqd": 1,
+   "description": "Full signed Consent JSON from ABDM — sensitive, never log this field"
+  },
+  {
+   "fieldname": "revocation_reason",
+   "fieldtype": "Data",
+   "label": "Revocation Reason",
+   "description": "FHIR: Consent.policyRule"
+  }
+ ],
+ "links": [],
+ "modified": "2026-07-09 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Healthcare",
+ "name": "Consent Request",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "role": "Healthcare User"
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "write": 1,
+   "role": "System Manager"
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "patient,consent_id,status",
+ "sort_field": "expiry",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "consent_id",
+ "track_changes": 1
+}

@@ -1,0 +1,138 @@
+{
+ "actions": [],
+ "autoname": "field:bundle_id",
+ "creation": "2026-07-09 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "engine": "InnoDB",
+ "field_order": [
+  "bundle_id",
+  "health_document",
+  "column_break_1",
+  "bundle_type",
+  "fhir_version",
+  "received_at",
+  "section_break_content",
+  "bundle_json",
+  "encrypted_bundle",
+  "column_break_content",
+  "encryption_key_id",
+  "integrity_hash"
+ ],
+ "fields": [
+  {
+   "fieldname": "bundle_id",
+   "fieldtype": "Data",
+   "label": "Bundle ID",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1,
+   "search_index": 1,
+   "description": "FHIR: Bundle.id — UUID"
+  },
+  {
+   "fieldname": "health_document",
+   "fieldtype": "Link",
+   "label": "Health Document",
+   "options": "Health Document",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1,
+   "description": "IDOR check enforced via linked Health Document's patient"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "bundle_type",
+   "fieldtype": "Select",
+   "label": "Bundle Type",
+   "options": "document\ntransaction\ncollection",
+   "reqd": 1,
+   "description": "FHIR: Bundle.type"
+  },
+  {
+   "fieldname": "fhir_version",
+   "fieldtype": "Data",
+   "label": "FHIR Version",
+   "default": "R4",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "received_at",
+   "fieldtype": "Datetime",
+   "label": "Received At",
+   "reqd": 1,
+   "read_only": 1,
+   "description": "FHIR: Bundle.timestamp"
+  },
+  {
+   "fieldname": "section_break_content",
+   "fieldtype": "Section Break",
+   "label": "Bundle Content"
+  },
+  {
+   "fieldname": "bundle_json",
+   "fieldtype": "Long Text",
+   "label": "Bundle JSON",
+   "reqd": 1,
+   "description": "Complete FHIR R4 Bundle JSON, decrypted for Frappe display — do NOT log this field"
+  },
+  {
+   "fieldname": "encrypted_bundle",
+   "fieldtype": "Long Text",
+   "label": "Encrypted Bundle",
+   "reqd": 1,
+   "description": "At-rest encrypted bundle per ABDM spec — sensitive"
+  },
+  {
+   "fieldname": "column_break_content",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "encryption_key_id",
+   "fieldtype": "Data",
+   "label": "Encryption Key ID",
+   "reqd": 1,
+   "description": "Key reference only — never the key itself"
+  },
+  {
+   "fieldname": "integrity_hash",
+   "fieldtype": "Data",
+   "label": "Integrity Hash (SHA256)",
+   "reqd": 1,
+   "read_only": 1,
+   "description": "SHA256 tamper detection over bundle_json"
+  }
+ ],
+ "links": [],
+ "modified": "2026-07-09 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Healthcare",
+ "name": "FHIR Bundle",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "role": "Healthcare User"
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "write": 1,
+   "role": "System Manager"
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "bundle_id,health_document",
+ "sort_field": "received_at",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "bundle_id",
+ "track_changes": 1
+}

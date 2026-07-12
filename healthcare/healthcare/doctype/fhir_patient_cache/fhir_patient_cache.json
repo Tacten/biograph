@@ -1,0 +1,112 @@
+{
+ "actions": [],
+ "autoname": "field:patient",
+ "creation": "2026-06-18 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "engine": "InnoDB",
+ "field_order": [
+  "patient",
+  "fhir_version",
+  "resource_type",
+  "column_break_meta",
+  "source",
+  "last_synced",
+  "hash",
+  "section_break_json",
+  "fhir_json"
+ ],
+ "fields": [
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "label": "Patient",
+   "options": "Patient",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1,
+   "unique": 1,
+   "description": "FHIR: Patient.id — IDOR check enforced"
+  },
+  {
+   "fieldname": "fhir_version",
+   "fieldtype": "Data",
+   "label": "FHIR Version",
+   "default": "R4",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "resource_type",
+   "fieldtype": "Data",
+   "label": "Resource Type",
+   "default": "Patient",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_meta",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "source",
+   "fieldtype": "Select",
+   "label": "Source",
+   "options": "ABDM\nLocal",
+   "reqd": 1,
+   "default": "ABDM"
+  },
+  {
+   "fieldname": "last_synced",
+   "fieldtype": "Datetime",
+   "label": "Last Synced",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "hash",
+   "fieldtype": "Data",
+   "label": "Content Hash (SHA256)",
+   "read_only": 1,
+   "description": "SHA256 of fhir_json — used to detect changes and avoid redundant FHIR Bundle rebuilds"
+  },
+  {
+   "fieldname": "section_break_json",
+   "fieldtype": "Section Break",
+   "label": "FHIR R4 Patient JSON"
+  },
+  {
+   "fieldname": "fhir_json",
+   "fieldtype": "Long Text",
+   "label": "FHIR JSON",
+   "reqd": 1,
+   "description": "Complete FHIR R4 Patient resource JSON — do NOT log this field (contains PII)"
+  }
+ ],
+ "links": [],
+ "modified": "2026-06-18 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Healthcare",
+ "name": "FHIR Patient Cache",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "role": "Healthcare User"
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "write": 1,
+   "role": "System Manager"
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "patient",
+ "sort_field": "last_synced",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "patient",
+ "track_changes": 0
+}

@@ -26,3 +26,7 @@ healthcare.patches.v15_0.update_patient_history_settings_for_lab_test
 healthcare.patches.v15_0.add_custom_fields_if_not_exists
 healthcare.patches.v16_0.rebrand_marley_to_biograph
 healthcare.patches.v16_0.populate_appointment_end_fields
+healthcare.patches.v16_0.abdm_consolidate_settings
+healthcare.patches.v16_0.abdm_add_fhir_id_to_patient
+healthcare.patches.v16_0.abdm_create_abha_address_detail
+healthcare.patches.v16_0.abdm_create_fhir_foundation_doctypes

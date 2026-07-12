@@ -1,0 +1,152 @@
+{
+ "actions": [],
+ "autoname": "field:abha_number",
+ "creation": "2026-06-18 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "engine": "InnoDB",
+ "field_order": [
+  "abha_number",
+  "abha_address",
+  "column_break_1",
+  "patient",
+  "abha_type",
+  "status",
+  "section_break_identity",
+  "preferred_abha_address",
+  "profile_photo",
+  "column_break_2",
+  "verified_at",
+  "created_at"
+ ],
+ "fields": [
+  {
+   "fieldname": "abha_number",
+   "fieldtype": "Data",
+   "label": "ABHA Number",
+   "description": "14-digit ABHA number — FHIR Identifier system: https://healthid.ndhm.gov.in",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "abha_address",
+   "fieldtype": "Data",
+   "label": "ABHA Address",
+   "description": "@abdm address — FHIR Identifier system: https://abha.abdm.gov.in",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "label": "Patient",
+   "options": "Patient",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1,
+   "description": "FHIR: Patient.id (fhir_id) — IDOR check enforced on all API calls"
+  },
+  {
+   "fieldname": "abha_type",
+   "fieldtype": "Select",
+   "label": "ABHA Type",
+   "options": "STANDARD\nCHILD",
+   "reqd": 1,
+   "description": "FHIR: Patient.identifier.type"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "ACTIVE\nDEACTIVATED\nDELETED\nUNVERIFIED",
+   "reqd": 1,
+   "default": "UNVERIFIED",
+   "in_list_view": 1,
+   "description": "FHIR: Patient.active (bool derived from ACTIVE status)"
+  },
+  {
+   "fieldname": "section_break_identity",
+   "fieldtype": "Section Break",
+   "label": "Identity Details"
+  },
+  {
+   "fieldname": "preferred_abha_address",
+   "fieldtype": "Data",
+   "label": "Preferred ABHA Address",
+   "description": "FHIR: Patient.identifier preferred flag — set after SOP §3 Step 6",
+   "read_only": 0
+  },
+  {
+   "fieldname": "profile_photo",
+   "fieldtype": "Attach",
+   "label": "Profile Photo",
+   "description": "FHIR: Patient.photo[contentType=image/jpeg] — base64 JPEG — never log this field"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "verified_at",
+   "fieldtype": "Datetime",
+   "label": "Verified At",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "created_at",
+   "fieldtype": "Datetime",
+   "label": "Created At",
+   "reqd": 1,
+   "read_only": 1,
+   "no_copy": 1,
+   "description": "Server-set only — never accept from client"
+  }
+ ],
+ "links": [],
+ "modified": "2026-06-18 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Healthcare",
+ "name": "ABHA Record",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 0,
+   "export": 0,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Healthcare User",
+   "share": 0,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "abha_number,abha_address,patient",
+ "sort_field": "created_at",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "abha_number",
+ "track_changes": 1
+}
