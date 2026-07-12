@@ -1,0 +1,140 @@
+{
+ "actions": [],
+ "autoname": "field:document_id",
+ "creation": "2026-07-09 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "engine": "InnoDB",
+ "field_order": [
+  "document_id",
+  "patient",
+  "column_break_1",
+  "care_context",
+  "consent",
+  "section_break_meta",
+  "doc_type",
+  "fhir_resource_type",
+  "column_break_meta",
+  "encounter_date",
+  "source",
+  "content_hash"
+ ],
+ "fields": [
+  {
+   "fieldname": "document_id",
+   "fieldtype": "Data",
+   "label": "Document ID",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1,
+   "search_index": 1,
+   "description": "FHIR: Bundle.id / resource.id — UUID"
+  },
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "label": "Patient",
+   "options": "Patient",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1,
+   "description": "FHIR: Bundle.entry[Patient].resource.id — IDOR check enforced"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "care_context",
+   "fieldtype": "Link",
+   "label": "Care Context",
+   "options": "Care Context",
+   "reqd": 1,
+   "search_index": 1,
+   "description": "FHIR: Encounter.id reference"
+  },
+  {
+   "fieldname": "consent",
+   "fieldtype": "Link",
+   "label": "Consent",
+   "options": "Consent Request",
+   "description": "FHIR: Consent.identifier — optional, required only for HIU-fetched documents"
+  },
+  {
+   "fieldname": "section_break_meta",
+   "fieldtype": "Section Break",
+   "label": "Document Details"
+  },
+  {
+   "fieldname": "doc_type",
+   "fieldtype": "Select",
+   "label": "Document Type",
+   "options": "OPConsultation\nPrescription\nDiagnosticReport\nDischargeSummary\nImmunizationRecord",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "Maps to FHIR profile"
+  },
+  {
+   "fieldname": "fhir_resource_type",
+   "fieldtype": "Data",
+   "label": "FHIR Resource Type",
+   "reqd": 1,
+   "description": "Primary FHIR resource type, e.g. DiagnosticReport"
+  },
+  {
+   "fieldname": "column_break_meta",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "encounter_date",
+   "fieldtype": "Date",
+   "label": "Encounter Date",
+   "reqd": 1,
+   "description": "FHIR: Bundle timestamp"
+  },
+  {
+   "fieldname": "source",
+   "fieldtype": "Select",
+   "label": "Source",
+   "options": "HIP\nHIU",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "content_hash",
+   "fieldtype": "Data",
+   "label": "Content Hash (SHA256)",
+   "reqd": 1,
+   "read_only": 1,
+   "description": "SHA256 of the linked FHIR Bundle's bundle_json"
+  }
+ ],
+ "links": [],
+ "modified": "2026-07-09 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Healthcare",
+ "name": "Health Document",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "role": "Healthcare User"
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "write": 1,
+   "role": "System Manager"
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "patient,document_id,doc_type",
+ "sort_field": "encounter_date",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "document_id",
+ "track_changes": 1
+}

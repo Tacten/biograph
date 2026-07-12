@@ -1,0 +1,121 @@
+{
+ "actions": [],
+ "allow_import": 0,
+ "creation": "2026-06-22 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "System",
+ "engine": "InnoDB",
+ "field_order": [
+  "timestamp",
+  "column_break_1",
+  "operation",
+  "section_break_identity",
+  "patient_id_hash",
+  "column_break_2",
+  "initiated_by",
+  "section_break_result",
+  "result",
+  "column_break_3",
+  "ip_address",
+  "error_code"
+ ],
+ "fields": [
+  {
+   "fieldname": "timestamp",
+   "fieldtype": "Datetime",
+   "label": "Timestamp",
+   "reqd": 1,
+   "read_only": 1,
+   "description": "Auto-set server-side on insert"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "operation",
+   "fieldtype": "Select",
+   "label": "Operation",
+   "reqd": 1,
+   "options": "ABHA_CREATE\nABHA_VERIFY\nABHA_LINK\nABHA_DEACTIVATE\nABHA_DELETE\nABHA_REACTIVATE\nQR_GENERATE\nCARD_GENERATE\nPROFILE_GET\nPROFILE_UPDATE\nTOKEN_REFRESH\nCONSENT_INIT\nCONSENT_GRANT\nCONSENT_REVOKE\nDATA_FETCH\nDATA_PUSH\nLINKING_INIT\nLINKING_CONFIRM\nSCAN_SHARE\nSESSION_LOGIN\nSESSION_LOGOUT\nADMIN_ACCESS\nFHIR_VALIDATE\nABHA_ADDRESS_VERIFY\nTOKEN_REVOKE\nRSA_ENCRYPT\nABHA_OTP_REQUEST\nABHA_OTP_VERIFY\nABHA_OTP_RESEND\nABHA_ACTIVATE\nABHA_MOBILE_VERIFIED",
+   "description": "30 ABDM operation types — no free-text to prevent log injection"
+  },
+  {
+   "fieldname": "section_break_identity",
+   "fieldtype": "Section Break",
+   "label": "Identity"
+  },
+  {
+   "fieldname": "patient_id_hash",
+   "fieldtype": "Data",
+   "label": "Patient ID Hash",
+   "reqd": 1,
+   "description": "SHA-256 of Frappe Patient docname — no PII stored"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "initiated_by",
+   "fieldtype": "Link",
+   "label": "Initiated By",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_result",
+   "fieldtype": "Section Break",
+   "label": "Result"
+  },
+  {
+   "fieldname": "result",
+   "fieldtype": "Select",
+   "label": "Result",
+   "reqd": 1,
+   "options": "SUCCESS\nFAILURE"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ip_address",
+   "fieldtype": "Data",
+   "label": "IP Address",
+   "reqd": 1
+  },
+  {
+   "fieldname": "error_code",
+   "fieldtype": "Data",
+   "label": "Error Code",
+   "description": "HTTP status code or ABDM error code — no stack trace, no message body"
+  }
+ ],
+ "in_create": 1,
+ "issingle": 0,
+ "show_in_module": 1,
+ "links": [],
+ "modified": "2026-06-22 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Healthcare",
+ "name": "ABDM Audit Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 0,
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "role": "System Manager",
+   "write": 0
+  }
+ ],
+ "sort_field": "timestamp",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "operation",
+ "track_changes": 0,
+ "read_only": 1
+}

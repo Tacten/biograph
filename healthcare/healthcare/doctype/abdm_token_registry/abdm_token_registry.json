@@ -1,0 +1,127 @@
+{
+ "actions": [],
+ "autoname": "field:patient",
+ "creation": "2026-06-18 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "engine": "InnoDB",
+ "field_order": [
+  "patient",
+  "section_break_gateway",
+  "gateway_access_token",
+  "gateway_token_expiry",
+  "column_break_gateway",
+  "x_token",
+  "x_token_expiry",
+  "section_break_linking",
+  "linking_token",
+  "linking_token_expiry",
+  "column_break_linking",
+  "t_token",
+  "t_token_created"
+ ],
+ "fields": [
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "label": "Patient",
+   "options": "Patient",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1,
+   "unique": 1,
+   "description": "IDOR check enforced on every token read/write"
+  },
+  {
+   "fieldname": "section_break_gateway",
+   "fieldtype": "Section Break",
+   "label": "Gateway & Session Tokens"
+  },
+  {
+   "fieldname": "gateway_access_token",
+   "fieldtype": "Password",
+   "label": "Gateway Access Token",
+   "description": "ABDM gateway M2/M3 access token — NEVER log this field"
+  },
+  {
+   "fieldname": "gateway_token_expiry",
+   "fieldtype": "Datetime",
+   "label": "Gateway Token Expiry"
+  },
+  {
+   "fieldname": "column_break_gateway",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "x_token",
+   "fieldtype": "Password",
+   "label": "X-Token",
+   "description": "Post-login user session token (ABDM X-token) — NEVER log this field"
+  },
+  {
+   "fieldname": "x_token_expiry",
+   "fieldtype": "Datetime",
+   "label": "X-Token Expiry"
+  },
+  {
+   "fieldname": "section_break_linking",
+   "fieldtype": "Section Break",
+   "label": "Linking & Enrolment Tokens"
+  },
+  {
+   "fieldname": "linking_token",
+   "fieldtype": "Password",
+   "label": "Linking Token",
+   "description": "HIP-initiated linking token from share_profile callback — NEVER log this field"
+  },
+  {
+   "fieldname": "linking_token_expiry",
+   "fieldtype": "Datetime",
+   "label": "Linking Token Expiry"
+  },
+  {
+   "fieldname": "column_break_linking",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "t_token",
+   "fieldtype": "Password",
+   "label": "T-Token (Enrolment)",
+   "description": "Enrolment txnId token — per-flow, short-lived — NEVER log this field"
+  },
+  {
+   "fieldname": "t_token_created",
+   "fieldtype": "Datetime",
+   "label": "T-Token Created At",
+   "description": "Expires per-flow — use for TTL checks"
+  }
+ ],
+ "links": [],
+ "modified": "2026-06-18 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Healthcare",
+ "name": "ABDM Token Registry",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "role": "Healthcare User"
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "write": 1,
+   "role": "System Manager"
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "patient",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "patient",
+ "track_changes": 1
+}
