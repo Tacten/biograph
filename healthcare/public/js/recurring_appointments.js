@@ -14,6 +14,7 @@ healthcare.appointment.show_recurring_dialog = function(doc) {
 function open_repeat_dialog(doc) {
     let repeat_on = ""
     let selected_practitioner = '';
+    let selected_slots = [];   // tracks user-selected {date, from_time, to_time}
     let d = new frappe.ui.Dialog({
         title: "Repeat Appointment",
         size: "large",
@@ -32,7 +33,7 @@ function open_repeat_dialog(doc) {
                 fieldtype: "Link",
                 options: "Appointment Type",
                 reqd: 1,
-                default : "Therapy Session"
+                default : "Consultation"
             },
             { fieldtype: 'Column Break', fieldname: "first_column_break" },
             {
@@ -222,13 +223,13 @@ function open_repeat_dialog(doc) {
                     }
                     const result = r.message.dates;  // Assuming it's a list
                     
-                    let html = `<div style="display: flex; flex-wrap: wrap; gap: 10px;">`;
+                    let html = `<div>`;
                     
                     if(!r.message.available){
                         d.get_primary_btn().hide()
                         html += `<div style="padding: 16px; border: 1px solid #f0ad4e; background-color: #fff3cd; border-radius: 8px; font-family: Arial, sans-serif; color: #856404;">
                                     <p style="margin: 0; font-size: 16px;">
-                                        <strong>Practitioner ${data.practitioner}</strong> is unavailable during the selected time slot.
+                                        <strong>Practitioner ${frappe.utils.escape_html(data.practitioner)}</strong> is unavailable during the selected time slot.
                                         <br><br>
                                         Please check their schedule and choose a different time.
                                     </p>
@@ -236,45 +237,229 @@ function open_repeat_dialog(doc) {
                                 `
                         frappe.dom.unfreeze();
                     }
-                    let any_not_availability = true
+                    // Reset selection on fresh check-availability
+                    selected_slots = [];
+                    let any_not_availability = true;
 
+                    // grouped[date] = [ {date, from_time, to_time, booking_flage, days}, ... ]
+                    // Slots where the practitioner is marked unavailable (leave/holiday/no schedule)
+                    // are filtered out entirely — they should not appear on the UI at all.
+                    const grouped = {};
                     result.forEach(slot => {
-                        if(slot.booking_flage){
-                            any_not_availability = false
-                        }
-                        const color = slot.booking_flage  ? 'red' : 'green';
-                        html += `
-                        <div style="
-                        background-color: ${color === 'green' ? '#28a745' : '#dc3545'}; 
-                        color: white;
-                        padding: 10px;
-                        border-radius: 8px;
-                        font-family: Arial, sans-serif;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                        text-align: center;
-                        transition: transform 0.2s;
-                        margin-bottom: 10px;
-                    ">
-                        <strong style="font-size: 14px;">${frappe.datetime.str_to_user(slot.date)}</strong>
-                        <hr style="border-top: 1px solid rgba(255,255,255,0.3); margin: 1px 0;">
-                        <div style="font-size: 12px; margin-bottom: 2px;">
-                            ${slot.from_time} - ${slot.to_time}
-                        </div>
-                        <div style="font-size: 11px;">
-                            <b>${slot.days}</b>
-                        </div>
-                    </div>
-                        `;
-                        
+                        if (slot.is_practitioner_unavailable) return;
+                        if (!grouped[slot.date]) grouped[slot.date] = [];
+                        grouped[slot.date].push(slot);
+                        if (!slot.booking_flage) any_not_availability = false;  // at least one available
                     });
-                
-                    html += `</div>`;
 
-                    // Set HTML content into the dialog field
-                    
+                    // Auto-select the first available slot for each date by default
+                    Object.entries(grouped).forEach(([date, slots]) => {
+                        const availableSlots = slots.filter(s => !s.booking_flage);
+                        if (availableSlots.length > 0) {
+                            const first = availableSlots[0];
+                            selected_slots.push({ date: first.date, from_time: first.from_time, to_time: first.to_time });
+                        }
+                    });
+
+                    function slotKey(s) { return s.date + '|' + s.from_time + '|' + s.to_time; }
+
+                    function isDateSelected(date) {
+                        return selected_slots.some(s => s.date === date);
+                    }
+
+                    function selectedCountForDate(date) {
+                        return selected_slots.filter(s => s.date === date).length;
+                    }
+
+                    function renderDateCard(date, slots) {
+                        // Summarise availability for the date
+                        const availableSlots = slots.filter(s => !s.booking_flage);
+                        const allBooked = availableSlots.length === 0;
+                        const bg = allBooked ? '#dc3545' : (isDateSelected(date) ? '#28a745' : '#007bff');
+                        const selected = isDateSelected(date);
+                        const borderStyle = selected ? 'border:3px solid #fff;' : 'border:3px solid transparent;';
+
+                        let card = '<div'
+                            + ' class="recurring-date-card"'
+                            + ' data-date="' + date + '"'
+                            + ' style="'
+                            + 'background-color:' + bg + ';color:white;'
+                            + 'padding:10px;border-radius:8px;'
+                            + 'font-family:Arial,sans-serif;'
+                            + 'box-shadow:0 2px 4px rgba(0,0,0,0.1);'
+                            + 'text-align:center;'
+                            + 'width:110px;min-width:110px;'
+                            + (allBooked ? 'opacity:0.75;cursor:not-allowed;' : 'cursor:pointer;user-select:none;')
+                            + borderStyle
+                            + 'transition:border-color 0.15s;">';
+                        card += '<strong style="font-size:14px;">' + frappe.datetime.str_to_user(date) + '</strong>';
+                        card += '<hr style="border-top:1px solid rgba(255,255,255,0.3);margin:1px 0;">';
+                        if (slots.length > 1) {
+                            const selCount = selectedCountForDate(date);
+                            const selectedSlotsForDate = selected_slots.filter(s => s.date === date);
+                            if (selCount === 1) {
+                                // Show the single selected slot's time
+                                const selSlot = selectedSlotsForDate[0];
+                                const fullSlot = availableSlots.find(s => s.from_time === selSlot.from_time && s.to_time === selSlot.to_time) || selSlot;
+                                card += '<div style="font-size:12px;margin-bottom:2px;">' + selSlot.from_time + ' - ' + selSlot.to_time + '</div>';
+                                card += '<div style="font-size:11px;"><b>' + (fullSlot.days || '') + '</b></div>';
+                                card += '';
+                            } else if (selCount > 1) {
+                                // Show count of selected appointments only
+                                card += '<div style="font-size:11px;font-weight:bold;margin:5px 0;">' + selCount +" Slots Selected</div>";
+                                // card += '<div style="font-size:11px;">Appointments</div>';
+                            } else {
+                                // Nothing selected — show first available slot + total slot count
+                                const displaySlot = availableSlots[0] || slots[0];
+                                card += '<div style="font-size:12px;margin-bottom:2px;">' + displaySlot.from_time + ' - ' + displaySlot.to_time + '</div>';
+                                card += '<div style="font-size:11px;"><b>' + displaySlot.days + '</b></div>';
+                                card += '<div style="font-size:10px;margin-top:3px;opacity:0.9;">' + slots.length + ' slots</div>';
+                            }
+                        } else {
+                            // Single slot for this date — always show its time
+                            const displaySlot = availableSlots[0] || slots[0];
+                            card += '<div style="font-size:12px;margin-bottom:2px;">' + displaySlot.from_time + ' - ' + displaySlot.to_time + '</div>';
+                            card += '<div style="font-size:11px;"><b>' + displaySlot.days + '</b></div>';
+                        }
+                        card += '</div>';
+                        return card;
+                    }
+
+                    // Build the flat flex-wrap grid of date cards (one per date)
+                    html += '<div style="display:flex;flex-wrap:wrap;gap:10px;">';
+                    Object.entries(grouped).forEach(([date, slots]) => {
+                        html += renderDateCard(date, slots);
+                    });
+                    html += '</div>';
+
                     d.fields_dict.available_slots.$wrapper.html(html);
-                    if(!any_not_availability){
-                        d.get_primary_btn().hide()
+
+                    function updateBookBtn() {
+                        const n = selected_slots.length;
+                        if (n > 0) {
+                            d.get_primary_btn().show().text(__('Book') + ' ' + n + ' ' + __(n === 1 ? 'Appointment' : 'Appointments'));
+                        } else {
+                            d.get_primary_btn().hide();
+                        }
+                    }
+
+                    function refreshDateCard(date) {
+                        const $old = d.fields_dict.available_slots.$wrapper.find('.recurring-date-card[data-date="' + date + '"]');
+                        $old.replaceWith(renderDateCard(date, grouped[date]));
+                        // No direct re-bind needed — delegation on the wrapper covers new elements
+                    }
+
+                    function dateCardClickHandler() {
+                        const date = $(this).data('date');
+                        const slots = grouped[date];
+                        if (!slots) return;
+
+                        const availableSlots = slots.filter(s => !s.booking_flage);
+                        if (availableSlots.length === 0) return;  // all booked, ignore click
+
+                        // If only one slot — toggle select/deselect directly without popup
+                        if (availableSlots.length === 1) {
+                            const s = availableSlots[0];
+                            const key = slotKey(s);
+                            const idx = selected_slots.findIndex(x => slotKey(x) === key);
+                            if (idx === -1) {
+                                selected_slots.push({ date: s.date, from_time: s.from_time, to_time: s.to_time });
+                            } else {
+                                selected_slots.splice(idx, 1);
+                            }
+                            refreshDateCard(date);
+                            updateBookBtn();
+                            return;
+                        }
+
+                        // Multiple slots — open a popup to let user pick (multi-select)
+                        // Build a working copy of selections for this date so user can toggle freely
+                        let pendingKeys = new Set(
+                            selected_slots.filter(x => x.date === date).map(x => slotKey(x))
+                        );
+
+                        // Pre-select the first available slot if nothing is currently selected for this date
+                        if (pendingKeys.size === 0 && availableSlots.length > 0) {
+                            pendingKeys.add(slotKey(availableSlots[0]));
+                        }
+
+                        function buildPopupHtml() {
+                            let popup_html = '<div style="display:flex;flex-wrap:wrap;gap:10px;padding:8px;">';
+                            availableSlots.forEach(s => {
+                                const key = slotKey(s);
+                                const isSelected = pendingKeys.has(key);
+                                const slotBg = isSelected ? '#28a745' : '#007bff';
+                                const borderStyle = isSelected ? 'border:3px solid #fff;' : 'border:3px solid transparent;';
+                                popup_html += '<div'
+                                    + ' class="slot-popup-item"'
+                                    + ' data-key="' + key + '"'
+                                    + ' data-date="' + s.date + '"'
+                                    + ' data-from="' + s.from_time + '"'
+                                    + ' data-to="' + s.to_time + '"'
+                                    + ' style="'
+                                    + 'background-color:' + slotBg + ';color:white;'
+                                    + 'padding:10px;border-radius:8px;'
+                                    + 'font-family:Arial,sans-serif;'
+                                    + 'box-shadow:0 2px 4px rgba(0,0,0,0.1);'
+                                    + 'text-align:center;'
+                                    + 'width:110px;min-width:110px;'
+                                    + 'cursor:pointer;user-select:none;'
+                                    + borderStyle
+                                    + 'transition:border-color 0.15s;">';
+                                popup_html += '<strong style="font-size:14px;">' + frappe.datetime.str_to_user(s.date) + '</strong>';
+                                popup_html += '<hr style="border-top:1px solid rgba(255,255,255,0.3);margin:1px 0;">';
+                                popup_html += '<div style="font-size:12px;margin-bottom:2px;">' + s.from_time + ' - ' + s.to_time + '</div>';
+                                popup_html += '<div style="font-size:11px;"><b>' + s.days + '</b></div>';
+                                popup_html += '</div>';
+                            });
+                            popup_html += '</div>';
+                            return popup_html;
+                        }
+
+                        const slot_popup = new frappe.ui.Dialog({
+                            title: __('Select Slots') + ' — ' + frappe.datetime.str_to_user(date),
+                            fields: [{ fieldtype: 'HTML', fieldname: 'slot_list', options: buildPopupHtml() }],
+                            primary_action_label: __('Confirm'),
+                            primary_action: function() {
+                                // Sync pendingKeys back to selected_slots for this date
+                                // Remove all existing selections for this date
+                                selected_slots = selected_slots.filter(x => x.date !== date);
+                                // Add all pending selections
+                                availableSlots.forEach(s => {
+                                    if (pendingKeys.has(slotKey(s))) {
+                                        selected_slots.push({ date: s.date, from_time: s.from_time, to_time: s.to_time });
+                                    }
+                                });
+                                refreshDateCard(date);
+                                updateBookBtn();
+                                slot_popup.hide();
+                            }
+                        });
+
+                        // Toggle selection on popup card click (re-render in place)
+                        slot_popup.$wrapper.on('click', '.slot-popup-item', function() {
+                            const key = $(this).data('key');
+                            if (pendingKeys.has(key)) {
+                                pendingKeys.delete(key);
+                            } else {
+                                pendingKeys.add(key);
+                            }
+                            // Re-render the HTML field content
+                            slot_popup.fields_dict.slot_list.$wrapper.html(buildPopupHtml());
+                        });
+
+                        slot_popup.show();
+                    }
+
+                    // Bind click handler — remove any previous binding first to prevent
+                    // handler accumulation when Check Availability is clicked multiple times
+                    d.fields_dict.available_slots.$wrapper
+                        .off('click', '.recurring-date-card')
+                        .on('click', '.recurring-date-card', dateCardClickHandler);
+
+                    updateBookBtn();
+                    if (!any_not_availability) {
+                        d.get_primary_btn().hide();
                     }
                 },
                 freeze: true,
@@ -284,25 +469,28 @@ function open_repeat_dialog(doc) {
         },
         primary_action_label: "Book Appointments",
         primary_action: function () {
+            if (!selected_slots || selected_slots.length === 0) {
+                frappe.throw("Please select at least one slot before booking.");
+                return;
+            }
             const data = d.get_values();
-            validate_data(data)
+            validate_data(data);
             if (!data) return;
 
-            if (!(data.max_occurrences || data.repeat_till)) {
-                frappe.throw("<b>Max Occurrences</b> or <b>Repeat Till</b> one of the value should be updated");
-            }
-
-            // Slight delay to ensure dialog rendering finishes
             setTimeout(() => {
                 frappe.dom.freeze("Creating Appointments...");
-                
+
                 frappe.call({
-                    method: "healthcare.healthcare.doctype.patient_appointment.recuring_appointment_handler.create_recurring_appointments",
-                    args: { data },
+                    method: "healthcare.healthcare.doctype.patient_appointment.recuring_appointment_handler.create_selected_appointments",
+                    args: {
+                        data: data,
+                        selected_slots: selected_slots
+                    },
                     callback: function (r) {
                         frappe.dom.unfreeze();
                         if (r.message) {
-                            frappe.msgprint("Appointments are being created in background")
+                            frappe.msgprint(r.message.created + " appointment(s) created successfully.");
+                            selected_slots = [];
                             d.hide();
                         }
                     }
@@ -405,6 +593,12 @@ function open_repeat_dialog(doc) {
             d.fields_dict.available_slots.$wrapper.html(html);
             d.get_primary_btn().hide()
 		};
+    d.fields_dict['patient'].df.onchange = () => {
+        selected_slots = [];
+        d.fields_dict.available_slots.$wrapper.html('<div></div>');
+        d.fields_dict.available_slots.$wrapper.off('click', '.recurring-date-card');
+        d.get_primary_btn().hide();
+    };
     d.fields_dict['appointment_type'].df.onchange = () =>{
         if (d.get_value("appointment_type") == "Therapy Session"){
             d.set_df_property("therapy_plan", "hidden", 0)
