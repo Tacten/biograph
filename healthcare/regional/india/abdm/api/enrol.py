@@ -196,9 +196,10 @@ def enrol_by_aadhaar(patient: str, txn_id: str, otp: str, mobile: str = "") -> d
 
     # SOP §3 Step 6: ABDM auto-links mobile when it matches Aadhaar-linked mobile.
     # Detect via mobileLinked flag or ACTIVE status in response.
+    _resp_profile = response.get("ABHAProfile") or response
     mobile_linked = bool(
-        response.get("mobileLinked")
-        or response.get("mobile_linked")
+        _resp_profile.get("mobileLinked") or _resp_profile.get("mobile_linked")
+        or response.get("mobileLinked") or response.get("mobile_linked")
         or abha_record.status == "ACTIVE"
     )
 
@@ -221,10 +222,25 @@ def _create_abha_record_from_enrolment(patient: str, enrol_response: dict) -> "f
     """
     from frappe.utils import now_datetime
 
-    abha_number  = enrol_response.get("ABHANumber") or enrol_response.get("abhaNumber", "")
-    abha_address = enrol_response.get("preferredAbhaAddress") or enrol_response.get("abhaAddress", "")
+    # V3 nests the profile under ABHAProfile; fall back to root for DL / legacy shapes.
+    _profile = enrol_response.get("ABHAProfile") or enrol_response
+    abha_number = (
+        _profile.get("ABHANumber") or _profile.get("abhaNumber") or _profile.get("enrolmentNumber")
+        or enrol_response.get("ABHANumber") or enrol_response.get("abhaNumber") or ""
+    )
+    phr = (
+        _profile.get("preferredAbhaAddress") or _profile.get("phrAddress") or _profile.get("abhaAddress")
+        or enrol_response.get("preferredAbhaAddress") or enrol_response.get("abhaAddress") or ""
+    )
+    abha_address = phr[0] if isinstance(phr, list) else str(phr or "")
 
     if not abha_number:
+        import json as _json
+        _profile_keys = list(_profile.keys()) if isinstance(_profile, dict) else []
+        frappe.log_error(
+            title="ABDM enrol/byAadhaar — missing ABHANumber",
+            message=f"Root keys: {list(enrol_response.keys())}\nProfile keys: {_profile_keys}",
+        )
         frappe.throw(frappe._("ABHA enrolment response missing ABHA number"), frappe.ValidationError)
 
     # Upsert ABHA Record
