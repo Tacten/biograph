@@ -236,10 +236,10 @@ def _create_abha_record_from_enrolment(patient: str, enrol_response: dict) -> "f
 
     if not abha_number:
         import json as _json
-        _safe = _json.dumps(enrol_response, default=str)[:2000]
+        _profile_keys = list(_profile.keys()) if isinstance(_profile, dict) else []
         frappe.log_error(
             title="ABDM enrol/byAadhaar — missing ABHANumber",
-            message=f"Root keys: {list(enrol_response.keys())}\nFull response (truncated):\n{_safe}",
+            message=f"Root keys: {list(enrol_response.keys())}\nProfile keys: {_profile_keys}",
         )
         frappe.throw(frappe._("ABHA enrolment response missing ABHA number"), frappe.ValidationError)
 
