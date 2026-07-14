@@ -229,7 +229,7 @@ def _create_abha_record_from_enrolment(patient: str, enrol_response: dict) -> "f
         or enrol_response.get("ABHANumber") or enrol_response.get("abhaNumber") or ""
     )
     phr = (
-        _profile.get("phrAddress") or _profile.get("preferredAbhaAddress") or _profile.get("abhaAddress")
+        _profile.get("preferredAbhaAddress") or _profile.get("phrAddress") or _profile.get("abhaAddress")
         or enrol_response.get("preferredAbhaAddress") or enrol_response.get("abhaAddress") or ""
     )
     abha_address = phr[0] if isinstance(phr, list) else str(phr or "")
