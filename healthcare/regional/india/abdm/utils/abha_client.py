@@ -497,15 +497,19 @@ class AbhaClient:
 	def verify_mobile_otp_post_enrol(self, patient: str, txn_id: str, otp: str) -> dict:
 		"""
 		M1-T60: SOP §3 Step 4b — Verify mobile OTP, receive X-token.
-		Uses authData structure identical to enrol step.
+		/v3/enrollment/auth/byAbdm requires scope + timeStamp in the payload
+		(same pattern as verify_mobile_otp_enrol / verify_dl_otp).
 		"""
 		from healthcare.healthcare.doctype.abdm_token_registry.abdm_token_registry import store_x_token
 
 		encrypted_otp = encrypt_field(otp)
+		timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
 		payload = {
+			"scope": ["abha-enrol", "mobile-verify"],
 			"authData": {
 				"authMethods": ["otp"],
 				"otp": {
+					"timeStamp": timestamp,
 					"txnId": txn_id,
 					"otpValue": encrypted_otp,
 				},
@@ -573,7 +577,7 @@ class AbhaClient:
 		Returns txnId to chain into address suggestion step.
 		"""
 		encrypted_otp = encrypt_field(otp)
-		timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+		timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
 		payload = {
 			"scope": ["abha-enrol", "mobile-verify"],
 			"authData": {
@@ -618,7 +622,7 @@ class AbhaClient:
 		Same authData structure but includes dl-flow scope.
 		"""
 		encrypted_otp = encrypt_field(otp)
-		timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+		timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
 		payload = {
 			"scope": ["abha-enrol", "mobile-verify", "dl-flow"],
 			"authData": {
