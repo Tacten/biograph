@@ -32,4 +32,4 @@ def get_healthcare_service_units(doctype, txt, searchfield, start, page_len, fil
 	else:
 		query += " and allow_appointments = 1"
 
-	return frappe.db.sql(query, filters)
+	return frappe.db.sql(query)
