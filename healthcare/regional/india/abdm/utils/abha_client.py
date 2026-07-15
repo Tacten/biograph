@@ -526,9 +526,11 @@ class AbhaClient:
 
 	def verify_mobile_otp_post_enrol(self, patient: str, txn_id: str, otp: str) -> dict:
 		"""
-		M1-T60: SOP §3 Step 4b — Verify mobile OTP.
+		M1-T60: SOP §3 Step 4b — Verify mobile OTP, receive X-token.
 		txn_id = mobile-verify sub-txnId from send_mobile_otp_post_enrol.
 		T-token (enrollment session txnId) is NOT overwritten — suggestions need it.
+		/v3/enrollment/auth/byAbdm requires scope + timeStamp in the payload
+		(same pattern as verify_mobile_otp_enrol / verify_dl_otp).
 		"""
 		from healthcare.healthcare.doctype.abdm_token_registry.abdm_token_registry import (
 			store_x_token,
