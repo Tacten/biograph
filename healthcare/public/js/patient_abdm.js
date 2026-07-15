@@ -150,6 +150,16 @@ healthcare.regional.india.abdm.AbhaVerifyDialog = class AbhaVerifyDialog {
 					</label>
 					<label style="display:flex;align-items:flex-start;gap:10px;
 						padding:12px;border:1px solid #e9ecef;border-radius:6px;cursor:pointer;">
+						<input type="radio" name="abdm-method" value="abha-number" style="margin-top:3px;">
+						<div>
+							<strong>${__("ABHA Number")}</strong>
+							<div class="text-muted" style="font-size:12px;">
+								${__("Enter the 14-digit ABHA number; OTP sent to the linked mobile")}
+							</div>
+						</div>
+					</label>
+					<label style="display:flex;align-items:flex-start;gap:10px;
+						padding:12px;border:1px solid #e9ecef;border-radius:6px;cursor:pointer;">
 						<input type="radio" name="abdm-method" value="abha_address" style="margin-top:3px;">
 						<div>
 							<strong>${__("ABHA Address")}</strong>
@@ -188,6 +198,15 @@ healthcare.regional.india.abdm.AbhaVerifyDialog = class AbhaVerifyDialog {
 					<input id="abdm-credential" type="tel" class="form-control"
 						placeholder="${__("12-digit Aadhaar number")}"
 						maxlength="12" inputmode="numeric" autocomplete="off">
+				</div>
+			`);
+		} else if (method === "abha-number") {
+			$wrap.html(`
+				<div class="form-group">
+					<label>${__("ABHA Number")} <span class="req-star">*</span></label>
+					<input id="abdm-credential" type="text" class="form-control"
+						placeholder="${__("14-digit ABHA number")}"
+						maxlength="17" inputmode="numeric" autocomplete="off">
 				</div>
 			`);
 		} else {
@@ -232,6 +251,10 @@ healthcare.regional.india.abdm.AbhaVerifyDialog = class AbhaVerifyDialog {
 			this._content().find("#abdm-method-error").text(__("Invalid Aadhaar number. Please check and re-enter.")).show();
 			return;
 		}
+		if (method === "abha-number" && !/^\d{14}$/.test(credential.replace(/-/g, ""))) {
+			this._content().find("#abdm-method-error").text(__("Enter a valid 14-digit ABHA number.")).show();
+			return;
+		}
 		if (method === "abha_address" && !credential.includes("@")) {
 			this._content().find("#abdm-method-error").text(__("Enter a valid ABHA address (e.g. name@sbx).")).show();
 			return;
@@ -239,7 +262,7 @@ healthcare.regional.india.abdm.AbhaVerifyDialog = class AbhaVerifyDialog {
 
 		this._setLoading(true, __("Sending OTP…"));
 
-		if (method === "mobile" || method === "aadhaar") {
+		if (method === "mobile" || method === "aadhaar" || method === "abha-number") {
 			frappe.call({
 				method:   "healthcare.regional.india.abdm.api.profile.request_abha_login_otp",
 				args:     { patient: this.patient, login_id: credential, login_hint: method },
@@ -308,7 +331,7 @@ healthcare.regional.india.abdm.AbhaVerifyDialog = class AbhaVerifyDialog {
 		}
 		this._setLoading(true, __("Verifying…"));
 
-		if (this._method === "mobile" || this._method === "aadhaar") {
+		if (this._method === "mobile" || this._method === "aadhaar" || this._method === "abha-number") {
 			frappe.call({
 				method:   "healthcare.regional.india.abdm.api.profile.verify_abha_login_otp",
 				args:     { patient: this.patient, txn_id: this._txnId, otp, login_hint: this._method },
@@ -434,24 +457,19 @@ healthcare.regional.india.abdm.AbhaVerifyDialog = class AbhaVerifyDialog {
 	// ── Conclusion ────────────────────────────────────────────────────────────
 
 	_onAbhaVerified(profile) {
-		const _GENDER = { M: "Male", F: "Female", O: "Other", U: "Prefer not to say" };
+		// The backend already wrote abha_number/abha_address/name/sex/dob/mobile
+		// directly to this Patient record (frappe.db.set_value, inside the verify
+		// call, before this callback runs) — see _sync_abha_fields_to_patient /
+		// _sync_abha_profile_to_patient. Re-applying the same fields here via
+		// frm.set_value()+frm.save() is redundant AND races against that backend
+		// write: the form's in-memory `modified` timestamp is now stale relative
+		// to the DB, so frm.save() reliably throws "has been modified after you
+		// opened it". Reload instead — no save, no race, and it picks up exactly
+		// what the backend already persisted.
 		const frm = this.frm;
-		if (profile.abha_number)           frm.set_value("abha_number",  profile.abha_number);
-		if (profile.abha_address)          frm.set_value("abha_address", profile.abha_address);
-		if (profile.name) {
-			// Overwrite the full name. Clear middle_name and last_name so Frappe's
-			// patient_name = first_name + middle_name + last_name formula doesn't
-			// append stale name parts to the ABDM-returned full name.
-			frm.set_value("first_name",  profile.name);
-			frm.set_value("middle_name", "");
-			frm.set_value("last_name",   "");
-		}
-		if (profile.mobile)                frm.set_value("mobile",       profile.mobile);
-		if (_GENDER[profile.gender])       frm.set_value("sex",          _GENDER[profile.gender]);
-		if (profile.dob)                   frm.set_value("dob",          profile.dob);
-		frm.save();
 		this.dialog.hide();
 		frappe.show_alert({ message: __("ABHA verified. Patient record updated from ABDM."), indicator: "green" }, 6);
+		if (frm && !frm.is_new()) frm.reload_doc();
 	}
 
 	// ── Helpers ───────────────────────────────────────────────────────────────
@@ -699,11 +717,16 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 				error: (r) => { this._setLoading(false); this._err("abdm-a3-error", r); },
 			});
 		});
-		// Auto-send mobile OTP; on failure show warning + Skip button so user can proceed
+		// Auto-send mobile OTP; disable Verify until the sub-txnId it depends on
+		// arrives — submitting before this resolves would silently fall back to
+		// the wrong txnId (enrollment txnId instead of the mobile-verify one),
+		// which is exactly what causes ABDM's HV000028 error.
+		this._setLoading(true, __("Sending OTP…"));
 		frappe.call({
 			method: "healthcare.regional.india.abdm.api.enrol.send_mobile_otp",
 			args:   { patient: this.patient, txn_id: this.txnId, mobile: this._enrollMobile || "" },
 			callback: (r) => {
+				this._setLoading(false);
 				if (r.exc) {
 					const msg = _parse_server_msg(r) || __("Could not send mobile OTP.");
 					$("#abdm-a3-desc").text(__("Mobile OTP could not be sent. If your mobile is already linked to an ABHA, you may skip this step."));
@@ -725,6 +748,7 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 				}
 			},
 			error: () => {
+				this._setLoading(false);
 				$("#abdm-a3-desc").text(__("Mobile OTP could not be sent. You may skip this step and continue."));
 				if (!$("#abdm-a3-skip").length) {
 					$("#abdm-a3-error").after(
@@ -1157,7 +1181,7 @@ healthcare.regional.india.abdm.AbhaDlDialog = class AbhaDlDialog {
 				<div class="col-sm-6">
 					<div class="form-group"><label>${__("Front photo (optional)")}</label>
 						<input id="dl-front-photo" type="file" class="form-control-file" accept="image/jpeg,image/png">
-						<small class="text-muted">${__("Max 2 MB.")}</small></div>
+						<small class="text-muted">${__("Max 150 KB.")}</small></div>
 				</div>
 				<div class="col-sm-6">
 					<div class="form-group"><label>${__("Back photo (optional)")}</label>
@@ -1206,8 +1230,10 @@ healthcare.regional.india.abdm.AbhaDlDialog = class AbhaDlDialog {
 		return new Promise((resolve) => {
 			if (!inputEl || !inputEl.files || !inputEl.files[0]) { resolve(null); return; }
 			const file = inputEl.files[0];
-			if (file.size > 2 * 1024 * 1024) {
-				frappe.show_alert({ message: __("Photo must be under 2 MB"), indicator: "orange" });
+			// ABDM's real limit is 150KB (confirmed via sandbox rejection) — matching
+			// it client-side avoids a failed round-trip for an oversized-but-under-2MB photo.
+			if (file.size > 150 * 1024) {
+				frappe.show_alert({ message: __("Photo must be under 150 KB"), indicator: "orange" });
 				resolve(null); return;
 			}
 			const reader = new FileReader();
