@@ -249,7 +249,7 @@ class AbhaClient:
 			body = exc.response.json()
 		except ValueError:
 			return False
-		code = str(body.get("code") or (body.get("error") or {}).get("code") or "")
+		code = str(body.get("code") or (body.get("error") or {}).get("code") or "").upper()
 		msg = str(
 			body.get("message") or (body.get("error") or {}).get("message") or ""
 		).lower()

@@ -811,6 +811,16 @@ class TestXTokenErrorFailFast:
 
         assert client.AbhaClient._is_x_token_error(exc) is True
 
+    def test_is_x_token_error_detects_lowercase_code(self, frappe_stub, monkeypatch):
+        """ABDM's error code check must not be case-sensitive."""
+        client = _fresh("healthcare.regional.india.abdm.utils.abha_client", frappe_stub, monkeypatch)
+
+        resp = MagicMock()
+        resp.json.return_value = {"code": "abdm-1094", "message": "some other text"}
+        exc = client.requests.HTTPError(response=resp)
+
+        assert client.AbhaClient._is_x_token_error(exc) is True
+
     def test_is_x_token_error_false_for_gateway_401(self, frappe_stub, monkeypatch):
         client = _fresh("healthcare.regional.india.abdm.utils.abha_client", frappe_stub, monkeypatch)
 
