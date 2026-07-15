@@ -672,6 +672,7 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 	}
 
 	_A3() {
+		this._mobileVerifyTxnId = null; // reset sub-txnId tracker each time step renders
 		this._appendStep(`
 			<p class="text-muted" id="abdm-a3-desc">${__("Sending OTP to your Aadhaar-linked mobile…")}</p>
 			<div class="form-group">
@@ -689,7 +690,7 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 			this._setLoading(true, __("Verifying…"));
 			frappe.call({
 				method: "healthcare.regional.india.abdm.api.enrol.verify_mobile_otp",
-				args: { patient: this.patient, txn_id: this.txnId, otp },
+				args: { patient: this.patient, txn_id: this._mobileVerifyTxnId || this.txnId, otp },
 				callback: (r) => {
 					this._setLoading(false);
 					if (r.exc) { this._err("abdm-a3-error", r); return; }
@@ -717,6 +718,9 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 						$("#abdm-a3-skip").on("click", () => this._renderStep(4));
 					}
 				} else {
+					// Capture the mobile-verify sub-txnId — this is what auth/byAbdm needs.
+					// Using the enrollment txnId here causes ABDM to return no JWT → HV000028.
+					if (r.message && r.message.txnId) this._mobileVerifyTxnId = r.message.txnId;
 					$("#abdm-a3-desc").text(__("Enter the OTP sent to your Aadhaar-linked mobile."));
 				}
 			},

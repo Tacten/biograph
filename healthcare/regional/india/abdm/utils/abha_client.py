@@ -78,6 +78,7 @@ class AbhaClient:
 		patient: str | None = None,
 		use_x_token: bool = False,
 		use_t_token: bool = False,
+		use_txn_id: bool = False,
 		use_phr_base: bool = False,
 		max_retries: int | None = None,
 	) -> dict:
@@ -89,7 +90,10 @@ class AbhaClient:
 		:param method: HTTP method (POST/GET)
 		:param patient: Frappe Patient docname — required for token auth + IDOR check
 		:param use_x_token: Include X-token from Token Registry in headers
-		:param use_t_token: Include T-token from Token Registry in headers
+		:param use_t_token: Include T-Token: Bearer {JWT} for profile endpoints
+		:param use_txn_id: Include Transaction_Id: {UUID} for enrollment completion endpoints
+		    (enrol/suggestion, enrol/abha-address). ABDM V3 spec requires this header name —
+		    NOT "T-Token: Bearer". The value is the enrollment txnId UUID stored in T-token field.
 		:param use_phr_base: Use phr_base_url instead of abha_base_url
 		:param max_retries: Override MAX_RETRIES for this call. Use 1 for non-idempotent
 		    OTP endpoints so a slow ABDM response doesn't trigger duplicate sends.
@@ -99,13 +103,15 @@ class AbhaClient:
 
 		base = self.phr_base_url if use_phr_base else self.base_url
 		url = f"{base}{endpoint}"
-		abdm_log("info", f"call_abha → {method} {url} | use_x_token={use_x_token}")
+		abdm_log("info", f"call_abha → {method} {url} | use_x_token={use_x_token} | use_txn_id={use_txn_id}")
 
-		# Pass a factory so _request_with_retry can rebuild headers (with a fresh gateway
-		# token) on 401.  Direct _request_with_retry calls that use a static headers dict
-		# (e.g. verify/user with T-Token) keep the old fail-fast-on-401 behaviour.
 		def _header_factory():
-			return self._build_headers(patient, use_x_token=use_x_token, use_t_token=use_t_token)
+			return self._build_headers(
+				patient,
+				use_x_token=use_x_token,
+				use_t_token=use_t_token,
+				use_txn_id=use_txn_id,
+			)
 
 		return self._request_with_retry(method, url, _header_factory, payload, max_retries=max_retries)
 
@@ -189,11 +195,9 @@ class AbhaClient:
 		patient: str | None,
 		use_x_token: bool = False,
 		use_t_token: bool = False,
+		use_txn_id: bool = False,
 	) -> dict:
 		gateway_token = self._get_gateway_token()
-		# SOP: REQUEST-ID and TIMESTAMP are mandatory on every call
-		# X-CM-ID is required by ABDM API gateway for all calls.
-		# Sandbox = "sbx", Production = "abdm"
 		env = getattr(self.settings, "environment", None) or "sandbox"
 		cm_id = "sbx" if "sand" in env.lower() else "abdm"
 
@@ -211,8 +215,6 @@ class AbhaClient:
 			)
 			reg = get_or_create_registry(patient)
 			if use_x_token:
-				# Use the expiry-aware helper; throw immediately if missing/expired so the
-				# caller gets a clear message instead of ABDM's misleading "Invalid Scope".
 				live_x_token = get_x_token(patient)
 				if live_x_token:
 					headers["X-token"] = f"Bearer {live_x_token}"
@@ -224,7 +226,12 @@ class AbhaClient:
 						frappe.ValidationError,
 					)
 			if use_t_token and reg.t_token:
+				# Profile login endpoints use T-Token: Bearer {JWT}
 				headers["T-Token"] = f"Bearer {reg.get_password('t_token')}"
+			if use_txn_id and reg.t_token:
+				# Enrollment completion endpoints (enrol/suggestion, enrol/abha-address) use
+				# Transaction_Id: {UUID} per ABDM V3 spec — no "Bearer" prefix, UUID value.
+				headers["Transaction_Id"] = reg.get_password("t_token")
 		return headers
 
 	def _request_with_retry(
@@ -474,8 +481,8 @@ class AbhaClient:
 	def send_mobile_otp_post_enrol(self, patient: str, txn_id: str, mobile: str = "") -> dict:
 		"""
 		M1-T60: SOP §3 Step 4a — Send mobile OTP after enrolment.
-		Scope must include both 'abha-enrol' and 'mobile-verify'.
-		ABDM requires loginId = encrypted mobile; rejects absent or empty string.
+		Returns the mobile-verify sub-txnId; caller passes it to verify_mobile_otp_post_enrol.
+		The enrollment T-token (set by enrol_by_aadhaar) is NOT overwritten here.
 		"""
 		if not mobile:
 			frappe.throw(
@@ -490,18 +497,21 @@ class AbhaClient:
 			"loginId": encrypt_field(mobile),
 			"otpSystem": "abdm",
 		}
-		return self.call_abha(
+		response = self.call_abha(
 			"/v3/enrollment/request/otp", payload=payload, patient=patient, max_retries=1
 		)
+		# Do NOT overwrite T-token — enrollment txnId (set by enrol_by_aadhaar) is authoritative.
+		return response
 
 	def verify_mobile_otp_post_enrol(self, patient: str, txn_id: str, otp: str) -> dict:
 		"""
-		M1-T60: SOP §3 Step 4b — Verify mobile OTP, receive X-token.
-		/v3/enrollment/auth/byAbdm requires scope + timeStamp in the payload
-		(same pattern as verify_mobile_otp_enrol / verify_dl_otp).
+		M1-T60: SOP §3 Step 4b — Verify mobile OTP.
+		txn_id = mobile-verify sub-txnId from send_mobile_otp_post_enrol.
+		T-token (enrollment session txnId) is NOT overwritten — suggestions need it.
 		"""
-		from healthcare.healthcare.doctype.abdm_token_registry.abdm_token_registry import store_x_token
-
+		from healthcare.healthcare.doctype.abdm_token_registry.abdm_token_registry import (
+			store_x_token,
+		)
 		encrypted_otp = encrypt_field(otp)
 		timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
 		payload = {
@@ -520,29 +530,66 @@ class AbhaClient:
 			payload=payload,
 			patient=patient,
 		)
-		x_token = response.get("tokens", {}).get("token")
-		if x_token:
-			store_x_token(patient, x_token)
+		from healthcare.healthcare.doctype.abdm_token_registry.abdm_token_registry import store_t_token
+		_tok_block = response.get("tokens") or {}
+		jwt_token = (
+			_tok_block.get("token")
+			or response.get("token")
+			or response.get("xToken")
+			or response.get("accessToken")
+		)
+		if jwt_token:
+			# JWT present — use it as T-token for suggestions/set_abha_address
+			expires_in_sec = int(_tok_block.get("expiresIn") or response.get("expiresIn") or 1800)
+			store_t_token(patient, jwt_token)
+			store_x_token(patient, jwt_token, expiry_minutes=expires_in_sec // 60)
+		else:
+			# No JWT — store auth/byAbdm txnId as T-token (fallback; may still fail if ABDM requires JWT)
+			new_txn = response.get("txnId")
+			if new_txn:
+				store_t_token(patient, new_txn)
 		return response
 
 	def get_abha_address_suggestions(self, patient: str) -> list:
-		"""M1-T61: SOP §3 Step 6 — Get ABHA address suggestions."""
+		"""M1-T61: SOP §3 Step 6 — Get ABHA address suggestions.
+		ABDM V3 enrollment endpoints require Transaction_Id: {UUID} header (not T-Token: Bearer).
+		"""
 		response = self.call_abha(
 			"/v3/enrollment/enrol/suggestion",
 			method="GET",
 			patient=patient,
-			use_t_token=True,
+			use_txn_id=True,
 		)
+		# Suggestions may return a NEW txnId to chain into set_abha_address.
+		from healthcare.healthcare.doctype.abdm_token_registry.abdm_token_registry import store_t_token
+		new_txn = response.get("txnId")
+		if new_txn:
+			store_t_token(patient, new_txn)
 		return response.get("abhaAddressList", [])
 
 	def set_abha_address(self, patient: str, abha_address: str) -> dict:
-		"""M1-T61: SOP §3 Step 6 — Finalise ABHA address selection (CRITICAL)."""
-		payload = {"preferred_abha_address": abha_address}
+		"""M1-T61: SOP §3 Step 6 — Finalise ABHA address selection.
+		Per ABDM V3 spec:
+		  - NO Transaction_Id header (unlike enrol/suggestion which does need it)
+		  - txnId goes in the REQUEST BODY (from suggestions response, stored in T-token)
+		  - preferred=1 is mandatory (marks this as the preferred ABHA address)
+		  - abhaAddress is the bare address WITHOUT @sbx/@abdm suffix
+		"""
+		from healthcare.healthcare.doctype.abdm_token_registry.abdm_token_registry import get_or_create_registry
+		reg = get_or_create_registry(patient)
+		txn_id = reg.get_password("t_token") or ""
+		# Strip @sbx/@abdm suffix — ABDM V3 spec body example shows bare address (no domain suffix)
+		bare_address = abha_address.split("@")[0] if "@" in abha_address else abha_address
+		payload = {
+			"txnId": txn_id,
+			"abhaAddress": bare_address,
+			"preferred": 1,
+		}
 		return self.call_abha(
 			"/v3/enrollment/enrol/abha-address",
 			payload=payload,
 			patient=patient,
-			use_t_token=True,
+			use_txn_id=False,  # NO Transaction_Id header for this endpoint
 		)
 
 	# -----------------------------------------------------------------------

@@ -198,10 +198,25 @@ def enrol_by_aadhaar(patient: str, txn_id: str, otp: str, mobile: str = "") -> d
     # Detect via mobileLinked flag or ACTIVE status in response.
     _resp_profile = response.get("ABHAProfile") or response
     mobile_linked = bool(
-        _resp_profile.get("mobileLinked") or _resp_profile.get("mobile_linked")
+        _resp_profile.get("isMobileLinked")
+        or _resp_profile.get("mobileLinked") or _resp_profile.get("mobile_linked")
+        or response.get("isMobileLinked")
         or response.get("mobileLinked") or response.get("mobile_linked")
         or abha_record.status == "ACTIVE"
     )
+
+    # Store enrollment session txnId as T-token — this is what /enrol/suggestion requires.
+    from healthcare.healthcare.doctype.abdm_token_registry.abdm_token_registry import store_t_token
+    enrol_txn_id = response.get("txnId")
+    if enrol_txn_id:
+        store_t_token(patient, enrol_txn_id)
+
+    # When mobile auto-links, ABDM includes an X-token in the enrol/byAadhaar response.
+    if mobile_linked:
+        _x = (response.get("tokens") or {}).get("token")
+        if _x:
+            from healthcare.healthcare.doctype.abdm_token_registry.abdm_token_registry import store_x_token
+            store_x_token(patient, _x)
 
     abdm_log("info", f"ABHA enrolled | patient={patient} | mobile_linked={mobile_linked}")
     audit_log("ABHA_CREATE", patient=patient, result="SUCCESS")
@@ -211,6 +226,7 @@ def enrol_by_aadhaar(patient: str, txn_id: str, otp: str, mobile: str = "") -> d
         "abha_address": abha_record.abha_address,
         "status": abha_record.status,
         "mobile_linked": mobile_linked,
+        "txnId": enrol_txn_id,
     }
 
 
@@ -312,10 +328,10 @@ def send_mobile_otp(patient: str, txn_id: str, mobile: str = "") -> dict:
         mobile = str(frappe.db.get_value("Patient", patient, "mobile") or "").strip()
 
     client = AbhaClient()
-    client.send_mobile_otp_post_enrol(patient, txn_id, mobile=mobile)
+    result = client.send_mobile_otp_post_enrol(patient, txn_id, mobile=mobile)
 
     abdm_log("info", f"Mobile OTP sent post-enrol | patient={patient}")
-    return {"message": "Mobile OTP sent"}
+    return {"message": "Mobile OTP sent", "txnId": result.get("txnId")}
 
 
 @frappe.whitelist()
