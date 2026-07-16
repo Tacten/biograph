@@ -195,13 +195,29 @@ def enrol_by_aadhaar(patient: str, txn_id: str, otp: str, mobile: str = "") -> d
     mark_txn_consumed(txn_id)  # M1-T50
 
     # SOP §3 Step 6: ABDM auto-links mobile when it matches Aadhaar-linked mobile.
-    # Detect via mobileLinked flag or ACTIVE status in response.
+    # Detect via the mobile-linked flag in the response. (abha_record.status is
+    # always force-set to UNVERIFIED by _create_abha_record_from_enrolment just
+    # above, so a status=="ACTIVE" fallback here could never fire — removed.)
     _resp_profile = response.get("ABHAProfile") or response
     mobile_linked = bool(
-        _resp_profile.get("mobileLinked") or _resp_profile.get("mobile_linked")
+        _resp_profile.get("isMobileLinked")
+        or _resp_profile.get("mobileLinked") or _resp_profile.get("mobile_linked")
+        or response.get("isMobileLinked")
         or response.get("mobileLinked") or response.get("mobile_linked")
-        or abha_record.status == "ACTIVE"
     )
+
+    # Store enrollment session txnId as T-token — this is what /enrol/suggestion requires.
+    from healthcare.healthcare.doctype.abdm_token_registry.abdm_token_registry import store_t_token
+    enrol_txn_id = response.get("txnId")
+    if enrol_txn_id:
+        store_t_token(patient, enrol_txn_id)
+
+    # When mobile auto-links, ABDM includes an X-token in the enrol/byAadhaar response.
+    if mobile_linked:
+        _x = (response.get("tokens") or {}).get("token")
+        if _x:
+            from healthcare.healthcare.doctype.abdm_token_registry.abdm_token_registry import store_x_token
+            store_x_token(patient, _x)
 
     abdm_log("info", f"ABHA enrolled | patient={patient} | mobile_linked={mobile_linked}")
     audit_log("ABHA_CREATE", patient=patient, result="SUCCESS")
@@ -211,6 +227,7 @@ def enrol_by_aadhaar(patient: str, txn_id: str, otp: str, mobile: str = "") -> d
         "abha_address": abha_record.abha_address,
         "status": abha_record.status,
         "mobile_linked": mobile_linked,
+        "txnId": enrol_txn_id,
     }
 
 
@@ -242,6 +259,25 @@ def _create_abha_record_from_enrolment(patient: str, enrol_response: dict) -> "f
             message=f"Root keys: {list(enrol_response.keys())}\nProfile keys: {_profile_keys}",
         )
         frappe.throw(frappe._("ABHA enrolment response missing ABHA number"), frappe.ValidationError)
+
+    # Guard: this abha_number may already be linked to a DIFFERENT patient
+    # (e.g. a stale/re-used enrolment response). Without this check, the
+    # insert below fails with a raw MySQL duplicate-key error instead of a
+    # clear, actionable message.
+    other = frappe.db.get_value("ABHA Record", {"abha_number": abha_number}, ["name", "patient"], as_dict=True)
+    if other and other.patient != patient:
+        if frappe.db.exists("Patient", other.patient):
+            frappe.throw(
+                frappe._(
+                    "This ABHA number is already linked to a different patient record ({0}). "
+                    "Please confirm you are enrolling the correct patient."
+                ).format(other.patient),
+                frappe.ValidationError,
+            )
+        # The other patient no longer exists (deleted) — this is an orphaned
+        # record, not a real conflict. Reclaim it rather than blocking.
+        frappe.delete_doc("ABHA Record", other.name, ignore_permissions=True, force=True)
+        abdm_log("info", f"Reclaimed orphaned ABHA Record {other.name} (patient {other.patient} no longer exists)")
 
     # Upsert ABHA Record
     existing = frappe.db.get_value("ABHA Record", {"patient": patient}, "name")
@@ -312,10 +348,10 @@ def send_mobile_otp(patient: str, txn_id: str, mobile: str = "") -> dict:
         mobile = str(frappe.db.get_value("Patient", patient, "mobile") or "").strip()
 
     client = AbhaClient()
-    client.send_mobile_otp_post_enrol(patient, txn_id, mobile=mobile)
+    result = client.send_mobile_otp_post_enrol(patient, txn_id, mobile=mobile)
 
     abdm_log("info", f"Mobile OTP sent post-enrol | patient={patient}")
-    return {"message": "Mobile OTP sent"}
+    return {"message": "Mobile OTP sent", "txnId": result.get("txnId")}
 
 
 @frappe.whitelist()
@@ -505,7 +541,9 @@ def enrol_by_dl(patient: str, txn_id: str, dl_data: str) -> dict:
         "dob", "gender", "frontSidePhoto", "backSidePhoto",
         "address", "state", "district", "pinCode",
     }
-    safe_dl = {k: v for k, v in raw.items() if k in allowed}
+    # Omit blank optional fields entirely rather than sending an empty string —
+    # ABDM rejects "" as an invalid photo/value, not as "field not provided".
+    safe_dl = {k: v for k, v in raw.items() if k in allowed and v not in (None, "")}
 
     if not safe_dl.get("documentId"):
         frappe.throw(frappe._("DL number is required"), frappe.ValidationError)

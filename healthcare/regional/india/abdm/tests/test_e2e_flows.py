@@ -743,3 +743,118 @@ class TestT72_AbhaLifecycleE2E:
 
         frappe_stub.db.set_value.assert_called_once_with("ABHA Record", "ABHA-REC-1", "status", "DELETED")
         assert result["status"] == "DELETED"
+
+
+class TestAbhaNumberLoginOtp:
+    """
+    Regression test: ABDM rejects a bare-digit loginId for loginHint
+    "abha-number" with {"loginId": "LoginId is invalid"} — it expects the
+    canonical dashed ABHA number representation (XX-XXXX-XXXX-XXXX) before
+    RSA encryption, same as every ABHANumber value ABDM itself returns.
+    """
+
+    def test_abha_number_login_id_is_dash_formatted_before_encryption(self, frappe_stub, monkeypatch):
+        client = _fresh("healthcare.regional.india.abdm.utils.abha_client", frappe_stub, monkeypatch)
+        abha = client.AbhaClient()
+
+        monkeypatch.setattr(abha, "call_abha", MagicMock(return_value={"txnId": "txn-1"}))
+        captured = {}
+
+        def _fake_encrypt(value):
+            captured["value"] = value
+            return "encrypted:" + value
+
+        monkeypatch.setattr(client, "encrypt_field", _fake_encrypt)
+
+        abha.request_abha_login_otp("PAT-001", "91412877475514", "abha-number")
+
+        assert captured["value"] == "91-4128-7747-5514"
+        sent_payload = abha.call_abha.call_args.kwargs["payload"]
+        assert sent_payload["loginId"] == "encrypted:91-4128-7747-5514"
+        assert sent_payload["loginHint"] == "abha-number"
+
+    def test_mobile_login_id_is_not_dash_formatted(self, frappe_stub, monkeypatch):
+        """Mobile/Aadhaar loginIds must pass through untouched — only abha-number is reformatted."""
+        client = _fresh("healthcare.regional.india.abdm.utils.abha_client", frappe_stub, monkeypatch)
+        abha = client.AbhaClient()
+
+        monkeypatch.setattr(abha, "call_abha", MagicMock(return_value={"txnId": "txn-1"}))
+        captured = {}
+
+        def _fake_encrypt(value):
+            captured["value"] = value
+            return "encrypted:" + value
+
+        monkeypatch.setattr(client, "encrypt_field", _fake_encrypt)
+
+        abha.request_abha_login_otp("PAT-001", "9876543210", "mobile")
+
+        assert captured["value"] == "9876543210"
+
+
+class TestXTokenErrorFailFast:
+    """
+    Regression test: a 401 ABDM-1094 ("X-token expired") is a different
+    token than the gateway/service Authorization token. Retrying it as if
+    a gateway-token refresh will fix it burns 3 retries (up to ~7s of
+    exponential backoff) before failing identically every time, and (for
+    callers with a working fallback, e.g. get_abha_profile) makes an
+    expected, successful fallback look like a failure in the Error Log.
+    """
+
+    def test_is_x_token_error_detects_abdm_1094(self, frappe_stub, monkeypatch):
+        client = _fresh("healthcare.regional.india.abdm.utils.abha_client", frappe_stub, monkeypatch)
+
+        resp = MagicMock()
+        resp.json.return_value = {"code": "ABDM-1094", "message": "X-token expired"}
+        exc = client.requests.HTTPError(response=resp)
+
+        assert client.AbhaClient._is_x_token_error(exc) is True
+
+    def test_is_x_token_error_detects_lowercase_code(self, frappe_stub, monkeypatch):
+        """ABDM's error code check must not be case-sensitive."""
+        client = _fresh("healthcare.regional.india.abdm.utils.abha_client", frappe_stub, monkeypatch)
+
+        resp = MagicMock()
+        resp.json.return_value = {"code": "abdm-1094", "message": "some other text"}
+        exc = client.requests.HTTPError(response=resp)
+
+        assert client.AbhaClient._is_x_token_error(exc) is True
+
+    def test_is_x_token_error_false_for_gateway_401(self, frappe_stub, monkeypatch):
+        client = _fresh("healthcare.regional.india.abdm.utils.abha_client", frappe_stub, monkeypatch)
+
+        resp = MagicMock()
+        resp.json.return_value = {"message": "Invalid gateway token"}
+        exc = client.requests.HTTPError(response=resp)
+
+        assert client.AbhaClient._is_x_token_error(exc) is False
+
+    def test_x_token_401_fails_fast_without_gateway_refresh_retry(self, frappe_stub, monkeypatch):
+        """An X-token-specific 401 must not be retried as a gateway-token issue."""
+        client = _fresh("healthcare.regional.india.abdm.utils.abha_client", frappe_stub, monkeypatch)
+        abha = client.AbhaClient()
+
+        resp = MagicMock()
+        resp.status_code = 401
+        resp.json.return_value = {"code": "ABDM-1094", "message": "X-token expired"}
+        resp.raise_for_status.side_effect = client.requests.HTTPError(response=resp)
+
+        call_count = {"n": 0}
+
+        def _fake_request(*args, **kwargs):
+            call_count["n"] += 1
+            return resp
+
+        monkeypatch.setattr(client.requests, "request", _fake_request)
+        cache_delete = MagicMock()
+        monkeypatch.setattr(frappe_stub.cache(), "delete_value", cache_delete)
+
+        try:
+            abha._request_with_retry("GET", "https://example.test/x", lambda: {}, None)
+            assert False, "Should raise"
+        except frappe_stub.ValidationError:
+            pass
+
+        assert call_count["n"] == 1, "X-token error must fail fast, not retry 3x as gateway refresh"
+        cache_delete.assert_not_called()

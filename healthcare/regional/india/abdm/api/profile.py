@@ -315,7 +315,7 @@ def login_with_password(
 # VRFY_ABHA_101 (mobile OTP) / VRFY_ABHA_201 (Aadhaar OTP)
 # ---------------------------------------------------------------------------
 
-_VALID_LOGIN_HINTS = {"mobile", "aadhaar"}
+_VALID_LOGIN_HINTS = {"mobile", "aadhaar", "abha-number"}
 _VALID_OTP_SYSTEMS = {"abdm", "aadhaar"}
 
 
@@ -327,20 +327,25 @@ def request_abha_login_otp(
     login_hint: str,
 ) -> dict:
     """
-    Path 1 Step 1 — Send OTP using mobile number or Aadhaar number.
+    Path 1 Step 1 — Send OTP using mobile number, Aadhaar number, or ABHA number.
     POST /v3/profile/login/request/otp
-    login_hint: "mobile" (10-digit) | "aadhaar" (12-digit)
+    login_hint: "mobile" (10-digit) | "aadhaar" (12-digit) | "abha-number" (14-digit)
+    For "abha-number", ABDM sends the OTP to the ABHA-linked mobile (SOP §6.2).
     """
     patient    = _validate_patient(patient)
     login_id   = _require(login_id, "Login ID").strip()
     login_hint = _require(login_hint, "login_hint").lower()
 
     if login_hint not in _VALID_LOGIN_HINTS:
-        frappe.throw(frappe._("login_hint must be 'mobile' or 'aadhaar'"), frappe.ValidationError)
+        frappe.throw(frappe._("login_hint must be 'mobile', 'aadhaar', or 'abha-number'"), frappe.ValidationError)
     if login_hint == "mobile" and (not login_id.isdigit() or len(login_id) != 10):
         frappe.throw(frappe._("Mobile number must be 10 digits"), frappe.ValidationError)
     if login_hint == "aadhaar" and (not login_id.isdigit() or len(login_id) != 12):
         frappe.throw(frappe._("Aadhaar number must be 12 digits"), frappe.ValidationError)
+    if login_hint == "abha-number":
+        login_id = login_id.replace("-", "")
+        if not login_id.isdigit() or len(login_id) != 14:
+            frappe.throw(frappe._("ABHA number must be 14 digits"), frappe.ValidationError)
 
     check_otp_send(patient)
 
@@ -490,10 +495,14 @@ def _extract_profile_from_account(account: dict) -> dict:
 def _extract_profile_from_phr_response(response: dict) -> dict:
     """
     Extract a normalised profile dict from /v3/phr/web/login/abha/verify response.
-    ABDM may nest profile under ABHAProfile, abhaProfile, or at the root.
+    Per SOP §12.1 Step 3, the real response nests the profile in a `users` list
+    (response["users"][0]) — ABHAProfile/abhaProfile/profile are kept as
+    fallbacks for other response variants.
     """
+    _users = response.get("users")
     p = (
-        response.get("ABHAProfile")
+        (_users[0] if isinstance(_users, list) and _users else None)
+        or response.get("ABHAProfile")
         or response.get("abhaProfile")
         or response.get("profile")
         or response
@@ -532,6 +541,26 @@ def _upsert_abha_record(patient: str, profile: dict) -> None:
     abha_address = profile.get("abha_address", "")
     if not abha_number:
         return
+
+    # Guard: this abha_number may already be linked to a DIFFERENT patient
+    # (e.g. verification run against the wrong HIMS patient record). Without
+    # this check, the insert below fails with a raw MySQL duplicate-key error
+    # instead of a clear, actionable message.
+    other = frappe.db.get_value("ABHA Record", {"abha_number": abha_number}, ["name", "patient"], as_dict=True)
+    if other and other.patient != patient:
+        if frappe.db.exists("Patient", other.patient):
+            frappe.throw(
+                frappe._(
+                    "This ABHA number is already linked to a different patient record ({0}). "
+                    "Please confirm you are verifying the correct patient."
+                ).format(other.patient),
+                frappe.ValidationError,
+            )
+        # The other patient no longer exists (deleted) — this is an orphaned
+        # record, not a real conflict. Reclaim it rather than blocking.
+        frappe.delete_doc("ABHA Record", other.name, ignore_permissions=True, force=True)
+        abdm_log("info", f"Reclaimed orphaned ABHA Record {other.name} (patient {other.patient} no longer exists)")
+
     existing = frappe.db.get_value("ABHA Record", {"patient": patient}, "name")
     if existing:
         frappe.db.set_value("ABHA Record", existing, {

@@ -78,6 +78,7 @@ class AbhaClient:
 		patient: str | None = None,
 		use_x_token: bool = False,
 		use_t_token: bool = False,
+		use_txn_id: bool = False,
 		use_phr_base: bool = False,
 		max_retries: int | None = None,
 	) -> dict:
@@ -89,7 +90,10 @@ class AbhaClient:
 		:param method: HTTP method (POST/GET)
 		:param patient: Frappe Patient docname — required for token auth + IDOR check
 		:param use_x_token: Include X-token from Token Registry in headers
-		:param use_t_token: Include T-token from Token Registry in headers
+		:param use_t_token: Include T-Token: Bearer {JWT} for profile endpoints
+		:param use_txn_id: Include Transaction_Id: {UUID} for enrollment completion endpoints
+		    (enrol/suggestion, enrol/abha-address). ABDM V3 spec requires this header name —
+		    NOT "T-Token: Bearer". The value is the enrollment txnId UUID stored in T-token field.
 		:param use_phr_base: Use phr_base_url instead of abha_base_url
 		:param max_retries: Override MAX_RETRIES for this call. Use 1 for non-idempotent
 		    OTP endpoints so a slow ABDM response doesn't trigger duplicate sends.
@@ -99,13 +103,15 @@ class AbhaClient:
 
 		base = self.phr_base_url if use_phr_base else self.base_url
 		url = f"{base}{endpoint}"
-		abdm_log("info", f"call_abha → {method} {url} | use_x_token={use_x_token}")
+		abdm_log("info", f"call_abha → {method} {url} | use_x_token={use_x_token} | use_txn_id={use_txn_id}")
 
-		# Pass a factory so _request_with_retry can rebuild headers (with a fresh gateway
-		# token) on 401.  Direct _request_with_retry calls that use a static headers dict
-		# (e.g. verify/user with T-Token) keep the old fail-fast-on-401 behaviour.
 		def _header_factory():
-			return self._build_headers(patient, use_x_token=use_x_token, use_t_token=use_t_token)
+			return self._build_headers(
+				patient,
+				use_x_token=use_x_token,
+				use_t_token=use_t_token,
+				use_txn_id=use_txn_id,
+			)
 
 		return self._request_with_retry(method, url, _header_factory, payload, max_retries=max_retries)
 
@@ -189,11 +195,9 @@ class AbhaClient:
 		patient: str | None,
 		use_x_token: bool = False,
 		use_t_token: bool = False,
+		use_txn_id: bool = False,
 	) -> dict:
 		gateway_token = self._get_gateway_token()
-		# SOP: REQUEST-ID and TIMESTAMP are mandatory on every call
-		# X-CM-ID is required by ABDM API gateway for all calls.
-		# Sandbox = "sbx", Production = "abdm"
 		env = getattr(self.settings, "environment", None) or "sandbox"
 		cm_id = "sbx" if "sand" in env.lower() else "abdm"
 
@@ -211,8 +215,6 @@ class AbhaClient:
 			)
 			reg = get_or_create_registry(patient)
 			if use_x_token:
-				# Use the expiry-aware helper; throw immediately if missing/expired so the
-				# caller gets a clear message instead of ABDM's misleading "Invalid Scope".
 				live_x_token = get_x_token(patient)
 				if live_x_token:
 					headers["X-token"] = f"Bearer {live_x_token}"
@@ -224,8 +226,34 @@ class AbhaClient:
 						frappe.ValidationError,
 					)
 			if use_t_token and reg.t_token:
+				# Profile login endpoints use T-Token: Bearer {JWT}
 				headers["T-Token"] = f"Bearer {reg.get_password('t_token')}"
+			if use_txn_id and reg.t_token:
+				# Enrollment completion endpoints (enrol/suggestion, enrol/abha-address) use
+				# Transaction_Id: {UUID} per ABDM V3 spec — no "Bearer" prefix, UUID value.
+				headers["Transaction_Id"] = reg.get_password("t_token")
 		return headers
+
+	@staticmethod
+	def _is_x_token_error(exc: requests.HTTPError) -> bool:
+		"""
+		True when a 401 is ABDM-1094 ("X-token expired") or an equivalent
+		X-token-invalid response — a DIFFERENT token than the gateway/service
+		Authorization token, which a gateway-token refresh can never fix.
+		Retrying such a call with the same X-token just burns 3 attempts of
+		exponential backoff before failing identically every time.
+		"""
+		if exc.response is None:
+			return False
+		try:
+			body = exc.response.json()
+		except ValueError:
+			return False
+		code = str(body.get("code") or (body.get("error") or {}).get("code") or "").upper()
+		msg = str(
+			body.get("message") or (body.get("error") or {}).get("message") or ""
+		).lower()
+		return code == "ABDM-1094" or "x-token" in msg
 
 	def _request_with_retry(
 		self, method: str, url: str, headers_or_factory, payload: dict | None,
@@ -266,7 +294,7 @@ class AbhaClient:
 			except requests.HTTPError as e:
 				if e.response is not None:
 					status = e.response.status_code
-					if status == 401 and callable(headers_or_factory):
+					if status == 401 and callable(headers_or_factory) and not self._is_x_token_error(e):
 						# Gateway token expired — clear cache so factory fetches a fresh one
 						frappe.cache().delete_value("abdm:gateway_token")
 						abdm_log("warning", f"Gateway token expired (401) on attempt {attempt}, refreshing")
@@ -474,8 +502,8 @@ class AbhaClient:
 	def send_mobile_otp_post_enrol(self, patient: str, txn_id: str, mobile: str = "") -> dict:
 		"""
 		M1-T60: SOP §3 Step 4a — Send mobile OTP after enrolment.
-		Scope must include both 'abha-enrol' and 'mobile-verify'.
-		ABDM requires loginId = encrypted mobile; rejects absent or empty string.
+		Returns the mobile-verify sub-txnId; caller passes it to verify_mobile_otp_post_enrol.
+		The enrollment T-token (set by enrol_by_aadhaar) is NOT overwritten here.
 		"""
 		if not mobile:
 			frappe.throw(
@@ -490,18 +518,23 @@ class AbhaClient:
 			"loginId": encrypt_field(mobile),
 			"otpSystem": "abdm",
 		}
-		return self.call_abha(
+		response = self.call_abha(
 			"/v3/enrollment/request/otp", payload=payload, patient=patient, max_retries=1
 		)
+		# Do NOT overwrite T-token — enrollment txnId (set by enrol_by_aadhaar) is authoritative.
+		return response
 
 	def verify_mobile_otp_post_enrol(self, patient: str, txn_id: str, otp: str) -> dict:
 		"""
 		M1-T60: SOP §3 Step 4b — Verify mobile OTP, receive X-token.
+		txn_id = mobile-verify sub-txnId from send_mobile_otp_post_enrol.
+		T-token (enrollment session txnId) is NOT overwritten — suggestions need it.
 		/v3/enrollment/auth/byAbdm requires scope + timeStamp in the payload
 		(same pattern as verify_mobile_otp_enrol / verify_dl_otp).
 		"""
-		from healthcare.healthcare.doctype.abdm_token_registry.abdm_token_registry import store_x_token
-
+		from healthcare.healthcare.doctype.abdm_token_registry.abdm_token_registry import (
+			store_x_token,
+		)
 		encrypted_otp = encrypt_field(otp)
 		timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
 		payload = {
@@ -520,29 +553,56 @@ class AbhaClient:
 			payload=payload,
 			patient=patient,
 		)
-		x_token = response.get("tokens", {}).get("token")
-		if x_token:
-			store_x_token(patient, x_token)
+		_tok_block = response.get("tokens") or {}
+		jwt_token = (
+			_tok_block.get("token")
+			or response.get("token")
+			or response.get("xToken")
+			or response.get("accessToken")
+		)
+		if jwt_token:
+			# X-token only — T-token (enrollment txnId) is deliberately left untouched
+			# here; get_abha_address_suggestions/set_abha_address still need it.
+			expires_in_sec = int(_tok_block.get("expiresIn") or response.get("expiresIn") or 1800)
+			store_x_token(patient, jwt_token, expiry_minutes=max(expires_in_sec // 60, 5))
 		return response
 
 	def get_abha_address_suggestions(self, patient: str) -> list:
-		"""M1-T61: SOP §3 Step 6 — Get ABHA address suggestions."""
+		"""M1-T61: SOP §3 Step 6 — Get ABHA address suggestions.
+		ABDM V3 enrollment endpoints require Transaction_Id: {UUID} header (not T-Token: Bearer).
+		T-token (enrollment txnId) is NOT overwritten here — set_abha_address still needs it.
+		"""
 		response = self.call_abha(
 			"/v3/enrollment/enrol/suggestion",
 			method="GET",
 			patient=patient,
-			use_t_token=True,
+			use_txn_id=True,
 		)
 		return response.get("abhaAddressList", [])
 
 	def set_abha_address(self, patient: str, abha_address: str) -> dict:
-		"""M1-T61: SOP §3 Step 6 — Finalise ABHA address selection (CRITICAL)."""
-		payload = {"preferred_abha_address": abha_address}
+		"""M1-T61: SOP §3 Step 6 — Finalise ABHA address selection.
+		Per ABDM V3 spec:
+		  - NO Transaction_Id header (unlike enrol/suggestion which does need it)
+		  - txnId goes in the REQUEST BODY (from suggestions response, stored in T-token)
+		  - preferred=1 is mandatory (marks this as the preferred ABHA address)
+		  - abhaAddress is the bare address WITHOUT @sbx/@abdm suffix
+		"""
+		from healthcare.healthcare.doctype.abdm_token_registry.abdm_token_registry import get_or_create_registry
+		reg = get_or_create_registry(patient)
+		txn_id = reg.get_password("t_token") or ""
+		# Strip @sbx/@abdm suffix — ABDM V3 spec body example shows bare address (no domain suffix)
+		bare_address = abha_address.split("@")[0] if "@" in abha_address else abha_address
+		payload = {
+			"txnId": txn_id,
+			"abhaAddress": bare_address,
+			"preferred": 1,
+		}
 		return self.call_abha(
 			"/v3/enrollment/enrol/abha-address",
 			payload=payload,
 			patient=patient,
-			use_t_token=True,
+			use_txn_id=False,  # NO Transaction_Id header for this endpoint
 		)
 
 	# -----------------------------------------------------------------------
@@ -920,6 +980,14 @@ class AbhaClient:
 			scope      = ["abha-login", "mobile-verify"]
 			otp_system = "abdm"
 
+		# ABDM validates the decrypted loginId against its canonical ABHA
+		# number representation, which is always dash-formatted
+		# (XX-XXXX-XXXX-XXXX) in every ABDM response/example — a bare
+		# 14-digit string fails their server-side pattern check with
+		# {"loginId": "LoginId is invalid"}.
+		if login_hint == "abha-number" and login_id.isdigit() and len(login_id) == 14:
+			login_id = f"{login_id[0:2]}-{login_id[2:6]}-{login_id[6:10]}-{login_id[10:14]}"
+
 		payload = {
 			"scope":     scope,
 			"loginHint": login_hint,
@@ -1002,12 +1070,19 @@ class AbhaClient:
 				user_headers = self._build_headers(patient)
 				user_headers["T-Token"] = f"Bearer {t_token}"
 
-				user_resp = self._request_with_retry(
-					"POST",
+				# Raw request, not _request_with_retry/call_abha: this step is
+				# documented as optional and expected to sometimes fail (e.g. a
+				# single-account abha-number login has no multi-account T-token
+				# to exchange) — that's a normal, silent fallback, not an error
+				# worth 3 retries or an Error Log entry.
+				user_resp_raw = requests.post(
 					f"{self.base_url}/v3/profile/login/verify/user",
-					user_headers,
-					user_payload,
+					json=user_payload,
+					headers=user_headers,
+					timeout=(5, 10),
 				)
+				user_resp_raw.raise_for_status()
+				user_resp = user_resp_raw.json()
 
 				x_token = user_resp.get("token")
 				if x_token:
@@ -1034,34 +1109,32 @@ class AbhaClient:
 		otp_system: str = "abdm",
 	) -> dict:
 		"""
-		Path 2 Step 1 — ABHA address OTP request.
+		Path 2 Step 2 — Request ABHA address OTP (SOP §12.1 Step 2).
 
-		ABDM V3 SOP §14 uses a separate PHR web endpoint:
-		  POST {phr_base_url}/login/abha/search
-		  SBX: https://abhasbx.abdm.gov.in/abha/api/v3/phr/web/login/abha/search
+		POST {phr_base_url}/login/abha/request/otp
+		SBX: https://abhasbx.abdm.gov.in/abha/api/v3/phr/web/login/abha/request/otp
 
-		This call searches for the ABHA address and sends OTP to the
-		linked mobile (authMethod=MOBILE_OTP) or Aadhaar (AADHAAR_OTP).
+		NOTE: this is a DIFFERENT endpoint from Step 1 (/login/abha/search),
+		which only looks up available auth methods and never sends an OTP —
+		calling /search alone (as this method previously did) silently never
+		triggers a real OTP send. loginId must be RSA-encrypted per spec.
 		"""
-		from healthcare.healthcare.doctype.abdm_token_registry.abdm_token_registry import store_t_token
-
-		otp_system  = (otp_system or "abdm").lower()
-		auth_method = "AADHAAR_OTP" if otp_system == "aadhaar" else "MOBILE_OTP"
+		otp_system = (otp_system or "abdm").lower()
+		verify_scope = "aadhaar-verify" if otp_system == "aadhaar" else "mobile-verify"
 
 		payload = {
-			"abhaAddress": abha_address,
-			"authMethod":  auth_method,
+			"scope": ["abha-address-login", verify_scope],
+			"loginHint": "abha-address",
+			"loginId": encrypt_field(abha_address),
+			"otpSystem": otp_system,
 		}
 		response = self.call_abha(
-			"/v3/phr/web/login/abha/search",
+			"/v3/phr/web/login/abha/request/otp",
 			payload=payload,
 			patient=patient,
 			use_phr_base=True,
 			max_retries=1,
 		)
-		txn_id = response.get("txnId")
-		if txn_id:
-			store_t_token(patient, txn_id)
 		return response
 
 	def verify_abha_address_otp(
@@ -1072,7 +1145,7 @@ class AbhaClient:
 		otp_system: str = "abdm",
 	) -> dict:
 		"""
-		Path 2 Step 2 — Verify OTP and obtain X-token.
+		Path 2 Step 3 — Verify ABHA address OTP and obtain X-token (SOP §12.1 Step 3).
 
 		POST {phr_base_url}/login/abha/verify
 		SBX: https://abhasbx.abdm.gov.in/abha/api/v3/phr/web/login/abha/verify
@@ -1080,12 +1153,17 @@ class AbhaClient:
 		from healthcare.healthcare.doctype.abdm_token_registry.abdm_token_registry import store_x_token
 
 		otp_system  = (otp_system or "abdm").lower()
-		auth_method = "AADHAAR_OTP" if otp_system == "aadhaar" else "MOBILE_OTP"
+		verify_scope = "aadhaar-verify" if otp_system == "aadhaar" else "mobile-verify"
 
 		payload = {
-			"txnId":      txn_id,
-			"authMethod": auth_method,
-			"otp":        encrypt_field(otp),
+			"scope": ["abha-address-login", verify_scope],
+			"authData": {
+				"authMethods": ["otp"],
+				"otp": {
+					"txnId": txn_id,
+					"otpValue": encrypt_field(otp),
+				},
+			},
 		}
 		response = self.call_abha(
 			"/v3/phr/web/login/abha/verify",
@@ -1093,9 +1171,10 @@ class AbhaClient:
 			patient=patient,
 			use_phr_base=True,
 		)
-		x_token = response.get("token") or response.get("accessToken")
+		_tok_block = response.get("tokens") or {}
+		x_token = _tok_block.get("token") or response.get("token") or response.get("accessToken")
 		if x_token:
-			expires_in = int(response.get("expiresIn", response.get("expiry", 1800)))
+			expires_in = int(_tok_block.get("expiresIn") or response.get("expiresIn") or 1800)
 			store_x_token(patient, x_token, expiry_minutes=max(expires_in // 60, 5))
 		return response
 
@@ -1104,13 +1183,38 @@ class AbhaClient:
 	# -----------------------------------------------------------------------
 
 	def get_abha_profile(self, patient: str) -> dict:
-		"""M1-T65: SOP §8 — GET /v3/profile/account."""
-		return self.call_abha(
-			"/v3/profile/account",
-			method="GET",
-			patient=patient,
-			use_x_token=True,
-		)
+		"""
+		M1-T65: SOP §8 / §12.3.1 — GET profile.
+		Same Path-1-vs-Path-2 endpoint split as get_abha_qr_code — a
+		PHR-web session token (from ABHA-address verification) is
+		rejected by the Path 1 /v3/profile/account endpoint, so fall
+		back to the PHR-specific one on failure.
+
+		Uses raw requests (not call_abha/_request_with_retry) for both
+		attempts, same as get_abha_qr_code/get_abha_card — a Path-1 token
+		mismatch is an EXPECTED, non-fatal case handled by the fallback,
+		not something worth 3 retries or an Error Log entry.
+		"""
+		self._assert_patient_permission(patient)
+		headers = self._build_headers(patient, use_x_token=True)
+
+		urls = [
+			f"{self.base_url}/v3/profile/account",
+			f"{self.phr_base_url}/v3/phr/web/login/profile/abha-profile",
+		]
+		resp, last_exc = None, None
+		for url in urls:
+			try:
+				resp = requests.get(url, headers=headers, timeout=15)
+				abdm_log("info", f"ABHA profile GET → {url} → {resp.status_code}")
+				resp.raise_for_status()
+				last_exc = None
+				break
+			except requests.HTTPError as e:
+				last_exc, resp = e, None
+		if last_exc is not None:
+			self._handle_http_error(last_exc)
+		return resp.json()
 
 	# update_abha_profile: ABDM §7.1/7.2 (Update Mobile/Email) is Post-M1 / M2.
 	# The correct ABDM endpoint is not yet available in the sandbox.
@@ -1118,10 +1222,19 @@ class AbhaClient:
 
 	def get_abha_qr_code(self, patient: str) -> str:
 		"""
-		M1-T66: SOP §9 — GET QR code.
+		M1-T66: SOP §9 / §12.3.3 — GET QR code.
+
+		Two distinct endpoints exist depending on which flow issued the
+		current X-token:
+		  - Path 1 (login via mobile/Aadhaar/ABHA-number, SOP §6):
+		    {base_url}/v3/profile/account/qrCode
+		  - Path 2 (ABHA-address verification, SOP §12.3.3) issues a
+		    PHR-web session token that the Path 1 endpoint rejects — it
+		    needs {phr_base_url}/v3/phr/web/login/profile/abha/qr-code
+		The token registry doesn't track which path issued the token, so
+		try Path 1 first and fall back to the PHR endpoint on failure.
+
 		ABDM sandbox returns binary PNG directly (not JSON {"qrCode": "..."}).
-		We use a direct request (like get_abha_card) with Accept: image/png,
-		then return the content as base64 for the frontend.
 		"""
 		import base64
 		self._assert_patient_permission(patient)
@@ -1129,13 +1242,22 @@ class AbhaClient:
 		headers = self._build_headers(patient, use_x_token=True)
 		headers["Accept"] = "image/png"
 
-		url = f"{self.base_url}/v3/profile/account/qrCode"
-		try:
-			resp = requests.get(url, headers=headers, timeout=15)
-			abdm_log("info", f"ABHA QR GET → {resp.status_code} content-type={resp.headers.get('Content-Type','')}")
-			resp.raise_for_status()
-		except requests.HTTPError as e:
-			self._handle_http_error(e)
+		urls = [
+			f"{self.base_url}/v3/profile/account/qrCode",
+			f"{self.phr_base_url}/v3/phr/web/login/profile/abha/qr-code",
+		]
+		resp, last_exc = None, None
+		for url in urls:
+			try:
+				resp = requests.get(url, headers=headers, timeout=15)
+				abdm_log("info", f"ABHA QR GET → {url} → {resp.status_code}")
+				resp.raise_for_status()
+				last_exc = None
+				break
+			except requests.HTTPError as e:
+				last_exc, resp = e, None
+		if last_exc is not None:
+			self._handle_http_error(last_exc)
 
 		content_type = resp.headers.get("Content-Type", "")
 		if "json" in content_type:
@@ -1146,20 +1268,32 @@ class AbhaClient:
 		return base64.b64encode(resp.content).decode("utf-8")
 
 	def get_abha_card(self, patient: str) -> bytes:
-		"""M1-T67: SOP §10 — GET ABHA Card as PDF/PNG bytes."""
+		"""
+		M1-T67: SOP §10 / §12.3.2 — GET ABHA Card as PDF/PNG bytes.
+		Same Path-1-vs-Path-2 endpoint split as get_abha_qr_code — see
+		its docstring for why both are tried.
+		"""
 		self._assert_patient_permission(patient)
 
-		# Build full headers (Authorization + X-Token) via standard helper
 		headers = self._build_headers(patient, use_x_token=True)
 		headers["Accept"] = "image/png"
 
-		url = f"{self.base_url}/v3/profile/account/abha-card"
-		try:
-			resp = requests.get(url, headers=headers, timeout=15)
-			abdm_log("info", f"ABHA card GET → {resp.status_code}")
-			resp.raise_for_status()
-		except requests.HTTPError as e:
-			self._handle_http_error(e)
+		urls = [
+			f"{self.base_url}/v3/profile/account/abha-card",
+			f"{self.phr_base_url}/v3/phr/web/login/profile/abha/phr-card",
+		]
+		resp, last_exc = None, None
+		for url in urls:
+			try:
+				resp = requests.get(url, headers=headers, timeout=15)
+				abdm_log("info", f"ABHA card GET → {url} → {resp.status_code}")
+				resp.raise_for_status()
+				last_exc = None
+				break
+			except requests.HTTPError as e:
+				last_exc, resp = e, None
+		if last_exc is not None:
+			self._handle_http_error(last_exc)
 		return resp.content
 
 	# -----------------------------------------------------------------------
