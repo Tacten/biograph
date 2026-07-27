@@ -43,6 +43,12 @@
   "add_video_conferencing",
   "event",
   "google_meet_link",
+  "insurance_section",
+  "insurance_policy",
+  "insurance_payor",
+  "column_break_insurance",
+  "insurance_coverage",
+  "coverage_status",
   "section_break_16",
   "mode_of_payment",
   "billing_item",
@@ -205,6 +211,45 @@
    "fieldname": "section_break_16",
    "fieldtype": "Section Break",
    "label": "Payments"
+  },
+  {
+   "depends_on": "patient",
+   "fieldname": "insurance_section",
+   "fieldtype": "Section Break",
+   "label": "Insurance"
+  },
+  {
+   "fieldname": "insurance_policy",
+   "fieldtype": "Link",
+   "label": "Insurance Policy",
+   "options": "Patient Insurance Policy",
+   "read_only_depends_on": "eval:doc.insurance_coverage"
+  },
+  {
+   "fetch_from": "insurance_policy.insurance_payor",
+   "fieldname": "insurance_payor",
+   "fieldtype": "Link",
+   "label": "Insurance Payor",
+   "options": "Insurance Payor",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_insurance",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "insurance_coverage",
+   "fieldtype": "Link",
+   "label": "Insurance Coverage",
+   "options": "Patient Insurance Coverage",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "insurance_coverage.status",
+   "fieldname": "coverage_status",
+   "fieldtype": "Data",
+   "label": "Coverage Status",
+   "read_only": 1
   },
   {
    "fetch_from": "patient.patient_name",

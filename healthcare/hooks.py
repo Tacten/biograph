@@ -77,6 +77,7 @@ after_install = "healthcare.setup.setup_healthcare"
 
 before_uninstall = "healthcare.uninstall.before_uninstall"
 after_uninstall = "healthcare.uninstall.after_uninstall"
+after_migrate = "healthcare.after_migrate.execute_migrate"
 
 # Desk Notifications
 # ------------------
@@ -123,8 +124,17 @@ doc_events = {
 		"after_insert": "healthcare.healthcare.utils.create_healthcare_service_unit_tree_root",
 		"on_trash": "healthcare.healthcare.utils.company_on_trash",
 	},
-	"Patient": {
-		"after_insert": "healthcare.regional.india.abdm.utils.set_consent_attachment_details"
+	"Patient": {"after_insert": "healthcare.regional.india.abdm.utils.set_consent_attachment_details"},
+	"Payment Entry": {
+		"on_submit": [
+			"healthcare.healthcare.custom_doctype.payment_entry.manage_payment_entry_submit_cancel",
+			"healthcare.healthcare.custom_doctype.payment_entry.set_paid_amount_in_healthcare_docs",
+		],
+		"on_cancel": [
+			"healthcare.healthcare.custom_doctype.payment_entry.manage_payment_entry_submit_cancel",
+			"healthcare.healthcare.custom_doctype.payment_entry.set_paid_amount_in_healthcare_docs",
+		],
+		"validate": "healthcare.healthcare.doctype.insurance_claim.insurance_claim.validate_payment_entry_and_set_claim_fields",
 	},
 }
 
