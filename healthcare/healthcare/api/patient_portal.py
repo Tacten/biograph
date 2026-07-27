@@ -4,7 +4,7 @@ from datetime import datetime
 import frappe
 from frappe import _
 from frappe.query_builder import Order
-from frappe.utils import get_datetime, get_time, getdate
+from frappe.utils import cint, get_datetime, get_time, getdate
 
 import erpnext
 
@@ -160,14 +160,16 @@ def make_appointment(practitioner, patient, date, slot):
 	doc.appointment_time = slot
 
 	weekday = getdate(date).strftime("%A")
+	slot_key = _normalize_slot_time(frappe.form_dict.get("slot") or slot)
+	want_video = cint(frappe.form_dict.get("add_video_conferencing"))
 
 	for schedule_entry in practitioner.practitioner_schedules:
 		# validate_practitioner_schedules(schedule_entry, practitioner)
 		practitioner_schedule = frappe.get_doc("Practitioner Schedule", schedule_entry.schedule)
 		service_unit = frappe.db.get_value("Healthcare Service Unit", schedule_entry.service_unit, "name")
+		available_slots = []
 
 		if practitioner_schedule and not practitioner_schedule.disabled:
-			available_slots = []
 			for time_slot in practitioner_schedule.time_slots:
 				if weekday == time_slot.day:
 					# convert timedelta object to datetime object using a fixed base
@@ -176,7 +178,9 @@ def make_appointment(practitioner, patient, date, slot):
 					time = time.time()
 					available_slots.append(time.strftime("%H:%M"))
 
-		if frappe.form_dict.get("slot") in available_slots:
+		if slot_key in available_slots:
+			if want_video and practitioner_schedule.allow_video_conferencing:
+				doc.add_video_conferencing = 1
 			break
 
 	doc.service_unit = service_unit
@@ -187,6 +191,17 @@ def make_appointment(practitioner, patient, date, slot):
 	doc.insert(ignore_permissions=True)
 
 	return doc
+
+
+def _normalize_slot_time(slot) -> str:
+	"""Normalize HH:MM:SS or HH:MM to HH:MM for schedule matching."""
+	if not slot:
+		return ""
+	text = str(slot).strip()
+	parts = text.split(":")
+	if len(parts) >= 2:
+		return f"{parts[0].zfill(2)}:{parts[1].zfill(2)}"
+	return text
 
 
 @frappe.whitelist()
