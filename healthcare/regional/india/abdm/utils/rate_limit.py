@@ -31,7 +31,7 @@ _TXN_CONSUMED_PREFIX = "abdm:txn_consumed:" # per txnId — M1-T50
 _OTP_SEND_LIMIT     = 3
 _OTP_SEND_WINDOW    = 600   # 10 minutes in seconds
 _OTP_VERIFY_LIMIT   = 3
-_OTP_RESEND_LIMIT   = 3
+_OTP_RESEND_LIMIT   = 2  # NHA guidance: Resend OTP may be activated a maximum of 2 times
 _TXN_TTL            = 1800  # 30 minutes — txnId lifetime
 
 # M1-T37: General API rate limit

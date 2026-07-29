@@ -390,6 +390,10 @@ healthcare.regional.india.abdm.AbhaVerifyDialog = class AbhaVerifyDialog {
 				}
 				const p = r.message;
 				this._content().html(`
+					${p.photo ? `<div style="text-align:center;margin-bottom:12px;">
+						<img src="${frappe.utils.escape_html(p.photo)}" alt="${__("ABHA photo")}"
+							style="width:96px;height:96px;object-fit:cover;border-radius:50%;border:1px solid #d1d5db;">
+					</div>` : ""}
 					<div style="display:flex;flex-direction:column;gap:12px;padding:8px 0;">
 						${this._profileRow(__("ABHA Number"), p.abha_number)}
 						${this._profileRow(__("ABHA Address"), p.abha_address)}
@@ -501,7 +505,7 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 		this._abhaAddrSuffix = "@abdm";  // updated from ABDM suggestion list; @sbx on sandbox
 
 		this._stepMeta = {
-			aadhaar: { total: 6, labels: ["Aadhaar", "OTP", "Mobile OTP", "Email", "Address", "Done"] },
+			aadhaar: { total: 6, labels: ["Consent & Aadhaar", "OTP", "Mobile OTP", "Email", "Address", "Done"] },
 			mobile:  { total: 4, labels: ["Mobile", "OTP", "Address", "Done"] },
 		};
 
@@ -510,47 +514,23 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 			size:  "large",
 		});
 		this._renderModeSelector();
-	}
-
-	_renderModeSelector() {
-		const $b = this.dialog.$body;
-		$b.empty();
-		$b.append(`
-			<div class="abdm-tabs" style="display:flex;border-bottom:2px solid #e9ecef;margin-bottom:16px;">
-				<button class="abdm-tab" data-mode="aadhaar"
-					style="flex:1;padding:8px;border:none;background:none;cursor:pointer;
-					font-weight:${this.mode === "aadhaar" ? "600" : "400"};
-					color:${this.mode === "aadhaar" ? "#2490ef" : "#6c757d"};
-					border-bottom:${this.mode === "aadhaar" ? "2px solid #2490ef" : "none"};">
-					<i class="fa fa-id-card"></i> ${__("Aadhaar")}
-				</button>
-				<button class="abdm-tab" data-mode="mobile"
-					style="flex:1;padding:8px;border:none;background:none;cursor:pointer;
-					font-weight:${this.mode === "mobile" ? "600" : "400"};
-					color:${this.mode === "mobile" ? "#2490ef" : "#6c757d"};
-					border-bottom:${this.mode === "mobile" ? "2px solid #2490ef" : "none"};">
-					<i class="fa fa-mobile"></i> ${__("Mobile")}
-				</button>
-			</div>
-			<div id="abdm-create-content"></div>
-		`);
-		const self = this;
-		$b.find(".abdm-tab").on("click", function () {
-			const newMode = $(this).data("mode");
-			if (newMode === self.mode) return;
-			self.mode = newMode; self.txnId = null;
-			self._renderModeSelector();
-		});
-		this._renderStep(1);
 		this.dialog.show();
 	}
 
-	_content() { return this.dialog.$body.find("#abdm-create-content"); }
+	_renderModeSelector() {
+		this.mode = "aadhaar";
+		this._renderStep(1);
+	}
+
+	// _content() returns the dialog body directly — no sub-div wrapper.
+	// Using the body reference avoids ID-based lookup failures that occur
+	// when Frappe v16 re-builds the modal body between consent and enrollment steps.
+	_content() { return this.dialog.$body; }
 
 	_renderStep(step) {
 		this.currentStep = step;
 		const meta = this._stepMeta[this.mode];
-		this._content().empty();
+		this.dialog.$body.empty();
 		this._renderProgressBar(step, meta.total, meta.labels[step - 1]);
 		this.dialog.get_primary_btn().prop("disabled", false);
 		const route = this.mode === "aadhaar"
@@ -587,41 +567,109 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 					autocomplete="off" inputmode="numeric">
 				<small class="text-muted">${__("Encrypted before transmission.")}</small>
 			</div>
-			<div id="abdm-a1-error" class="text-danger" style="display:none;margin-top:8px;"></div>
+			<div id="abdm-a1-error" class="text-danger" style="display:none;margin-top:8px;margin-bottom:8px;"></div>
+			<div id="abdm-consent-wrap" style="padding:4px 0;">
+				<div style="background:#f8f9fa;border-left:4px solid #2490ef;border-radius:4px;padding:16px 20px;margin-bottom:16px;color:#000;">
+					<p style="margin:0 0 12px;font-weight:600;color:#000;">
+						${__("ABDM Consent for ABHA Creation")}
+					</p>
+					<p style="margin:0 0 10px;color:#000;">
+						${__("I voluntarily consent to collecting and using my identity and demographic information for the purpose of creating, verifying, or retrieving my Ayushman Bharat Health Account (ABHA) under the Ayushman Bharat Digital Mission (ABDM).")}
+					</p>
+					<p style="margin:0 0 6px;font-weight:500;color:#000;">${__("I understand that:")}</p>
+					<ul style="margin:0 0 10px;padding-left:20px;line-height:1.8;color:#000;">
+						<li>${__("My identity will be authenticated using an approved method such as Aadhaar OTP, Mobile OTP, or Driving Licence, as applicable.")}</li>
+						<li>${__("My ABHA Number and/or ABHA Address may be created or verified and linked to my hospital registration.")}</li>
+						<li>${__("My information will be used only for providing healthcare services and ABDM-related functions in accordance with applicable laws and ABDM guidelines.")}</li>
+						<li>${__("Creation of an ABHA is voluntary.")}</li>
+						<li>${__("Sharing of my health records with other healthcare providers will require my separate consent through the ABDM Consent Manager whenever applicable.")}</li>
+						<li>${__("I may withdraw my participation in accordance with ABDM policies.")}</li>
+					</ul>
+				</div>
+				<div class="form-check" style="margin-bottom:14px;">
+					<input type="checkbox" id="abdm-consent-chk" class="form-check-input" style="margin-top:4px;">
+					<label for="abdm-consent-chk" class="form-check-label" style="margin-left:6px;font-weight:500;">
+						${__("I have read and agree to the above consent")}
+					</label>
+				</div>
+				<div id="abdm-consent-error" class="text-danger" style="display:none;margin-bottom:8px;"></div>
+			</div>
 		`);
+		// Send OTP stays disabled until the patient ticks consent — prevents
+		// a click-then-error round trip and makes the requirement obvious upfront.
+		this.dialog.get_primary_btn().prop("disabled", true);
+		this._content().find("#abdm-consent-chk").on("change", (e) => {
+			this.dialog.get_primary_btn().prop("disabled", !e.target.checked);
+			if (e.target.checked) this._content().find("#abdm-consent-error").hide();
+		});
 		this.dialog.set_primary_action(__("Send OTP"), () => {
-			const v = $("#abdm-aadhaar").val().trim();
+			const v = this._content().find("#abdm-aadhaar").val().trim();
+			this._content().find("#abdm-a1-error").hide();
+			this._content().find("#abdm-consent-error").hide();
+			if (!this._content().find("#abdm-consent-chk").is(":checked")) {
+				this._content().find("#abdm-consent-error").text(__("Please tick the checkbox to confirm your consent.")).show(); return;
+			}
 			if (!v || v.length !== 12 || !/^\d+$/.test(v)) {
-				$("#abdm-a1-error").text(__("Enter a valid 12-digit Aadhaar.")).show(); return;
+				this._content().find("#abdm-a1-error").text(__("Enter a valid 12-digit Aadhaar.")).show(); return;
 			}
 			if (!abdm_verhoeff_validate(v)) {
-				$("#abdm-a1-error").text(__("Invalid Aadhaar number. Please check and re-enter.")).show(); return;
+				this._content().find("#abdm-a1-error").text(__("Invalid Aadhaar number. Please check and re-enter.")).show(); return;
 			}
-			this._setLoading(true, __("Sending OTP…"));
-			// Safety net: unblock UI if ABDM takes >25s (e.g. UIDAI slow or sandbox down)
-			const _a1Timeout = setTimeout(() => {
-				this._setLoading(false);
-				this._err("abdm-a1-error", null,
-					__("ABDM is taking too long to respond. Please try again in a moment."));
-			}, 25000);
+			this._setLoading(true, __("Recording consent…"));
 			frappe.call({
-				method: "healthcare.regional.india.abdm.api.enrol.generate_aadhaar_otp",
-				args: { patient: this.patient, aadhaar: v },
+				method: "frappe_abdm.abha.api.consent.record_consent",
+				args: {
+					patient: this.patient,
+					consent_type: "ABHA Creation",
+					source: "Registration Desk",
+				},
 				callback: (r) => {
-					clearTimeout(_a1Timeout);
-					$("#abdm-aadhaar").val("");
-					this._setLoading(false);
-					if (r.exc) { this._err("abdm-a1-error", r); return; }
-					if (!r.message) {
-						this._err("abdm-a1-error", null, __("OTP could not be sent. Check ABDM V3 Settings and try again."));
+					if (r.exc || !r.message) {
+						this._setLoading(false);
+						this._content().find("#abdm-consent-error").text(__("Could not record consent. Please try again.")).show();
 						return;
 					}
-					this.txnId = r.message.txnId;
-					frappe.show_alert({ message: __("OTP sent to your Aadhaar-linked mobile."), indicator: "green" }, 4);
-					this._renderStep(2);
+					this._consentName = r.message.consent_name;
+					this._sendAadhaarOtp(v);
 				},
-				error: (r) => { clearTimeout(_a1Timeout); $("#abdm-aadhaar").val(""); this._setLoading(false); this._err("abdm-a1-error", r); },
+				error: () => {
+					this._setLoading(false);
+					this._content().find("#abdm-consent-error").text(__("Could not record consent. Please try again.")).show();
+				},
 			});
+		});
+	}
+
+	_sendAadhaarOtp(aadhaar) {
+		this._setLoading(true, __("Sending OTP…"));
+		// _setLoading just captured the in-flight "Recording consent…" label as the
+		// restore target (we're chaining straight out of that loading state) —
+		// override it with the button's actual idle label for this step.
+		this._savedBtnLabel = __("Send OTP");
+		// Safety net: unblock UI if ABDM takes >25s (e.g. UIDAI slow or sandbox down)
+		const _a1Timeout = setTimeout(() => {
+			this._setLoading(false);
+			this._err("abdm-a1-error", null,
+				__("ABDM is taking too long to respond. Please try again in a moment."));
+		}, 25000);
+		frappe.call({
+			method: "healthcare.regional.india.abdm.api.enrol.generate_aadhaar_otp",
+			args: { patient: this.patient, aadhaar: aadhaar },
+			callback: (r) => {
+				clearTimeout(_a1Timeout);
+				this._content().find("#abdm-aadhaar").val("");
+				this._setLoading(false);
+				if (r.exc) { this._err("abdm-a1-error", r); return; }
+				if (!r.message) {
+					this._err("abdm-a1-error", null, __("OTP could not be sent. Check ABDM V3 Settings and try again."));
+					return;
+				}
+				this.txnId = r.message.txnId;
+				this._patchConsent("Aadhaar OTP");
+				frappe.show_alert({ message: __("OTP sent to your Aadhaar-linked mobile."), indicator: "green" }, 4);
+				this._renderStep(2);
+			},
+			error: (r) => { clearTimeout(_a1Timeout); this._content().find("#abdm-aadhaar").val(""); this._setLoading(false); this._err("abdm-a1-error", r); },
 		});
 	}
 
@@ -649,20 +697,22 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 			<div id="abdm-a2-error" class="text-danger" style="display:none;margin-top:8px;"></div>
 		`);
 		setTimeout(() => this._content().find("#abdm-otp").focus(), 50);
-		$("#abdm-resend").on("click", (e) => {
-			e.preventDefault();
-			frappe.call({ method: "healthcare.regional.india.abdm.api.enrol.resend_aadhaar_otp",
-				args: { patient: this.patient, txn_id: this.txnId },
-				callback: () => frappe.show_alert({ message: __("OTP resent"), indicator: "green" }) });
-		});
+		// NHA guidance: Resend OTP may be activated a maximum of 2 times, and only
+		// after a 60s cooldown each time — matches the server-side resend limit
+		// enforced in utils/rate_limit.py::check_otp_resend.
+		this._wireResendLink(
+			this._content().find("#abdm-resend"),
+			"healthcare.regional.india.abdm.api.enrol.resend_aadhaar_otp",
+			{ patient: this.patient, txn_id: this.txnId }
+		);
 		this.dialog.set_primary_action(__("Verify & Enrol"), () => {
-			const otp    = $("#abdm-otp").val().trim();
-			const mobile = $("#abdm-enrol-mobile").val().trim();
+			const otp    = this._content().find("#abdm-otp").val().trim();
+			const mobile = this._content().find("#abdm-enrol-mobile").val().trim();
 			if (!otp || otp.length !== 6 || !/^\d+$/.test(otp)) {
-				$("#abdm-a2-error").text(__("Enter the 6-digit OTP.")).show(); return;
+				this._content().find("#abdm-a2-error").text(__("Enter the 6-digit OTP.")).show(); return;
 			}
 			if (!mobile || mobile.length !== 10 || !/^\d+$/.test(mobile)) {
-				$("#abdm-a2-error").text(__("Enter a valid 10-digit mobile number.")).show(); return;
+				this._content().find("#abdm-a2-error").text(__("Enter a valid 10-digit mobile number.")).show(); return;
 			}
 			this._enrollMobile = mobile;  // store for step A3
 			this._setLoading(true, __("Creating ABHA…"));
@@ -701,9 +751,9 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 			<div id="abdm-a3-error" class="text-danger" style="display:none;margin-top:8px;"></div>
 		`);
 		this.dialog.set_primary_action(__("Verify Mobile"), () => {
-			const otp = $("#abdm-motp").val().trim();
+			const otp = this._content().find("#abdm-motp").val().trim();
 			if (!otp || otp.length !== 6 || !/^\d+$/.test(otp)) {
-				$("#abdm-a3-error").text(__("Enter the 6-digit OTP.")).show(); return;
+				this._content().find("#abdm-a3-error").text(__("Enter the 6-digit OTP.")).show(); return;
 			}
 			this._setLoading(true, __("Verifying…"));
 			frappe.call({
@@ -729,34 +779,34 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 				this._setLoading(false);
 				if (r.exc) {
 					const msg = _parse_server_msg(r) || __("Could not send mobile OTP.");
-					$("#abdm-a3-desc").text(__("Mobile OTP could not be sent. If your mobile is already linked to an ABHA, you may skip this step."));
-					$("#abdm-a3-error").text(msg).show();
+					this._content().find("#abdm-a3-desc").text(__("Mobile OTP could not be sent. If your mobile is already linked to an ABHA, you may skip this step."));
+					this._content().find("#abdm-a3-error").text(msg).show();
 					// Add skip button if not already present
-					if (!$("#abdm-a3-skip").length) {
-						$("#abdm-a3-error").after(
+					if (!this._content().find("#abdm-a3-skip").length) {
+						this._content().find("#abdm-a3-error").after(
 							`<button id="abdm-a3-skip" class="btn btn-sm btn-default" style="margin-top:8px;">
 								${__("Skip Mobile Verification →")}
 							</button>`
 						);
-						$("#abdm-a3-skip").on("click", () => this._renderStep(4));
+						this._content().find("#abdm-a3-skip").on("click", () => this._renderStep(4));
 					}
 				} else {
 					// Capture the mobile-verify sub-txnId — this is what auth/byAbdm needs.
 					// Using the enrollment txnId here causes ABDM to return no JWT → HV000028.
 					if (r.message && r.message.txnId) this._mobileVerifyTxnId = r.message.txnId;
-					$("#abdm-a3-desc").text(__("Enter the OTP sent to your Aadhaar-linked mobile."));
+					this._content().find("#abdm-a3-desc").text(__("Enter the OTP sent to your Aadhaar-linked mobile."));
 				}
 			},
 			error: () => {
 				this._setLoading(false);
-				$("#abdm-a3-desc").text(__("Mobile OTP could not be sent. You may skip this step and continue."));
-				if (!$("#abdm-a3-skip").length) {
-					$("#abdm-a3-error").after(
+				this._content().find("#abdm-a3-desc").text(__("Mobile OTP could not be sent. You may skip this step and continue."));
+				if (!this._content().find("#abdm-a3-skip").length) {
+					this._content().find("#abdm-a3-error").after(
 						`<button id="abdm-a3-skip" class="btn btn-sm btn-default" style="margin-top:8px;">
 							${__("Skip Mobile Verification →")}
 						</button>`
 					);
-					$("#abdm-a3-skip").on("click", () => this._renderStep(4));
+					this._content().find("#abdm-a3-skip").on("click", () => this._renderStep(4));
 				}
 			},
 		});
@@ -801,9 +851,9 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 			<div id="abdm-m1-error" class="text-danger" style="display:none;margin-top:8px;"></div>
 		`);
 		this.dialog.set_primary_action(__("Send OTP"), () => {
-			const v = $("#abdm-mobile").val().trim();
+			const v = this._content().find("#abdm-mobile").val().trim();
 			if (!v || v.length !== 10 || !/^\d+$/.test(v)) {
-				$("#abdm-m1-error").text(__("Enter a valid 10-digit mobile number.")).show(); return;
+				this._content().find("#abdm-m1-error").text(__("Enter a valid 10-digit mobile number.")).show(); return;
 			}
 			this._setLoading(true, __("Sending OTP…"));
 			const _m1Timeout = setTimeout(() => {
@@ -823,6 +873,7 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 						return;
 					}
 					this.txnId = r.message.txnId;
+					this._patchConsent("Mobile OTP");
 					frappe.show_alert({ message: __("OTP sent to your mobile number."), indicator: "green" }, 4);
 					this._renderStep(2);
 				},
@@ -843,9 +894,9 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 		`);
 		setTimeout(() => this._content().find("#abdm-m-otp").focus(), 50);
 		this.dialog.set_primary_action(__("Verify & Continue"), () => {
-			const otp = $("#abdm-m-otp").val().trim();
+			const otp = this._content().find("#abdm-m-otp").val().trim();
 			if (!otp || otp.length !== 6 || !/^\d+$/.test(otp)) {
-				$("#abdm-m2-error").text(__("Enter the 6-digit OTP.")).show(); return;
+				this._content().find("#abdm-m2-error").text(__("Enter the 6-digit OTP.")).show(); return;
 			}
 			this._setLoading(true, __("Verifying…"));
 			frappe.call({
@@ -898,14 +949,14 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 			method: "healthcare.regional.india.abdm.api.enrol.get_abha_suggestions",
 			args: { patient: this.patient },
 			callback: (r) => {
-				const wrap = $("#abdm-suggestions-wrap");
+				const wrap = this._content().find("#abdm-suggestions-wrap");
 				const sugs = (r.message && r.message.suggestions) || [];
 				if (sugs.length) {
 					// Detect environment suffix from what ABDM returned (@sbx on sandbox, @abdm on prod)
 					const firstSuf = (sugs[0].match(/@(sbx|abdm)$/) || [])[0];
 					if (firstSuf) {
 						this._abhaAddrSuffix = firstSuf;
-						$("#abdm-addr-suffix").text(firstSuf);
+						this._content().find("#abdm-addr-suffix").text(firstSuf);
 					}
 				}
 				if (!sugs.length) { wrap.html(`<p class="text-muted">${__("No suggestions. Enter a custom address.")}</p>`); return; }
@@ -916,16 +967,16 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 				}</div>`);
 				// When a suggestion is clicked, populate the custom input with just the local part
 				const self = this;
-				$(".abdm-suggest-btn").on("click", function () {
+				self._content().find(".abdm-suggest-btn").on("click", function () {
 					const full = $(this).data("addr");
 					// Extract suffix (@sbx/@abdm) and local part
 					const match = full.match(/^(.+?)(@(?:sbx|abdm))$/);
 					const local = match ? match[1] : full;
 					const suffix = match ? match[2] : self._abhaAddrSuffix;
 					self._abhaAddrSuffix = suffix;
-					$("#abdm-addr-suffix").text(suffix);
-					$("#abdm-custom-addr").val(local);
-					$(".abdm-suggest-btn").removeClass("btn-primary").addClass("btn-default");
+					self._content().find("#abdm-addr-suffix").text(suffix);
+					self._content().find("#abdm-custom-addr").val(local);
+					self._content().find(".abdm-suggest-btn").removeClass("btn-primary").addClass("btn-default");
 					$(this).removeClass("btn-default").addClass("btn-primary");
 				});
 			},
@@ -933,16 +984,16 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 	}
 
 	_submitAddress(currentStep, nextStep) {
-		let addr = $("#abdm-custom-addr").val().trim();
+		let addr = this._content().find("#abdm-custom-addr").val().trim();
 		if (!addr) {
-			const sel = $(".abdm-suggest-btn.btn-primary").data("addr");
+			const sel = this._content().find(".abdm-suggest-btn.btn-primary").data("addr");
 			if (sel) {
 				// Strip existing suffix — will re-attach with the correct one below
 				addr = sel.replace(/@(abdm|sbx)$/, "");
 			}
 		}
 		const errorId = currentStep === 5 ? "abdm-a5-error" : "abdm-m3-error";
-		if (!addr) { $(`#${errorId}`).text(__("Select or enter an ABHA address.")).show(); return; }
+		if (!addr) { this._content().find(`#${errorId}`).text(__("Select or enter an ABHA address.")).show(); return; }
 		// Use the detected suffix (e.g. @sbx on sandbox), not a hardcoded @abdm
 		const fullAddr = addr.includes("@") ? addr : `${addr}${this._abhaAddrSuffix}`;
 		this._setLoading(true, __("Setting address…"));
@@ -994,7 +1045,7 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 
 	_err(domId, r, fallback) {
 		const msg = (r && _parse_server_msg(r)) || fallback || __("An error occurred. Please try again.");
-		$(`#${domId}`).text(msg).show();
+		this._content().find(`#${domId}`).text(msg).show();
 	}
 
 	_setLoading(on, text) {
@@ -1006,6 +1057,73 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 			btn.prop("disabled", false);
 			if (this._savedBtnLabel) { btn.text(this._savedBtnLabel); this._savedBtnLabel = null; }
 		}
+	}
+
+	// Gate a "Resend OTP" link behind a 60s cooldown, activating it at most
+	// twice — per NHA guidance. Disabled by default; a countdown re-enables it
+	// each time, until the 2nd use, after which it's disabled for good.
+	_wireResendLink($link, method, args, { cooldownSec = 60, maxUses = 2, errorDomId = "abdm-a2-error" } = {}) {
+		let usesLeft = maxUses;
+		const idleLabel = $link.text().trim() || __("Resend OTP");
+
+		const disable = (label) => $link.addClass("disabled")
+			.css({ "pointer-events": "none", color: "#adb5bd", "text-decoration": "none" })
+			.text(label);
+		const enable = () => $link.removeClass("disabled")
+			.css({ "pointer-events": "auto", color: "", "text-decoration": "" })
+			.text(idleLabel);
+
+		const startCooldown = () => {
+			let remaining = cooldownSec;
+			disable(`${idleLabel} (${remaining}s)`);
+			const timer = setInterval(() => {
+				remaining -= 1;
+				if (remaining <= 0) {
+					clearInterval(timer);
+					if (usesLeft > 0) enable();
+				} else {
+					disable(`${idleLabel} (${remaining}s)`);
+				}
+			}, 1000);
+		};
+
+		$link.on("click", (e) => {
+			e.preventDefault();
+			if ($link.hasClass("disabled") || usesLeft <= 0) return;
+			usesLeft -= 1;
+			frappe.call({
+				method,
+				args,
+				callback: () => {
+					frappe.show_alert({ message: __("OTP resent"), indicator: "green" });
+					if (usesLeft > 0) startCooldown();
+					else disable(__("Maximum resend attempts reached"));
+				},
+				error: (r) => { this._err(errorDomId, r); startCooldown(); },
+			});
+		});
+
+		startCooldown();
+	}
+
+	// Patch the consent record with txnId + auth method after OTP is issued.
+	// Fire-and-forget — non-blocking; failure is logged but never surfaces to the user.
+	_patchConsent(authMethod) {
+		if (!this._consentName) return;
+		// Use Frappe's error: callback instead of .catch() —
+		// frappe.call() returns a jQuery jqXHR (not a Promise) in Frappe v16,
+		// so .catch() throws TypeError and kills the caller's execution.
+		frappe.call({
+			method: "frappe_abdm.abha.api.consent.update_consent",
+			args: {
+				consent_name: this._consentName,
+				txn_id: this.txnId || "",
+				auth_method: authMethod,
+			},
+			error: () => {
+				console.warn("ABDM consent patch failed for", this._consentName);
+			},
+		});
 	}
 };
 
@@ -1081,6 +1199,7 @@ healthcare.regional.india.abdm.AbhaDlDialog = class AbhaDlDialog {
 					if (r.exc) { this._err("dl-s1-error", r); return; }
 					if (!r.message) { this._err("dl-s1-error", null, __("OTP could not be sent. Please try again.")); return; }
 					this.txnId = r.message.txnId;
+					this._patchConsent("Driving Licence");
 					this._renderStep(2);
 				},
 				error: (r) => { this._setLoading(false); this._err("dl-s1-error", r); },
@@ -1275,6 +1394,24 @@ healthcare.regional.india.abdm.AbhaDlDialog = class AbhaDlDialog {
 		const btn = this.dialog.get_primary_btn();
 		if (on) btn.prop("disabled", true).html(`<i class="fa fa-spinner fa-spin"></i> ${text || __("Please wait…")}`);
 		else    btn.prop("disabled", false);
+	}
+
+	// Patch the consent record with txnId + auth method after OTP is issued.
+	// Fire-and-forget — non-blocking; failure is logged but never surfaces to the user.
+	// No-op here since the DL flow has no consent pre-step of its own (_consentName unset).
+	_patchConsent(authMethod) {
+		if (!this._consentName) return;
+		frappe.call({
+			method: "frappe_abdm.abha.api.consent.update_consent",
+			args: {
+				consent_name: this._consentName,
+				txn_id: this.txnId || "",
+				auth_method: authMethod,
+			},
+			error: () => {
+				console.warn("ABDM consent patch failed for", this._consentName);
+			},
+		});
 	}
 };
 
@@ -1604,7 +1741,7 @@ healthcare.regional.india.abdm.AbhaProfileUpdateDialog = class AbhaProfileUpdate
 
 		this.dialog = new frappe.ui.Dialog({
 			title: __("Update ABHA Profile"),
-			size:  "regular",
+			size:  "large",
 		});
 	}
 
@@ -1614,51 +1751,183 @@ healthcare.regional.india.abdm.AbhaProfileUpdateDialog = class AbhaProfileUpdate
 	}
 
 	_fetchAndRender() {
-		// Pre-fill from the Frappe Patient record (no ABDM API call needed for local update)
-		frappe.db.get_value("Patient", this.patient,
-			["patient_name", "first_name", "middle_name", "last_name", "email", "abha_number", "abha_address"],
-			(values) => {
-				this._renderForm(values || {});
-			}
+		this.dialog.$body.html(
+			`<p class="text-muted text-center" style="padding:24px;">
+				<i class="fa fa-spinner fa-spin"></i> ${__("Loading profile…")}
+			</p>`
 		);
+
+		// Fetch live ABHA profile (prefills location codes from ABDM)
+		frappe.call({
+			method: "frappe_abdm.abha.api.profile.get_abha_profile",
+			args: { patient: this.patient },
+			callback: (r) => {
+				const abha = (r.message && !r.exc) ? r.message : {};
+				frappe.db.get_value("Patient", this.patient,
+					["first_name", "middle_name", "last_name", "email", "abha_number", "abha_address"],
+					(local) => this._renderForm(local || {}, abha)
+				);
+			},
+			error: () => {
+				frappe.db.get_value("Patient", this.patient,
+					["first_name", "middle_name", "last_name", "email", "abha_number", "abha_address"],
+					(local) => this._renderForm(local || {}, {})
+				);
+			},
+		});
 	}
 
-	_renderForm(p) {
-		const firstName  = p.first_name  || "";
-		const middleName = p.middle_name || "";
-		const lastName   = p.last_name   || "";
-		const email      = p.email       || "";
+	_renderForm(local, abha) {
+		const firstName       = local.first_name  || "";
+		const middleName      = local.middle_name || "";
+		const lastName        = local.last_name   || "";
+		const email           = local.email       || "";
+		const stateCode       = abha.state_code        || "";
+		const districtCode    = abha.district_code     || "";
+		const subDistrictCode = abha.sub_district_code || "";
+		const villageCode     = abha.village_code      || "";
+		const townCode        = abha.town_code         || "";
+		const wardCode        = abha.ward_code         || "";
+		const pinCode         = abha.pin_code          || "";
+		const address         = abha.address           || "";
+		const stateName       = abha.state_name        || "";
+		const districtName    = abha.district_name     || "";
+		const photo           = abha.photo             || "";
+
+		const hasUnknown     = !stateName || !districtName;
+		const districtIsZero = districtCode === "0";
 
 		this.dialog.$body.html(`
-			<div style="background:#f0f4ff;border-radius:6px;padding:12px 16px;margin-bottom:18px;font-size:13px;">
-				<strong>${__("ABHA Number")}:</strong> ${frappe.utils.escape_html(p.abha_number || "—")}
-				&nbsp;|&nbsp;
-				<strong>${__("ABHA Address")}:</strong> ${frappe.utils.escape_html(p.abha_address || "—")}
+			<div style="background:#f0f4ff;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:13px;display:flex;align-items:center;gap:12px;">
+				${photo ? `<img src="${frappe.utils.escape_html(photo)}" alt="${__("ABHA photo")}"
+					style="width:48px;height:48px;object-fit:cover;border-radius:50%;border:1px solid #d1d5db;flex-shrink:0;">` : ""}
+				<div>
+					<strong>${__("ABHA Number")}:</strong> ${frappe.utils.escape_html(local.abha_number || "—")}
+					&nbsp;|&nbsp;
+					<strong>${__("ABHA Address")}:</strong> ${frappe.utils.escape_html(local.abha_address || "—")}
+				</div>
 			</div>
-			<p class="text-muted" style="font-size:12px;margin-bottom:14px;">
-				<i class="fa fa-info-circle"></i>
-				${__("Changes are saved to this patient record. ABDM-side sync (SOP §7.1/7.2) will be available in the next release.")}
-			</p>
+
+			${hasUnknown ? `
+			<div class="alert alert-warning" style="font-size:12px;padding:8px 12px;margin-bottom:14px;">
+				<i class="fa fa-exclamation-triangle"></i>
+				${__("State / district show as UNKNOWN in ABHA.")}
+				${districtIsZero ? " " + __("District code is <b>0</b> (invalid from enrollment) — enter the correct ABDM district code below.") : ""}
+				${__(" Enter the numeric ABDM location codes and save to push them to ABHA.")}
+			</div>` : ""}
+
+			<h6 style="font-weight:600;color:#495057;border-bottom:1px solid #dee2e6;padding-bottom:6px;margin-bottom:12px;">
+				${__("Name & Email")}
+			</h6>
+
+			<div class="row">
+				<div class="col-sm-4">
+					<div class="form-group">
+						<label>${__("First Name")}</label>
+						<input id="abdm-prof-first" type="text" class="form-control"
+							placeholder="${__("First name")}" value="${frappe.utils.escape_html(firstName)}">
+					</div>
+				</div>
+				<div class="col-sm-4">
+					<div class="form-group">
+						<label>${__("Middle Name")}</label>
+						<input id="abdm-prof-middle" type="text" class="form-control"
+							placeholder="${__("optional")}" value="${frappe.utils.escape_html(middleName)}">
+					</div>
+				</div>
+				<div class="col-sm-4">
+					<div class="form-group">
+						<label>${__("Last Name")}</label>
+						<input id="abdm-prof-last" type="text" class="form-control"
+							placeholder="${__("Last name")}" value="${frappe.utils.escape_html(lastName)}">
+					</div>
+				</div>
+			</div>
 
 			<div class="form-group">
-				<label style="font-weight:600;">${__("First Name")}</label>
-				<input id="abdm-prof-first" type="text" class="form-control"
-					placeholder="${__("First name")}" value="${frappe.utils.escape_html(firstName)}">
-			</div>
-			<div class="form-group">
-				<label style="font-weight:600;">${__("Middle Name")}</label>
-				<input id="abdm-prof-middle" type="text" class="form-control"
-					placeholder="${__("Middle name (optional)")}" value="${frappe.utils.escape_html(middleName)}">
-			</div>
-			<div class="form-group">
-				<label style="font-weight:600;">${__("Last Name")}</label>
-				<input id="abdm-prof-last" type="text" class="form-control"
-					placeholder="${__("Last name")}" value="${frappe.utils.escape_html(lastName)}">
-			</div>
-			<div class="form-group">
-				<label style="font-weight:600;">${__("Email")}</label>
+				<label>${__("Email")}</label>
 				<input id="abdm-prof-email" type="email" class="form-control"
 					placeholder="${__("Email address")}" value="${frappe.utils.escape_html(email)}">
+			</div>
+
+			<h6 style="font-weight:600;color:#495057;border-bottom:1px solid #dee2e6;padding-bottom:6px;margin:18px 0 4px;">
+				${__("Location Codes")}
+			</h6>
+			<p class="text-muted" style="font-size:11px;margin-bottom:12px;">
+				${__("ABDM uses numeric LGD codes to resolve state/district names. Enter the correct code — ABHA updates the name automatically.")}
+				${__(" Kerala = 32, Karnataka = 29. Find district codes at")}
+				<a href="https://lgdirectory.gov.in" target="_blank">lgdirectory.gov.in</a>.
+			</p>
+
+			<div class="row">
+				<div class="col-sm-3">
+					<div class="form-group">
+						<label>${__("State Code")}</label>
+						<input id="abdm-prof-state" type="text" class="form-control"
+							placeholder="${__("e.g. 32")}" inputmode="numeric"
+							value="${frappe.utils.escape_html(stateCode)}">
+						${stateName ? `<small class="text-muted">${frappe.utils.escape_html(stateName)}</small>` : ""}
+					</div>
+				</div>
+				<div class="col-sm-3">
+					<div class="form-group">
+						<label>${__("District Code")}</label>
+						<input id="abdm-prof-district" type="text" class="form-control${districtIsZero ? " border-warning" : ""}"
+							placeholder="${__("e.g. 565")}" inputmode="numeric"
+							value="${frappe.utils.escape_html(districtIsZero ? "" : districtCode)}">
+						${districtName ? `<small class="text-muted">${frappe.utils.escape_html(districtName)}</small>` :
+							districtIsZero ? `<small class="text-warning">${__("Code 0 = invalid")}</small>` : ""}
+					</div>
+				</div>
+				<div class="col-sm-3">
+					<div class="form-group">
+						<label>${__("Sub-district Code")}</label>
+						<input id="abdm-prof-subdistrict" type="text" class="form-control"
+							placeholder="${__("optional")}" inputmode="numeric"
+							value="${frappe.utils.escape_html(subDistrictCode)}">
+					</div>
+				</div>
+				<div class="col-sm-3">
+					<div class="form-group">
+						<label>${__("Pin Code")}</label>
+						<input id="abdm-prof-pin" type="text" class="form-control"
+							placeholder="6-digit" maxlength="6" inputmode="numeric"
+							value="${frappe.utils.escape_html(pinCode)}">
+					</div>
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="col-sm-4">
+					<div class="form-group">
+						<label>${__("Village Code")}</label>
+						<input id="abdm-prof-village" type="text" class="form-control"
+							placeholder="${__("Rural — optional")}" inputmode="numeric"
+							value="${frappe.utils.escape_html(villageCode)}">
+					</div>
+				</div>
+				<div class="col-sm-4">
+					<div class="form-group">
+						<label>${__("Town Code")}</label>
+						<input id="abdm-prof-town" type="text" class="form-control"
+							placeholder="${__("Urban — optional")}" inputmode="numeric"
+							value="${frappe.utils.escape_html(townCode)}">
+					</div>
+				</div>
+				<div class="col-sm-4">
+					<div class="form-group">
+						<label>${__("Ward Code")}</label>
+						<input id="abdm-prof-ward" type="text" class="form-control"
+							placeholder="${__("optional")}" inputmode="numeric"
+							value="${frappe.utils.escape_html(wardCode)}">
+					</div>
+				</div>
+			</div>
+
+			<div class="form-group">
+				<label>${__("Full Address Text")} <small class="text-muted">(${__("optional")})</small></label>
+				<textarea id="abdm-prof-address" class="form-control" rows="2"
+					placeholder="${__("Street / building / locality")}">${frappe.utils.escape_html(address)}</textarea>
 			</div>
 
 			<div id="abdm-prof-error" class="text-danger" style="display:none;margin-top:8px;"></div>
@@ -1671,13 +1940,23 @@ healthcare.regional.india.abdm.AbhaProfileUpdateDialog = class AbhaProfileUpdate
 	// ── Submit ───────────────────────────────────────────────────────────────
 
 	_save() {
-		const $b          = this.dialog.$body;
-		const firstName   = ($b.find("#abdm-prof-first").val()  || "").trim();
-		const middleName  = ($b.find("#abdm-prof-middle").val() || "").trim();
-		const lastName    = ($b.find("#abdm-prof-last").val()   || "").trim();
-		const email       = ($b.find("#abdm-prof-email").val()  || "").trim();
+		const $b              = this.dialog.$body;
+		const firstName       = ($b.find("#abdm-prof-first").val()        || "").trim();
+		const middleName      = ($b.find("#abdm-prof-middle").val()       || "").trim();
+		const lastName        = ($b.find("#abdm-prof-last").val()         || "").trim();
+		const email           = ($b.find("#abdm-prof-email").val()        || "").trim();
+		const stateCode       = ($b.find("#abdm-prof-state").val()        || "").trim();
+		const districtCode    = ($b.find("#abdm-prof-district").val()     || "").trim();
+		const subDistrictCode = ($b.find("#abdm-prof-subdistrict").val()  || "").trim();
+		const villageCode     = ($b.find("#abdm-prof-village").val()      || "").trim();
+		const townCode        = ($b.find("#abdm-prof-town").val()         || "").trim();
+		const wardCode        = ($b.find("#abdm-prof-ward").val()         || "").trim();
+		const pinCode         = ($b.find("#abdm-prof-pin").val()          || "").trim();
+		const address         = ($b.find("#abdm-prof-address").val()      || "").trim();
 
-		if (!firstName && !lastName && !email) {
+		if (!firstName && !lastName && !email &&
+			!stateCode && !districtCode && !subDistrictCode &&
+			!villageCode && !townCode && !wardCode && !pinCode && !address) {
 			$b.find("#abdm-prof-error").text(__("Update at least one field.")).show();
 			return;
 		}
@@ -1685,18 +1964,30 @@ healthcare.regional.india.abdm.AbhaProfileUpdateDialog = class AbhaProfileUpdate
 			$b.find("#abdm-prof-error").text(__("Enter a valid email address.")).show();
 			return;
 		}
+		if (pinCode && !/^\d{6}$/.test(pinCode)) {
+			$b.find("#abdm-prof-error").text(__("Pin code must be 6 digits.")).show();
+			return;
+		}
 
 		$b.find("#abdm-prof-error").hide();
 		this._setLoading(true, __("Saving…"));
 
 		frappe.call({
-			method: "healthcare.regional.india.abdm.api.profile.update_abha_profile",
-			args:   {
-				patient:     this.patient,
-				first_name:  firstName,
-				middle_name: middleName,
-				last_name:   lastName,
-				email:       email,
+			method: "frappe_abdm.abha.api.profile.update_abha_profile",
+			args: {
+				patient:           this.patient,
+				first_name:        firstName,
+				middle_name:       middleName,
+				last_name:         lastName,
+				email:             email,
+				state_code:        stateCode,
+				district_code:     districtCode,
+				sub_district_code: subDistrictCode,
+				village_code:      villageCode,
+				town_code:         townCode,
+				ward_code:         wardCode,
+				pin_code:          pinCode,
+				address:           address,
 			},
 			callback: (r) => {
 				this._setLoading(false);
@@ -1704,8 +1995,9 @@ healthcare.regional.india.abdm.AbhaProfileUpdateDialog = class AbhaProfileUpdate
 					$b.find("#abdm-prof-error").text(_parse_server_msg(r) || __("Update failed. Please try again.")).show();
 					return;
 				}
+				const msg = (r.message && r.message.message) || __("ABHA profile updated successfully.");
 				this.dialog.hide();
-				frappe.show_alert({ message: __("ABHA profile updated successfully."), indicator: "green" }, 5);
+				frappe.show_alert({ message: __(msg), indicator: "green" }, 5);
 				if (this.frm && this.frm.doctype === "Patient") this.frm.reload_doc();
 			},
 			error: (r) => {
@@ -1803,3 +2095,40 @@ function _render_abha_token_badge(frm) {
 		},
 	});
 }
+
+// ===========================================================================
+// ABHA Record form — Delete/Deactivate/Reactivate via ABDM (OTP-verified)
+// ===========================================================================
+
+frappe.ui.form.on("ABHA Record", {
+	refresh(frm) {
+		if (frm.is_new() || !frm.doc.patient) return;
+
+		// AbhaLifecycleDialog expects a Patient form controller — it only
+		// reads frm.doc.name (the patient docname) and, on success, calls
+		// frm.reload_doc() if frm.doctype === "Patient". This record's own
+		// patient is a different field, so hand it a minimal stand-in rather
+		// than the real Patient form controller.
+		const patient_frm = {
+			doc: { name: frm.doc.patient },
+			doctype: "Patient",
+			reload_doc: () => frm.reload_doc(),
+		};
+
+		if (frm.doc.status !== "DELETED") {
+			frm.add_custom_button(__("Delete via ABDM (OTP)"), () => {
+				new healthcare.regional.india.abdm.AbhaLifecycleDialog(patient_frm, "delete").show();
+			}, __("ABDM"));
+		}
+		if (frm.doc.status === "ACTIVE") {
+			frm.add_custom_button(__("Deactivate via ABDM"), () => {
+				new healthcare.regional.india.abdm.AbhaLifecycleDialog(patient_frm, "deactivate").show();
+			}, __("ABDM"));
+		}
+		if (frm.doc.status === "DEACTIVATED") {
+			frm.add_custom_button(__("Reactivate via ABDM"), () => {
+				new healthcare.regional.india.abdm.AbhaLifecycleDialog(patient_frm, "reactivate").show();
+			}, __("ABDM"));
+		}
+	},
+});

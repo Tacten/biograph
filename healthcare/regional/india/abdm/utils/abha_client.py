@@ -22,6 +22,14 @@ from healthcare.regional.india.abdm.utils.log_utils import abdm_log, scrub_pii
 from healthcare.regional.india.abdm.utils.rsa_encrypt import encrypt_field
 
 
+def _abdm_iso_timestamp() -> str:
+	"""ISO 8601 UTC timestamp with real fractional milliseconds, e.g.
+	2024-05-20T11:29:27.358Z — per ABDM's Integrator FAQ Q6, not a hardcoded
+	.000."""
+	now = datetime.now(timezone.utc)
+	return now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z"
+
+
 class AbhaClient:
 	"""
 	Direct client for ABHA V3 APIs (abhasbx.abdm.gov.in/abha/api/v3/*).
@@ -176,7 +184,7 @@ class AbhaClient:
 				"Content-Type": "application/json",
 				"X-CM-ID": cm_id,
 				"REQUEST-ID": str(uuid.uuid4()),
-				"TIMESTAMP": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+				"TIMESTAMP": _abdm_iso_timestamp(),
 			},
 			timeout=(5, 10),  # (connect, read) in seconds
 		)
@@ -207,7 +215,7 @@ class AbhaClient:
 			"Authorization": f"Bearer {gateway_token}",
 			"X-CM-ID": cm_id,
 			"REQUEST-ID": str(uuid.uuid4()),
-			"TIMESTAMP": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+			"TIMESTAMP": _abdm_iso_timestamp(),
 		}
 		if patient:
 			from healthcare.healthcare.doctype.abdm_token_registry.abdm_token_registry import (
@@ -307,6 +315,10 @@ class AbhaClient:
 				else:
 					last_exc = e
 			except requests.RequestException as e:
+				# Connection/read timeouts and other transport-level failures never
+				# reach the HTTPError branch (no response object) — log them here so
+				# they show up in abdm.log instead of only the Error Log doctype.
+				abdm_log("warning", f"ABHA API {method} {url} → {type(e).__name__}: {e}")
 				last_exc = e
 
 			if attempt < retries:
@@ -314,7 +326,9 @@ class AbhaClient:
 				abdm_log("warning", f"ABHA API retry {attempt}/{retries} in {wait}s")
 				time.sleep(wait)
 
-		frappe.log_error(f"ABHA API failed after {retries} retries", "ABDM Client")
+		last_exc_detail = f"{type(last_exc).__name__}: {last_exc}" if last_exc else "no attempts made"
+		frappe.log_error(f"ABHA API failed after {retries} retries — {last_exc_detail}", "ABDM Client")
+		abdm_log("error", f"ABHA API {method} {url} failed after {retries} retries — {last_exc_detail}")
 		# If the last failure was an HTTP error, surface its specific message rather
 		# than the generic "temporarily unavailable" — e.g. 401 X-token expired.
 		if isinstance(last_exc, requests.HTTPError) and last_exc.response is not None:
@@ -371,22 +385,40 @@ class AbhaClient:
 					error_body.get("ABHANumber") or error_body.get("abhaNumber") or ""
 				).lower()
 				if "invalid" in txn_val or "expired" in txn_val:
-					# "Invalid Transaction Id" appears both when a txnId has expired (OTP
-					# verify step) AND when a new OTP request conflicts with an existing
-					# active session on the sandbox.
+					# ABDM returns {"txnId": "Invalid Transaction Id"} for several causes:
+					#  1. txnId sent in body/header has expired
+					#  2. txnId is required but was not sent (standalone mobile creation attempt)
+					#  3. A different OTP session is still active on the sandbox (rate limit)
 					if "invalid" in abha_val:
 						# Both txnId and ABHANumber invalid → session fully expired
 						msg = "OTP session expired. Please go back and request a new OTP."
 					else:
-						# txnId alone invalid → either expired session or mobile already has
-						# an active ABDM OTP session (sandbox rate-limits per mobile).
+						# txnId alone invalid — most likely the enrollment session expired
+						# or a previous session is still active.  Guide the user to restart.
 						msg = (
-							"ABDM rejected the request. If you recently requested an OTP, "
-							"please wait a minute before trying again. If the problem persists, "
-							"this mobile number may already be linked to an ABHA."
+							"ABDM rejected the transaction (Invalid Transaction Id). "
+							"Please go back to the first step and start a new enrollment. "
+							"If this is the address selection step, the session may have expired — "
+							"restart the flow to get a fresh transaction."
 						)
 				elif "invalid" in abha_val:
 					msg = "Invalid ABHA number. Please verify the number and try again."
+				else:
+					mobile_val = str(error_body.get("mobile", "")).lower()
+					if "invalid" in mobile_val:
+						# ABDM returns {"mobile": "Invalid Mobile Number"} both for a
+						# genuinely malformed number AND — observed repeatedly against
+						# the live sandbox — when this Aadhaar already has an ABHA
+						# account registered under a different mobile. We can't tell
+						# the two apart from this response alone, so point the user
+						# at the one action that resolves either case.
+						msg = (
+							"ABDM rejected this mobile number for the given Aadhaar. "
+							"If the number is correct, this Aadhaar may already have an "
+							"ABHA account linked to a different mobile — use ABDM → "
+							"Verify ABHA to check for an existing account before "
+							"creating a new one."
+						)
 			# Write to Error Log (visible in Frappe UI at /app/error-log) so admins can diagnose
 			frappe.log_error(
 				title=f"ABDM API Error HTTP {status}",
@@ -479,10 +511,10 @@ class AbhaClient:
 			"txnId":    txn_id,
 			"otpValue": encrypted_otp,
 		}
-		# mobile is plain text — ABDM validates it as a 10-digit number.
-		# Only Aadhaar and OTP values are RSA-encrypted per SOP §3.
+		# Mobile must be RSA-encrypted here — this goes into UIDAI auth data
+		# (different from OTP-request endpoints where mobile is plain text).
 		if mobile:
-			otp_block["mobile"] = mobile
+			otp_block["mobile"] = encrypt_field(mobile)
 		payload = {
 			"authData": {
 				"authMethods": ["otp"],
@@ -536,7 +568,7 @@ class AbhaClient:
 			store_x_token,
 		)
 		encrypted_otp = encrypt_field(otp)
-		timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+		timestamp = _abdm_iso_timestamp()
 		payload = {
 			"scope": ["abha-enrol", "mobile-verify"],
 			"authData": {
@@ -637,7 +669,7 @@ class AbhaClient:
 		Returns txnId to chain into address suggestion step.
 		"""
 		encrypted_otp = encrypt_field(otp)
-		timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+		timestamp = _abdm_iso_timestamp()
 		payload = {
 			"scope": ["abha-enrol", "mobile-verify"],
 			"authData": {
@@ -682,7 +714,7 @@ class AbhaClient:
 		Same authData structure but includes dl-flow scope.
 		"""
 		encrypted_otp = encrypt_field(otp)
-		timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+		timestamp = _abdm_iso_timestamp()
 		payload = {
 			"scope": ["abha-enrol", "mobile-verify", "dl-flow"],
 			"authData": {
@@ -1317,7 +1349,16 @@ class AbhaClient:
 		Valid loginHints: "mobile" (10-digit) or "aadhaar" (12-digit).
 		The returned txnId is then used at /v3/profile/account/verify.
 		"""
+		# Normalise to the dashed "91-XXXX-XXXX-XXXX" format ABDM expects
+		# regardless of how it's stored locally — accounts created via the
+		# Verify ABHA login flow store abha_number with dashes stripped
+		# (profile.py strips them on save), while Create ABHA's enrolment
+		# flow keeps them. Encrypting the wrong format is silently rejected
+		# by ABDM as "LoginId is invalid" (and, confusingly, "Invalid Scope"
+		# alongside it) rather than a clearer format error.
 		abha_number_clean = abha_number.replace("-", "")
+		if len(abha_number_clean) == 14:
+			abha_number = f"{abha_number_clean[0:2]}-{abha_number_clean[2:6]}-{abha_number_clean[6:10]}-{abha_number_clean[10:14]}"
 
 		if action in ("deactivate", "delete", "reactivate"):
 			# Spec (SOP §7.3/§7.4/§7.5): loginHint must be "abha-number".
@@ -1338,8 +1379,10 @@ class AbhaClient:
 			# Encrypt the stored (dashed) ABHA number, NOT the stripped version
 			login_id   = encrypt_field(abha_number)  # e.g. "91-XXXX-XXXX-XXXX"
 
+			# No "txnId" field — SOP §7.3.1 Step 1's documented request body has
+			# only these 4 fields; an empty txnId here was an earlier unverified
+			# addition that ABDM rejects with a misleading "Invalid Scope".
 			payload = {
-				"txnId":     "",            # required by spec (empty string for first call)
 				"scope":     scope,
 				"loginHint": login_hint,
 				"loginId":   login_id,
@@ -1374,14 +1417,18 @@ class AbhaClient:
 		return self.call_abha("/v3/profile/account/verify", payload=payload, patient=patient, use_x_token=True)
 
 	def delete_abha(self, patient: str, txn_id: str, otp: str) -> dict:
-		"""M1-T69: SOP §8.3.2 Step 2 — Verify OTP and permanently delete ABHA."""
+		"""
+		SOP §8.3.1 Step 2 — Verify OTP and permanently delete ABHA.
+		Request body matches the documented spec exactly: scope + authData.otp
+		only — no "reasons" field (that was an earlier unverified addition,
+		removed since it's not in the official request body).
+		"""
 		payload = {
 			"scope": ["abha-profile", "delete"],
 			"authData": {
 				"authMethods": ["otp"],
 				"otp": {"txnId": txn_id, "otpValue": encrypt_field(otp)},
 			},
-			"reasons": ["USER_INITIATED"],
 		}
 		abdm_log("info", "delete_abha → /v3/profile/account/verify (OTP)")
 		return self.call_abha("/v3/profile/account/verify", payload=payload, patient=patient, use_x_token=True)
