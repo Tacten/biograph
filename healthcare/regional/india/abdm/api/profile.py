@@ -156,6 +156,8 @@ def get_abha_profile(patient: str) -> dict:
         if update:
             frappe.db.set_value("ABHA Record", rec_name, update)
 
+    photo_url = sync_profile_photo_to_patient(patient, profile.get("profilePhoto"))
+
     abdm_log("info", f"Profile fetched | patient={patient}")
     audit_log("PROFILE_GET", patient=patient, result="SUCCESS")
     return {
@@ -167,7 +169,34 @@ def get_abha_profile(patient: str) -> dict:
         "gender": profile.get("gender", ""),
         "dob": profile.get("dateOfBirth", ""),
         "status": profile.get("abhaStatus", ""),
+        "photo": photo_url,
     }
+
+
+def sync_profile_photo_to_patient(patient: str, base64_photo: str | None) -> str | None:
+    """
+    ABDM's GET /v3/profile/account (SOP §8.0) returns a base64 JPEG in
+    "profilePhoto". Save it as the Patient's image, but only if the Patient
+    doesn't already have one — this is a KYC photo from ABDM, not something
+    that should silently overwrite a photo hospital staff uploaded directly.
+    Returns the resulting file URL (existing or newly-saved), or None if
+    there's no photo either way.
+    """
+    if not base64_photo:
+        return None
+    try:
+        existing = frappe.db.get_value("Patient", patient, "image")
+        if existing:
+            return existing
+        from frappe.utils.file_manager import save_file
+        file_doc = save_file(
+            f"{patient}-abha-photo.jpg", base64_photo, "Patient", patient, decode=True,
+        )
+        frappe.db.set_value("Patient", patient, "image", file_doc.file_url)
+        return file_doc.file_url
+    except Exception as e:
+        frappe.log_error(f"ABHA profile photo sync failed for patient={patient}: {type(e).__name__}", "ABDM Profile Photo")
+        return None
 
 
 def _mask_email(email: str) -> str:
@@ -586,6 +615,16 @@ def _upsert_abha_record(patient: str, profile: dict) -> None:
 
     _sync_abha_fields_to_patient(patient, abha_number, abha_address)
 
+    # Rebuild FHIR cache so the ABHA identifiers show up immediately —
+    # without this the FHIR Patient resource keeps whatever (possibly empty)
+    # identifiers it had before verification, e.g. when built while the
+    # patient had no ABHA Record yet.
+    try:
+        from healthcare.regional.india.abdm.patient_builder import build_patient_fhir
+        build_patient_fhir(patient)
+    except Exception as e:
+        frappe.log_error(f"FHIR sync after verify: {type(e).__name__}", "ABDM FHIR")
+
 
 # ---------------------------------------------------------------------------
 # S5: Manual ABHA Verification (legacy — keep for backward compat)
@@ -907,6 +946,15 @@ def confirm_lifecycle_action(patient: str, txn_id: str, otp: str, action: str, o
     rec_name = frappe.db.get_value("ABHA Record", {"patient": patient}, "name")
     if rec_name:
         frappe.db.set_value("ABHA Record", rec_name, "status", status_map[action])
+
+    if action == "delete":
+        # ABDM confirmed the account is gone — clear the mirrored Patient
+        # fields, ABDM tokens, and FHIR cache so nothing keeps pointing at
+        # an ABHA that no longer exists (same cleanup ABHA Record.on_trash
+        # does for a local delete; the ABHA Record document itself is kept
+        # here, just marked DELETED above, for audit history).
+        from healthcare.healthcare.doctype.abha_record.abha_record import unlink_abha_from_patient
+        unlink_abha_from_patient(patient)
 
     abdm_log("info", f"Lifecycle action={action} | patient={patient}")
     op_map = {"deactivate": "ABHA_DEACTIVATE", "delete": "ABHA_DELETE", "reactivate": "ABHA_REACTIVATE"}

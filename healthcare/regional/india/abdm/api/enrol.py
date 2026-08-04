@@ -195,15 +195,22 @@ def enrol_by_aadhaar(patient: str, txn_id: str, otp: str, mobile: str = "") -> d
     mark_txn_consumed(txn_id)  # M1-T50
 
     # SOP §3 Step 6: ABDM auto-links mobile when it matches Aadhaar-linked mobile.
-    # Detect via the mobile-linked flag in the response. (abha_record.status is
-    # always force-set to UNVERIFIED by _create_abha_record_from_enrolment just
-    # above, so a status=="ACTIVE" fallback here could never fire — removed.)
+    # The SOP's documented enrol/byAadhaar response has no boolean "linked" flag
+    # anywhere (isMobileLinked/mobileLinked don't appear in the 116-page spec) —
+    # what it DOES return is the Aadhaar-linked mobile itself, masked to the last
+    # 4 digits (e.g. "******6654"), inside ABHAProfile.mobile. Compare that
+    # against what the user typed in to detect an actual match — this is a
+    # correction of a prior guess at nonexistent field names, which meant this
+    # always evaluated to False and forced the separate mobile-OTP step (A3)
+    # every time, even when the communication mobile matched the Aadhaar-linked
+    # one and per NHA guidance should skip straight to the next screen.
     _resp_profile = response.get("ABHAProfile") or response
+    _linked_mobile_masked = str(_resp_profile.get("mobile") or response.get("mobile") or "")
     mobile_linked = bool(
-        _resp_profile.get("isMobileLinked")
-        or _resp_profile.get("mobileLinked") or _resp_profile.get("mobile_linked")
-        or response.get("isMobileLinked")
-        or response.get("mobileLinked") or response.get("mobile_linked")
+        mobile and _linked_mobile_masked
+        and len(mobile) == 10
+        and _linked_mobile_masked[-4:].isdigit()
+        and _linked_mobile_masked[-4:] == mobile[-4:]
     )
 
     # Store enrollment session txnId as T-token — this is what /enrol/suggestion requires.
@@ -252,6 +259,19 @@ def _create_abha_record_from_enrolment(patient: str, enrol_response: dict) -> "f
     abha_address = phr[0] if isinstance(phr, list) else str(phr or "")
 
     if not abha_number:
+        # ABDM returns 200 with no ABHAProfile block when the Aadhaar/mobile is
+        # already registered — e.g. {"message": "This account already exist",
+        # "txnId": ..., "tokens": {...}}. Surface this distinctly from a real
+        # parse failure so the user is pointed at Verify ABHA instead of a
+        # confusing "missing ABHA number" error.
+        if "already exist" in str(enrol_response.get("message") or "").lower():
+            frappe.throw(
+                frappe._(
+                    "This Aadhaar number already has an ABHA account registered with ABDM. "
+                    "Use ABDM → Verify ABHA to authenticate with it instead of creating a new one."
+                ),
+                frappe.ValidationError,
+            )
         import json as _json
         _profile_keys = list(_profile.keys()) if isinstance(_profile, dict) else []
         frappe.log_error(

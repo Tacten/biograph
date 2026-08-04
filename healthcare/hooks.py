@@ -44,6 +44,12 @@ doctype_js = {
 	"Sales Invoice": "public/js/sales_invoice.js",
 	"Healthcare Practitioner": "public/js/healthcare_practitioner.js",
 	"Patient": "public/js/patient_abdm.js",
+	# ABHA Record's own "Delete/Deactivate/Reactivate via ABDM" buttons (see
+	# doctype/abha_record/abha_record.js) call healthcare.regional.india.abdm.
+	# AbhaLifecycleDialog, defined in this same file — without it loaded here
+	# too, that class doesn't exist on the ABHA Record form and the buttons
+	# throw immediately on click.
+	"ABHA Record": "public/js/patient_abdm.js",
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
@@ -157,6 +163,9 @@ doc_events = {
 	"Company": {
 		"after_insert": "healthcare.healthcare.utils.create_healthcare_service_unit_tree_root",
 		"on_trash": "healthcare.healthcare.utils.company_on_trash",
+	},
+	"Patient": {
+		"on_trash": "healthcare.regional.india.abdm.utils.patient_hooks.cleanup_abdm_data_before_patient_delete",
 	},
 	"Payment Entry": {
 		"on_submit": [

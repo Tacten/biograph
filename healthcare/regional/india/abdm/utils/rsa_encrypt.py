@@ -10,11 +10,20 @@ This utility is called by abha_client.py before every payload that
 contains Aadhaar numbers, OTPs, mobile numbers, or passwords.
 """
 import base64
+from datetime import datetime, timezone
 import frappe
 from frappe.utils import now_datetime, get_datetime, add_to_date
 
 # RSA key cache TTL in hours
 _KEY_CACHE_TTL_HOURS = 24
+
+
+def _abdm_iso_timestamp() -> str:
+	"""ISO 8601 UTC timestamp with real fractional milliseconds, e.g.
+	2024-05-20T11:29:27.358Z — per ABDM's Integrator FAQ Q6, not a hardcoded
+	.000."""
+	now = datetime.now(timezone.utc)
+	return now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z"
 
 
 def get_public_key() -> bytes:
@@ -44,7 +53,6 @@ def _get_gateway_token_for_cert(settings) -> str:
 	import uuid
 	import requests
 	from urllib.parse import urlparse
-	from datetime import datetime, timezone
 
 	cached = frappe.cache().get_value("abdm:gateway_token")
 	if cached:
@@ -70,7 +78,6 @@ def _get_gateway_token_for_cert(settings) -> str:
 
 	env = getattr(settings, "environment", None) or "sandbox"
 	cm_id = "sbx" if "sand" in env.lower() else "abdm"
-	from datetime import datetime, timezone
 	resp = requests.post(
 		auth_url,
 		json={"clientId": client_id, "clientSecret": client_secret, "grantType": "client_credentials"},
@@ -78,7 +85,7 @@ def _get_gateway_token_for_cert(settings) -> str:
 			"Content-Type": "application/json",
 			"X-CM-ID": cm_id,
 			"REQUEST-ID": str(uuid.uuid4()),
-			"TIMESTAMP": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+			"TIMESTAMP": _abdm_iso_timestamp(),
 		},
 		timeout=(5, 10),  # (connect, read) in seconds
 	)
@@ -101,7 +108,6 @@ def _refresh_public_key(settings) -> bytes:
 	import uuid
 	import re
 	import requests
-	from datetime import datetime, timezone
 
 	abha_base = (
 		getattr(settings, "health_id_base_url", None)
@@ -124,7 +130,7 @@ def _refresh_public_key(settings) -> bytes:
 			"Accept": "application/json",
 			"X-CM-ID": cm_id,
 			"REQUEST-ID": str(uuid.uuid4()),
-			"TIMESTAMP": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+			"TIMESTAMP": _abdm_iso_timestamp(),
 		}
 		if token:
 			h["Authorization"] = f"Bearer {token}"
