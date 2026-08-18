@@ -491,6 +491,30 @@ def get_service_requests_to_invoice(patient, company):
 	return orders_to_invoice
 
 
+def get_company_for_appointment(service_unit=None, practitioner=None):
+	"""Company an appointment belongs to, derived from where it is actually being held.
+
+	`company` is mandatory on Healthcare Service Unit, so the unit hosting the slot is the only
+	trustworthy source on a multi-company site. The session/global default only reflects whoever
+	is logged in, which stamps every booking with the company that happened to be set up first.
+	Practitioner is checked next (useful only where a `company` custom field has been added --
+	the standard doctype has none), and the site default remains the last resort.
+	"""
+	if service_unit:
+		company = frappe.db.get_value("Healthcare Service Unit", service_unit, "company")
+		if company:
+			return company
+
+	if practitioner and frappe.get_meta("Healthcare Practitioner").has_field("company"):
+		company = frappe.db.get_value("Healthcare Practitioner", practitioner, "company")
+		if company:
+			return company
+
+	return frappe.defaults.get_user_default("company") or frappe.db.get_single_value(
+		"Global Defaults", "default_company"
+	)
+
+
 @frappe.whitelist()
 def get_appointment_billing_item_and_rate(doc):
 	if isinstance(doc, str):

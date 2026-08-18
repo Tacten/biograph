@@ -9,7 +9,10 @@ from frappe.utils import get_datetime, get_time, getdate
 import erpnext
 
 from healthcare.healthcare.doctype.observation.observation import get_observation_reference
-from healthcare.healthcare.utils import get_appointment_billing_item_and_rate
+from healthcare.healthcare.utils import (
+	get_appointment_billing_item_and_rate,
+	get_company_for_appointment,
+)
 
 
 @frappe.whitelist()
@@ -146,10 +149,6 @@ def make_appointment(practitioner, patient, date, slot):
 	doc = frappe.new_doc("Patient Appointment")
 	doc.appointment_type = frappe.db.get_single_value("Healthcare Settings", "default_appointment_type")
 	doc.appointment_for = frappe.db.get_value("Appointment Type", doc.appointment_type, "allow_booking_for")
-	company = frappe.defaults.get_user_default("company")
-	if not company:
-		company = frappe.db.get_single_value("Global Defaults", "default_company")
-	doc.company = company
 
 	doc.patient = patient
 	practitioner = frappe.get_doc("Healthcare Practitioner", practitioner)
@@ -180,6 +179,10 @@ def make_appointment(practitioner, patient, date, slot):
 			break
 
 	doc.service_unit = service_unit
+	# Resolved after the service unit, not before: the company follows the unit the slot belongs
+	# to, so a booking against a Northbridge clinic is stamped Northbridge regardless of which
+	# company the booking session defaults to.
+	doc.company = get_company_for_appointment(service_unit, practitioner.name)
 
 	practitioner_service = get_appointment_billing_item_and_rate(doc)
 	doc.billing_item = practitioner_service["service_item"]
