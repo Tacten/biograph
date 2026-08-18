@@ -78,7 +78,7 @@ class PatientInsuranceCoverage(Document):
 			frappe.throw(
 				_(
 					"Invoiced Quantity and Invoiced Amount cannot be more than Claim Quantity {} and Claim Amount {}"
-				).format(self.qty_invoiced, self.status),
+				).format(self.qty, self.coverage_amount),
 				title=_("Not Allowed"),
 			)
 
@@ -109,6 +109,11 @@ class PatientInsuranceCoverage(Document):
 
 		self.flags.silent = False
 
+	def on_update(self):
+		doc_before = self.get_doc_before_save()
+		if doc_before and doc_before.status != self.status:
+			sync_coverage_status_to_linked_docs(self.name, self.status)
+
 	def update_invoice_details(self, qty, amount):
 		"""
 		updates qty_invoiced, coverage_amount_invoiced and sets status
@@ -131,6 +136,7 @@ class PatientInsuranceCoverage(Document):
 				"status": status,
 			}
 		)
+		sync_coverage_status_to_linked_docs(self.name, status)
 
 	def before_cancel(self):
 		allowed = ["Draft", "Approved", "Rejected"]
@@ -141,7 +147,8 @@ class PatientInsuranceCoverage(Document):
 			)
 
 	def set_title(self):
-		self.title = f"{self.patient_name} - {self.template_dn} - {self.status}"
+		service_label = self.template_dn or self.item_code or ""
+		self.title = f"{self.patient_name} - {service_label} - {self.status}"
 
 	def set_and_validate_template_details(self):
 		"""
@@ -151,13 +158,21 @@ class PatientInsuranceCoverage(Document):
 		"""
 		details = {}
 		if self.template_dt and self.template_dn and self.template_dt != "Appointment Type":
-			field_list = ["is_billable", "item"]
-			if frappe.get_meta(self.template_dt).has_field("medical_code"):
+			meta = frappe.get_meta(self.template_dt)
+			field_list = []
+			if meta.has_field("is_billable"):
+				field_list.append("is_billable")
+			if meta.has_field("item"):
+				field_list.append("item")
+			if meta.has_field("medical_code"):
 				field_list.extend(["medical_code", "medical_code_standard"])
 
-			details = frappe.db.get_value(self.template_dt, self.template_dn, field_list, as_dict=1)
+			if field_list:
+				details = frappe.db.get_value(self.template_dt, self.template_dn, field_list, as_dict=1) or {}
+			else:
+				details = {}
 
-			if not details.get("is_billable"):
+			if "is_billable" in field_list and not details.get("is_billable"):
 				frappe.throw(
 					_(
 						"Invalid Service Template, Insurance Coverage can only be created for Templates marked <b>Is Billable</b>"
@@ -165,7 +180,8 @@ class PatientInsuranceCoverage(Document):
 					title=_("Not Allowed"),
 				)
 
-			self.item_code = details.get("item")
+			if details.get("item"):
+				self.item_code = details.get("item")
 			self.medical_code = details.get("medical_code")
 			self.medical_code_standard = details.get("medical_code_standard")
 
@@ -205,6 +221,8 @@ class PatientInsuranceCoverage(Document):
 			self.mode_of_approval = eligibility.get("mode_of_approval")
 			self.coverage = eligibility.get("coverage")
 			self.discount = eligibility.get("discount")
+			if not self.item_code and eligibility.get("item_code"):
+				self.item_code = eligibility.get("item_code")
 			# reset coverage_validity_end_date if coverage validity is less than policy end date (default)
 			if eligibility.get("valid_till") and getdate(eligibility.get("valid_till")) < getdate(
 				self.coverage_validity_end_date
@@ -217,6 +235,14 @@ class PatientInsuranceCoverage(Document):
 		Fetch Item price for Price List in this order: 1: Insurance Plan 2: Insurance Payor 3: Default Selling Price List
 		Retruns True if Item Price found else show alert and return False
 		"""
+		if not self.item_code:
+			frappe.msgprint(
+				_("Cannot fetch price list rate: Item Code is missing."),
+				alert=True,
+				indicator="error",
+			)
+			return
+
 		insurance_price_lists = get_insurance_price_lists(self.insurance_policy, self.company)
 		price_list = price_list_rate = None
 
@@ -239,7 +265,7 @@ class PatientInsuranceCoverage(Document):
 		if price_list_rate and not self.price_list_rate:
 			self.price_list_rate = price_list_rate
 			self.price_list = price_list
-		else:
+		elif not price_list_rate and not self.price_list_rate:
 			frappe.msgprint(
 				_("Item Price for Item {} not found").format(get_link_to_form("Item", self.item_code)),
 				alert=True,
@@ -330,9 +356,33 @@ def make_insurance_coverage(
 		return None
 
 	if coverage.status == "Approved" and coverage.mode_of_approval == "Automatic":
+		coverage.flags.ignore_permissions = True
 		coverage.submit()
 
 	return {"coverage": coverage.name, "coverage_status": coverage.status}
+
+
+def sync_coverage_status_to_linked_docs(coverage_name, status):
+	"""Push Patient Insurance Coverage status to linked healthcare documents."""
+	if not coverage_name or not status:
+		return
+
+	for doctype in ("Patient Appointment", "Service Request"):
+		for docname in frappe.get_all(
+			doctype, filters={"insurance_coverage": coverage_name}, pluck="name"
+		):
+			frappe.db.set_value(
+				doctype, docname, "coverage_status", status, update_modified=False
+			)
+
+	for row in frappe.get_all(
+		"Inpatient Occupancy",
+		filters={"insurance_coverage": coverage_name},
+		pluck="name",
+	):
+		frappe.db.set_value(
+			"Inpatient Occupancy", row, "coverage_status", status, update_modified=False
+		)
 
 
 def get_item_price_list_rate(item_code, price_list, qty, company):
@@ -342,6 +392,7 @@ def get_item_price_list_rate(item_code, price_list, qty, company):
 			"item_code": item_code,
 			"qty": qty,
 			"selling_price_list": price_list,
+			"currency": frappe.get_value("Price List", price_list, "currency"),
 			"company": company,
 			"plc_conversion_rate": 1.0,
 			"conversion_rate": 1.0,
@@ -365,8 +416,8 @@ def create_insurance_eligibility(doc):
 	item_eligibility.insurance_plan = doc.insurance_plan
 	item_eligibility.template_dt = doc.template_dt
 	item_eligibility.template_dn = doc.template_dn
-	item_eligibility.item = doc.item_code
+	item_eligibility.item_code = doc.item_code
 
-	item_eligibility.start_date = doc.posting_date or getdate()
+	item_eligibility.valid_from = doc.posting_date or getdate()
 
 	return item_eligibility

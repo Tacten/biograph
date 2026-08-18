@@ -2,12 +2,19 @@
 # For license information, please see license.txt
 
 
+from pypika.enums import Order
+from pypika.terms import ValueWrapper
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import get_link_to_form, getdate, unique
 
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import get_bank_cash_account
+
+from healthcare.healthcare.doctype.patient_insurance_coverage.patient_insurance_coverage import (
+	sync_coverage_status_to_linked_docs,
+)
 
 
 class InsuranceClaim(Document):
@@ -191,73 +198,76 @@ class InsuranceClaim(Document):
 				_("Company and Insurance Provider are mandatory"), title=_("Missing Mandatory Fields")
 			)
 
-		valid_statuses = ["Partly Invoiced", "Invoiced"]  # allow user selection?
+		valid_statuses = ["Partly Invoiced", "Invoiced"]
 
-		coverages = frappe.db.sql(
-			"""
-			SELECT
-				pic.name AS insurance_coverage,
-				pic.posting_date AS insurance_coverage_posting_date,
-				pic.patient AS patient,
-				pic.patient_name,
-				pic.template_dt,
-				pic.template_dn,
-				pic.coverage,
-				pic.discount,
-				pic.coverage_amount,
-				pic.discount_amount,
-				pic.code_system,
-				pic.code_value,
-				pic.code_description,
-				pic.mode_of_approval,
-				pic.insurance_plan,
-				pic.gender,
-				pic.birth_date,
-				pic.policy_number,
-				pic.policy_expiry_date,
-				si.name AS sales_invoice,
-				si.posting_date AS sales_invoice_posting_date,
-				sii.item_code,
-				sii.amount AS sales_invoice_item_amount,
-				sii.coverage_percentage AS claim_coverage,
-				sii.insurance_coverage_amount AS claim_amount,
-				sii.discount_percentage AS invoice_discount,
-				sii.discount_amount AS invoice_discount_amount,
-				jea.credit_in_account_currency AS allocated_amount,
-				jea.parent AS journal_entry,
-				'Draft' AS status
-			FROM `tabPatient Insurance Coverage` AS pic
-			INNER JOIN `tabSales Invoice Item` AS sii ON
-				(pic.name=sii.insurance_coverage AND sii.docstatus=1)
-			INNER JOIN `tabSales Invoice` AS si ON
-				(si.name=sii.parent AND si.docstatus=1)
-			INNER JOIN `tabJournal Entry Account` AS jea ON
-				(jea.docstatus=1 AND jea.reference_detail_no=sii.name )
-			WHERE
-				pic.docstatus=1 AND
-				pic.company=%(company)s AND
-				pic.insurance_payor=%(insurance_payor)s AND
-				pic.patient=%(patient)s AND
-				pic.insurance_policy=%(insurance_policy)s AND
-				({filter_date_based_on} BETWEEN %(from_date)s AND %(to_date)s) AND
-				pic.status IN %(statuses)s AND
-				pic.paid_amount < pic.coverage_amount_invoiced
-			ORDER BY patient ASC, {filter_date_based_on} DESC
-			""".format(
-				filter_date_based_on="si.posting_date"
-				if self.posting_date_based_on == "Sales Invoice"
-				else "pic.posting_date"
-			),
-			{
-				"patient": self.patient,
-				"insurance_policy": self.insurance_policy,
-				"company": self.company,
-				"insurance_payor": self.insurance_payor,
-				"from_date": self.from_date,
-				"to_date": self.to_date,
-				"statuses": tuple(valid_statuses),
-			},
-			as_dict=1,
+		PatientInsuranceCoverage = frappe.qb.DocType("Patient Insurance Coverage")
+		SalesInvoiceItem = frappe.qb.DocType("Sales Invoice Item")
+		SalesInvoice = frappe.qb.DocType("Sales Invoice")
+		JournalEntryAccount = frappe.qb.DocType("Journal Entry Account")
+
+		filter_date_based_on = (
+			SalesInvoice.posting_date
+			if self.posting_date_based_on == "Sales Invoice"
+			else PatientInsuranceCoverage.posting_date
+		)
+
+		coverages = (
+			frappe.qb.from_(PatientInsuranceCoverage)
+			.inner_join(SalesInvoiceItem)
+			.on(
+				(PatientInsuranceCoverage.name == SalesInvoiceItem.insurance_coverage)
+				& (SalesInvoiceItem.docstatus == 1)
+			)
+			.inner_join(SalesInvoice)
+			.on((SalesInvoice.name == SalesInvoiceItem.parent) & (SalesInvoice.docstatus == 1))
+			.inner_join(JournalEntryAccount)
+			.on(
+				(JournalEntryAccount.docstatus == 1)
+				& (JournalEntryAccount.reference_detail_no == SalesInvoiceItem.name)
+			)
+			.select(
+				PatientInsuranceCoverage.name.as_("insurance_coverage"),
+				PatientInsuranceCoverage.posting_date.as_("insurance_coverage_posting_date"),
+				PatientInsuranceCoverage.patient,
+				PatientInsuranceCoverage.patient_name,
+				PatientInsuranceCoverage.template_dt,
+				PatientInsuranceCoverage.template_dn,
+				PatientInsuranceCoverage.coverage,
+				PatientInsuranceCoverage.discount,
+				PatientInsuranceCoverage.coverage_amount,
+				PatientInsuranceCoverage.discount_amount,
+				PatientInsuranceCoverage.code_system,
+				PatientInsuranceCoverage.code_value,
+				PatientInsuranceCoverage.code_description,
+				PatientInsuranceCoverage.mode_of_approval,
+				PatientInsuranceCoverage.insurance_plan,
+				PatientInsuranceCoverage.gender,
+				PatientInsuranceCoverage.birth_date,
+				PatientInsuranceCoverage.policy_number,
+				PatientInsuranceCoverage.policy_expiry_date,
+				SalesInvoice.name.as_("sales_invoice"),
+				SalesInvoice.posting_date.as_("sales_invoice_posting_date"),
+				SalesInvoiceItem.item_code,
+				SalesInvoiceItem.amount.as_("sales_invoice_item_amount"),
+				SalesInvoiceItem.coverage_percentage.as_("claim_coverage"),
+				SalesInvoiceItem.insurance_coverage_amount.as_("claim_amount"),
+				SalesInvoiceItem.discount_percentage.as_("invoice_discount"),
+				SalesInvoiceItem.discount_amount.as_("invoice_discount_amount"),
+				JournalEntryAccount.credit_in_account_currency.as_("allocated_amount"),
+				JournalEntryAccount.parent.as_("journal_entry"),
+				ValueWrapper("Draft").as_("status"),
+			)
+			.where(PatientInsuranceCoverage.docstatus == 1)
+			.where(PatientInsuranceCoverage.company == self.company)
+			.where(PatientInsuranceCoverage.insurance_payor == self.insurance_payor)
+			.where(PatientInsuranceCoverage.patient == self.patient)
+			.where(PatientInsuranceCoverage.insurance_policy == self.insurance_policy)
+			.where(filter_date_based_on.between(self.from_date, self.to_date))
+			.where(PatientInsuranceCoverage.status.isin(valid_statuses))
+			.where(PatientInsuranceCoverage.paid_amount < PatientInsuranceCoverage.coverage_amount_invoiced)
+			.orderby(PatientInsuranceCoverage.patient, order=Order.asc)
+			.orderby(filter_date_based_on, order=Order.desc)
+			.run(as_dict=True)
 		)
 
 		if not coverages:
@@ -275,7 +285,13 @@ def update_insurance_coverage_status(coverage):
 	"""
 	coverage_doc = frappe.get_doc("Patient Insurance Coverage", coverage.insurance_coverage)
 
-	coverage_doc.db_set({"approved_amount": coverage.approved_amount, "paid_amount": coverage.paid_amount})
+	coverage_doc.db_set({
+		"approved_amount": coverage.approved_amount,
+		"paid_amount": coverage.paid_amount,
+		"status": coverage.status,
+	})
+
+	sync_coverage_status_to_linked_docs(coverage.insurance_coverage, coverage.status)
 
 	coverage_doc.add_comment(
 		"Comment",

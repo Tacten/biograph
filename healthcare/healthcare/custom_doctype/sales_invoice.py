@@ -108,6 +108,6 @@ class HealthcareSalesInvoice(SalesInvoice):
 
 		self.total_insurance_coverage_amount = total_coverage_amount
 		if self.total_insurance_coverage_amount:
-			self.patient_payable_amount = self.outstanding_amount - self.total_insurance_coverage_amount
+			self.patient_payable_amount = (self.rounded_total or self.grand_total) - self.total_insurance_coverage_amount
 		else:
-			self.patient_payable_amount = self.outstanding_amount
+			self.patient_payable_amount = self.rounded_total or self.grand_total

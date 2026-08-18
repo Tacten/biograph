@@ -34,7 +34,7 @@ class ItemInsuranceEligibility(Document):
 			flt(self.coverage) <= 0
 			or flt(self.coverage) > 100
 			or flt(self.discount) < 0
-			or ((flt(self.discount) + flt(self.discount)) > 100)
+			or ((flt(self.coverage) + flt(self.discount)) > 100)
 		):
 			frappe.throw(_("Invalid Coverage / Discount percentage"))
 
@@ -80,17 +80,22 @@ class ItemInsuranceEligibility(Document):
 		)
 
 		if self.valid_till:
+			# Check overlap with dated records OR any open-ended record starting on or before our end
 			query = query.where(
-				(item_eligibility.valid_till.isnotnull())
-				& (
-					(item_eligibility.valid_from >= self.valid_from)
-					& (item_eligibility.valid_from <= self.valid_till)
-					| (item_eligibility.valid_till >= self.valid_from)
-					& (item_eligibility.valid_till <= self.valid_till)
+				(
+					(item_eligibility.valid_till.isnotnull())
+					& (
+						(item_eligibility.valid_from <= self.valid_till)
+						& (item_eligibility.valid_till >= self.valid_from)
+					)
 				)
+				| ((item_eligibility.valid_till.isnull()) & (item_eligibility.valid_from <= self.valid_till))
 			)
 		else:
-			query = query.where(item_eligibility.valid_from == self.valid_from)
+			# Open-ended new record: conflicts with any existing record that hasn't ended before our start
+			query = query.where(
+				(item_eligibility.valid_till.isnull()) | (item_eligibility.valid_till >= self.valid_from)
+			)
 
 		overlap = query.run(as_dict=True)
 
@@ -149,7 +154,7 @@ def get_insurance_eligibility(
 				(Eligibility.is_active == 1)
 				& (Coalesce(Eligibility.insurance_plan, "") == (insurance_plan or ""))
 				& (
-					(Coalesce(Eligibility.item_code, "") == item_code)
+					(Coalesce(Eligibility.item_code, "") == (item_code or ""))
 					| (
 						(Coalesce(Eligibility.template_dt, "") == (template_dt or ""))
 						& (Coalesce(Eligibility.template_dn, "") == (template_dn or ""))
