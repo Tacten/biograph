@@ -181,6 +181,8 @@ def make_appointment(practitioner, patient, date, slot):
 		if slot_key in available_slots:
 			if want_video and practitioner_schedule.allow_video_conferencing:
 				doc.add_video_conferencing = 1
+			else:
+				doc.add_video_conferencing = 0
 			break
 
 	doc.service_unit = service_unit
