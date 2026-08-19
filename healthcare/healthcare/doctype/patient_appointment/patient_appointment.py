@@ -28,7 +28,10 @@ from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings impor
 from healthcare.healthcare.doctype.patient_insurance_coverage.patient_insurance_coverage import (
 	make_insurance_coverage,
 )
-from healthcare.healthcare.utils import get_appointment_billing_item_and_rate
+from healthcare.healthcare.utils import (
+	get_appointment_billing_item_and_rate,
+	get_company_for_appointment,
+)
 
 
 class MaximumCapacityError(frappe.ValidationError):
@@ -1960,29 +1963,12 @@ def create_unavailability_appointment(data):
 			has_conflicts = True
 			print(f"Detected {len(conflicts)} conflicts, but not modifying them per user request")
 	
-	# Set the company - required field
-	# In some versions of Healthcare, practitioners might not have a company field
-	company = None
-	try:
-		if data.get('practitioner'):
-			# First check if the company field exists in the doctype
-			practitioner_meta = frappe.get_meta("Healthcare Practitioner")
-			if practitioner_meta.has_field("company"):
-				company = frappe.db.get_value("Healthcare Practitioner", data.get('practitioner'), "company")
-	except Exception as e:
-		print(f"Error getting company from practitioner: {str(e)}")
-		company = None
-	
-	# If we couldn't get the company from the practitioner, use the default
-	if not company:
-		company = frappe.defaults.get_user_default('company')
-		
-	# If we still don't have a company, try to get the first company in the system
-	if not company:
-		companies = frappe.get_all("Company", limit=1)
-		if companies:
-			company = companies[0].name
-			
+	# Set the company - required field. Derived from the unit being blocked out (or the
+	# practitioner, where a company custom field exists), so the block lands in the same company
+	# as the appointments it is meant to displace.
+	company = get_company_for_appointment(data.get('service_unit'), data.get('practitioner'))
+
+
 	# Create a new appointment document - now using standard Frappe approach
 	# instead of trying to directly manipulate the database
 	appointment = frappe.new_doc("Patient Appointment")

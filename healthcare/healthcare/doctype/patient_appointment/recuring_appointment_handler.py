@@ -12,6 +12,7 @@ from healthcare.healthcare.doctype.patient_appointment.patient_appointment impor
 	get_available_slots,
 	validate_practitioner_schedules,
 )
+from healthcare.healthcare.utils import get_company_for_appointment
 
 
 @frappe.whitelist()
@@ -22,6 +23,11 @@ def create_recurring_appointments(data):
 
 	if not schedule_details.get("dates"):
 		frappe.throw("Slots are not available")
+
+	# Every appointment in the series is held at the same unit, so resolve its company once.
+	# Without this the whole series falls back to the background job's default company.
+	company = get_company_for_appointment(data.service_unit, data.practitioner)
+
 	for row in schedule_details.get("dates"):
 		if not row.get("booking_flage"):
 			doc = frappe.get_doc(
@@ -33,6 +39,7 @@ def create_recurring_appointments(data):
 					"appointment_time": row.get("from_time"),
 					"end_time": row.get("to_time"),
 					"service_unit": data.service_unit,
+					"company": company,
 					"recurring_appointments": 1,
 					"appointment_type": data.appointment_type,
 					"therapy_plan": data.therapy_plan if data.appointment_type == "Therapy Session" else "",
