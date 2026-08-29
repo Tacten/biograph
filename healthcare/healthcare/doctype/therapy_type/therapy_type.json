@@ -1,10 +1,10 @@
 {
  "actions": [],
+ "allow_rename": 1,
  "autoname": "field:therapy_type",
  "creation": "2022-01-26 12:22:05.283047",
  "doctype": "DocType",
  "editable_grid": 1,
- "allow_rename": 1,
  "engine": "InnoDB",
  "field_order": [
   "disabled",
@@ -24,6 +24,10 @@
   "column_break_12",
   "is_billable",
   "rate",
+  "consumption_tab",
+  "consumables",
+  "consume_stock",
+  "items",
   "exercises_tab",
   "section_break_6",
   "therapy_for",
@@ -211,11 +215,36 @@
    "fieldname": "service_request_defaults_tab",
    "fieldtype": "Tab Break",
    "label": "Service Request Defaults"
+  },
+  {
+   "fieldname": "consumption_tab",
+   "fieldtype": "Tab Break",
+   "label": "Stock Consumption"
+  },
+  {
+   "fieldname": "consumables",
+   "fieldtype": "Section Break",
+   "label": "Consumables"
+  },
+  {
+   "default": "0",
+   "fieldname": "consume_stock",
+   "fieldtype": "Check",
+   "label": "Allow Stock Consumption",
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval:doc.consume_stock == 1",
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "ignore_user_permissions": 1,
+   "label": "Items",
+   "options": "Clinical Procedure Item"
   }
  ],
  "links": [],
- "modified": "2023-11-06 14:59:47.927972",
- "modified_by": "Administrator",
+ "modified": "2025-07-17 10:17:29.392283",
+ "modified_by": "abhijeet.mohanty@happiestminds.com",
  "module": "Healthcare",
  "name": "Therapy Type",
  "naming_rule": "By fieldname",
@@ -257,6 +286,7 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

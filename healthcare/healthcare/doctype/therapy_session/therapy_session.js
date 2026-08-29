@@ -91,7 +91,7 @@ frappe.ui.form.on('Therapy Session', {
 			frm.dashboard.add_indicator(__('Counts Completed: {0}', [frm.doc.total_counts_completed]),
 				(frm.doc.total_counts_completed < frm.doc.total_counts_targeted) ? 'orange' : 'green');
 
-				frm.add_custom_button(__("Clinical Note"), function() {
+			frm.add_custom_button(__("Clinical Note"), function() {
 				frappe.route_options = {
 					"patient": frm.doc.patient,
 					"reference_doc": "Therapy Session",

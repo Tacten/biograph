@@ -52,6 +52,7 @@
   }
  ],
  "category": "Domains",
+ "app": "healthcare",
  "charts": [
   {
    "chart_name": "Patient Appointments",
