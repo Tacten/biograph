@@ -8,13 +8,16 @@
 	"editable_grid": 1,
 	"engine": "InnoDB",
 	"field_order": [
+		"column_break_zyud",
 		"disabled",
+		"section_break_ufmq",
 		"service_unit_type",
 		"allow_appointments",
 		"overlap_appointments",
 		"inpatient_occupancy",
 		"is_ot",
 		"is_billable",
+		"column_break_akcr",
 		"item_details",
 		"item",
 		"item_code",
@@ -79,9 +82,22 @@
 			"label": "Is OT"
 		},
 		{
+			"depends_on": "eval: !doc.__islocal",
+			"fieldname": "column_break_zyud",
+			"fieldtype": "Column Break"
+		},
+		{
+			"fieldname": "section_break_ufmq",
+			"fieldtype": "Section Break"
+		},
+		{
+			"fieldname": "column_break_akcr",
+			"fieldtype": "Column Break"
+		},
+		{
 			"bold": 1,
 			"default": "0",
-			"depends_on": "eval:doc.inpatient_occupancy == 1 && doc.allow_appointments != 1",
+			"depends_on": "eval:(doc.inpatient_occupancy == 1 || doc.is_ot == 1) && doc.allow_appointments != 1",
 			"fieldname": "is_billable",
 			"fieldtype": "Check",
 			"hide_days": 1,
@@ -107,7 +123,7 @@
 			"read_only": 1
 		},
 		{
-			"fetch_from": "item.item_name",
+			"fetch_from": "item.item_code",
 			"fieldname": "item_code",
 			"fieldtype": "Data",
 			"hide_days": 1,
@@ -135,6 +151,7 @@
 			"options": "UOM"
 		},
 		{
+			"default": "1",
 			"fieldname": "no_of_hours",
 			"fieldtype": "Int",
 			"hide_days": 1,
@@ -188,7 +205,7 @@
 			"link_fieldname": "service_unit_type"
 		}
 	],
-	"modified": "2025-09-25 15:04:43.831015",
+	"modified": "2026-10-03 03:00:00.000000",
 	"modified_by": "Administrator",
 	"module": "Healthcare",
 	"name": "Healthcare Service Unit Type",
@@ -222,5 +239,6 @@
 	"sort_field": "modified",
 	"sort_order": "DESC",
 	"states": [],
-	"title_field": "service_unit_type"
+	"title_field": "service_unit_type",
+	"allow_bulk_edit": 1
 }

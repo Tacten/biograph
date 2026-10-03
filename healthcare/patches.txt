@@ -26,3 +26,8 @@ healthcare.patches.v15_0.update_patient_history_settings_for_lab_test
 healthcare.patches.v15_0.add_custom_fields_if_not_exists
 healthcare.patches.v16_0.rebrand_marley_to_biograph
 healthcare.patches.v16_0.populate_appointment_end_fields
+healthcare.patches.v16_0.create_emergency_masters
+healthcare.patches.v16_0.rebuild_medication_class_tree
+healthcare.patches.v16_0.create_allergy_and_medication_class_masters
+healthcare.patches.v16_0.set_medications_orderable
+healthcare.patches.v16_0.set_dynamic_reference_in_fee_validity

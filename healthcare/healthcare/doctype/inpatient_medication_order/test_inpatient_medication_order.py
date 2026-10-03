@@ -3,7 +3,6 @@
 
 
 import frappe
-from frappe.tests import IntegrationTestCase
 from frappe.utils import add_days, getdate, now_datetime
 
 from healthcare.healthcare.doctype.inpatient_record.inpatient_record import (
@@ -13,16 +12,17 @@ from healthcare.healthcare.doctype.inpatient_record.inpatient_record import (
 )
 from healthcare.healthcare.doctype.inpatient_record.test_inpatient_record import (
 	create_inpatient,
-	create_patient,
 	get_healthcare_service_unit,
 	mark_invoiced_inpatient_occupancy,
 )
+from healthcare.tests.utils import HealthcareTestSuite
 
 
-class TestInpatientMedicationOrder(IntegrationTestCase):
+class TestInpatientMedicationOrder(HealthcareTestSuite):
 	def setUp(self):
+		super().setUp()
 		frappe.db.sql("""delete from `tabInpatient Record`""")
-		self.patient = create_patient()
+		self.patient = frappe.get_list("Patient", pluck="name")[0]
 
 		# Admit
 		ip_record = create_inpatient(self.patient)
@@ -84,6 +84,22 @@ class TestInpatientMedicationOrder(IntegrationTestCase):
 		ipme.submit()
 		ipmo.reload()
 		self.assertEqual(ipmo.status, "Completed")
+
+	def test_multiple_orders_without_patient_encounter(self):
+		first_ipmo = create_ipmo(self.patient)
+		first_ipmo.insert()
+
+		second_ipmo = create_ipmo(self.patient)
+		second_ipmo.start_date = add_days(getdate(), 2)
+		second_ipmo.insert()
+
+		self.assertTrue(first_ipmo.name)
+		self.assertEqual(first_ipmo.docstatus, 0)
+		self.assertFalse(first_ipmo.patient_encounter)
+
+		self.assertTrue(second_ipmo.name)
+		self.assertEqual(second_ipmo.docstatus, 0)
+		self.assertFalse(second_ipmo.patient_encounter)
 
 	def tearDown(self):
 		if frappe.db.get_value("Patient", self.patient, "inpatient_record"):

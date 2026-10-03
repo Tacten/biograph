@@ -41,6 +41,25 @@ class HealthcareServiceUnitType(Document):
 		if self.inpatient_occupancy and self.is_billable and not self.item:
 			self.create_service_unit_item()
 
+		self.validate_unique_item()
+
+	def validate_unique_item(self):
+		# Occupancy billing aggregates charges by item, so each billable item must map
+		# to a single Service Unit Type to keep its billing parameters unambiguous.
+		if not (self.is_billable and self.item):
+			return
+		duplicate = frappe.db.exists(
+			"Healthcare Service Unit Type",
+			{"item": self.item, "is_billable": 1, "name": ("!=", self.name)},
+		)
+		if duplicate:
+			frappe.throw(
+				_("Item {0} is already linked to Service Unit Type {1}").format(
+					frappe.bold(self.item), frappe.bold(duplicate)
+				),
+				title=_("Duplicate Item"),
+			)
+
 	def on_trash(self):
 		if self.item:
 			try:

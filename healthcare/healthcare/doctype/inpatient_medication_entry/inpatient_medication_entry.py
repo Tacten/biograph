@@ -102,25 +102,29 @@ class InpatientMedicationEntry(Document):
 
 	def update_medication_orders(self, on_cancel=False):
 		orders, order_entry_map = self.get_order_entry_map()
-		# mark completion status
-		is_completed = 1
-		if on_cancel:
-			is_completed = 0
 
-		frappe.db.sql(
-			"""
-			UPDATE `tabInpatient Medication Order Entry`
-			SET is_completed = %(is_completed)s
-			WHERE name IN %(orders)s
-		""",
-			{"orders": orders, "is_completed": is_completed},
-		)
+		if not orders:
+			return
+
+		is_completed = 0 if on_cancel else 1
+
+		order_entry = frappe.qb.DocType("Inpatient Medication Order Entry")
+
+		(
+			frappe.qb.update(order_entry)
+			.set(order_entry.is_completed, is_completed)
+			.where(order_entry.name.isin(orders))
+		).run()
 
 		# update status and completed orders count
 		for order, count in order_entry_map.items():
 			medication_order = frappe.get_doc("Inpatient Medication Order", order)
 			completed_orders = flt(count)
-			current_value = frappe.db.get_value("Inpatient Medication Order", order, "completed_orders")
+			current_value = frappe.db.get_value(
+				"Inpatient Medication Order",
+				order,
+				"completed_orders",
+			)
 
 			if on_cancel:
 				completed_orders = flt(current_value) - flt(count)
@@ -214,90 +218,84 @@ class InpatientMedicationEntry(Document):
 
 
 def get_pending_medication_orders(entry):
-	filters, values = get_filters(entry)
-	to_remove = []
+	inpatient_medication_order = frappe.qb.DocType("Inpatient Medication Order")
+	medication_order_entry = frappe.qb.DocType("Inpatient Medication Order Entry")
 
-	data = frappe.db.sql(
-		f"""
-		SELECT
-			ip.inpatient_record, ip.patient, ip.patient_name,
-			entry.name, entry.parent, entry.drug, entry.drug_name,
-			entry.dosage, entry.dosage_form, entry.date, entry.time, entry.instructions
-		FROM
-			`tabInpatient Medication Order` ip
-		INNER JOIN
-			`tabInpatient Medication Order Entry` entry
-		ON
-			ip.name = entry.parent
-		WHERE
-			ip.docstatus = 1 and
-			ip.company = %(company)s and
-			entry.is_completed = 0
-			{filters}
-		ORDER BY
-			entry.date, entry.time
-		""",
-		values,
-		as_dict=1,
+	query = (
+		frappe.qb.from_(inpatient_medication_order)
+		.inner_join(medication_order_entry)
+		.on(inpatient_medication_order.name == medication_order_entry.parent)
+		.select(
+			inpatient_medication_order.inpatient_record,
+			inpatient_medication_order.patient,
+			inpatient_medication_order.patient_name,
+			medication_order_entry.name,
+			medication_order_entry.parent,
+			medication_order_entry.drug,
+			medication_order_entry.drug_name,
+			medication_order_entry.dosage,
+			medication_order_entry.dosage_form,
+			medication_order_entry.date,
+			medication_order_entry.time,
+			medication_order_entry.instructions,
+		)
+		.where(inpatient_medication_order.docstatus == 1)
+		.where(inpatient_medication_order.company == entry.company)
+		.where(medication_order_entry.is_completed == 0)
+		.orderby(medication_order_entry.date)
+		.orderby(medication_order_entry.time)
 	)
 
-	for doc in data:
-		inpatient_record = doc.inpatient_record
-		if inpatient_record:
-			doc["service_unit"] = get_current_healthcare_service_unit(inpatient_record)
-
-		if entry.service_unit and doc.service_unit != entry.service_unit:
-			to_remove.append(doc)
-
-	for doc in to_remove:
-		data.remove(doc)
-
-	return data
-
-
-def get_filters(entry):
-	filters = ""
-	values = dict(company=entry.company)
 	if entry.from_date:
-		filters += " and entry.date >= %(from_date)s"
-		values["from_date"] = entry.from_date
+		query = query.where(medication_order_entry.date >= entry.from_date)
 
 	if entry.to_date:
-		filters += " and entry.date <= %(to_date)s"
-		values["to_date"] = entry.to_date
+		query = query.where(medication_order_entry.date <= entry.to_date)
 
 	if entry.from_time:
-		filters += " and entry.time >= %(from_time)s"
-		values["from_time"] = entry.from_time
+		query = query.where(medication_order_entry.time >= entry.from_time)
 
 	if entry.to_time:
-		filters += " and entry.time <= %(to_time)s"
-		values["to_time"] = entry.to_time
+		query = query.where(medication_order_entry.time <= entry.to_time)
 
 	if entry.patient:
-		filters += " and ip.patient = %(patient)s"
-		values["patient"] = entry.patient
+		query = query.where(inpatient_medication_order.patient == entry.patient)
 
 	if entry.practitioner:
-		filters += " and ip.practitioner = %(practitioner)s"
-		values["practitioner"] = entry.practitioner
+		query = query.where(inpatient_medication_order.practitioner == entry.practitioner)
 
 	if entry.item_code:
-		filters += " and entry.drug = %(item_code)s"
-		values["item_code"] = entry.item_code
+		query = query.where(medication_order_entry.drug == entry.item_code)
 
 	if entry.assigned_to_practitioner:
-		filters += " and ip._assign LIKE %(assigned_to)s"
-		values["assigned_to"] = "%" + entry.assigned_to_practitioner + "%"
+		query = query.where(inpatient_medication_order["_assign"].like(f"%{entry.assigned_to_practitioner}%"))
 
-	return filters, values
+	data = query.run(as_dict=True)
+
+	filtered_data = []
+
+	for doc in data:
+		if doc.inpatient_record:
+			doc.service_unit = get_current_healthcare_service_unit(doc.inpatient_record)
+
+		if entry.service_unit and doc.service_unit != entry.service_unit:
+			continue
+
+		filtered_data.append(doc)
+
+	return filtered_data
 
 
 def get_current_healthcare_service_unit(inpatient_record):
-	ip_record = frappe.get_doc("Inpatient Record", inpatient_record)
-	if ip_record.status in ["Admitted", "Discharge Scheduled"] and ip_record.inpatient_occupancies:
-		return ip_record.inpatient_occupancies[-1].service_unit
-	return
+	inpatient_record_doc = frappe.get_doc("Inpatient Record", inpatient_record)
+
+	if (
+		inpatient_record_doc.status in ["Admitted", "Discharge Scheduled"]
+		and inpatient_record_doc.inpatient_occupancies
+	):
+		return inpatient_record_doc.inpatient_occupancies[-1].service_unit
+
+	return None
 
 
 def get_drug_shortage_map(medication_orders, warehouse):

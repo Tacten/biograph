@@ -5,23 +5,22 @@
 import os
 
 import frappe
-from frappe.tests import IntegrationTestCase
+from frappe.utils import add_days, getdate, nowdate
 
 from healthcare.healthcare.doctype.patient_appointment.test_patient_appointment import (
 	create_patient,
 )
+from healthcare.tests.utils import HealthcareTestSuite
 
 
-class TestPatient(IntegrationTestCase):
+class TestPatient(HealthcareTestSuite):
 	def test_customer_created(self):
-		frappe.db.sql("""delete from `tabPatient`""")
 		frappe.db.set_single_value("Healthcare Settings", "link_customer_to_patient", 1)
-		patient = create_patient()
+		patient = "_Test Patient"
 		self.assertTrue(frappe.db.get_value("Patient", patient, "customer"))
 
 	def test_patient_registration(self):
-		frappe.db.sql("""delete from `tabPatient`""")
-		registration_item = create_registration_item()
+		registration_item = "_Test Registration"
 		settings = frappe.get_single("Healthcare Settings")
 		settings.collect_registration_fee = 1
 		settings.registration_item = registration_item
@@ -32,6 +31,7 @@ class TestPatient(IntegrationTestCase):
 		patient = frappe.get_doc("Patient", patient)
 		self.assertEqual(patient.status, "Disabled")
 
+		frappe.db.set_single_value("Global Defaults", "default_company", "_Test Company")
 		# check sales invoice and patient status
 		result = patient.invoice_patient_registration()
 		self.assertTrue(frappe.db.exists("Sales Invoice", result.get("name")))
@@ -46,13 +46,13 @@ class TestPatient(IntegrationTestCase):
 		settings.save()
 
 	def test_patient_contact(self):
-		frappe.db.sql("""delete from `tabPatient` where name like '_Test Patient%'""")
-		frappe.db.sql("""delete from `tabCustomer` where name like '_Test Patient%'""")
-		frappe.db.sql("""delete from `tabContact` where name like'_Test Patient%'""")
-		frappe.db.sql("""delete from `tabDynamic Link` where parent like '_Test Patient%'""")
+		frappe.db.sql("""delete from `tabPatient` where name like '_Test Contact Patient%'""")
+		frappe.db.sql("""delete from `tabCustomer` where name like '_Test Contact Patient%'""")
+		frappe.db.sql("""delete from `tabContact` where name like'_Test Contact Patient%'""")
+		frappe.db.sql("""delete from `tabDynamic Link` where parent like '_Test Contact Patient%'""")
 
 		patient = create_patient(
-			patient_name="_Test Patient Contact", email="test-patient@example.com", mobile="+91 0000000001"
+			patient_name="_Test Contact Patient", email="test-patient@example.com", mobile="+91 0000000001"
 		)
 		customer = frappe.db.get_value("Patient", patient, "customer")
 		self.assertTrue(customer)
@@ -84,11 +84,11 @@ class TestPatient(IntegrationTestCase):
 
 	def test_patient_user(self):
 		frappe.db.sql("""delete from `tabUser` where email='test-patient-user@example.com'""")
-		frappe.db.sql("""delete from `tabDynamic Link` where parent like '_Test Patient%'""")
-		frappe.db.sql("""delete from `tabPatient` where name like '_Test Patient%'""")
+		frappe.db.sql("""delete from `tabDynamic Link` where parent like '_Test User Patient%'""")
+		frappe.db.sql("""delete from `tabPatient` where name like '_Test User Patient%'""")
 
 		patient = create_patient(
-			patient_name="_Test Patient User",
+			patient_name="_Test User Patient",
 			email="test-patient-user@example.com",
 			mobile="+91 0000000009",
 			create_user=True,
@@ -104,6 +104,7 @@ class TestPatient(IntegrationTestCase):
 				"email": "test-patient-user@example.com",
 				"mobile": "+91 0000000009",
 				"invite_user": 1,
+				"customer_group": "Individual",
 			}
 		)
 
@@ -122,7 +123,7 @@ class TestPatient(IntegrationTestCase):
 		customer = frappe.get_doc("Customer", patient.customer)
 		self.assertEqual(customer.image, patient.image)
 
-	def test_multiple_paients_linked_with_same_customer(self):
+	def test_multiple_patients_linked_with_same_customer(self):
 		frappe.db.sql("""delete from `tabPatient`""")
 		frappe.db.set_single_value("Healthcare Settings", "link_customer_to_patient", 1)
 
@@ -138,18 +139,14 @@ class TestPatient(IntegrationTestCase):
 		self.assertEqual(p1_customer_name, p2_customer_name)
 		self.assertEqual(p2_customer.customer_name, "John Doe")
 
+	def test_future_dob_not_allowed(self):
+		patient = frappe.new_doc("Patient")
+		patient.first_name = "Future Born"
+		patient.sex = "Female"
+		patient.dob = add_days(nowdate(), 1)
 
-def create_registration_item():
-	if not frappe.db.exists("Item", "Registration Item"):
-		item = frappe.new_doc("Item")
-		item.item_code = "Registration Item"
-		item.item_name = "Registration Item"
-		item.description = "Registration Item"
-		item.item_group = "Services"
-		item.stock_uom = "Nos"
-		item.is_stock_item = 0
-		item.save()
-	else:
-		item = frappe.get_doc("Item", "Registration Item")
+		self.assertRaises(frappe.ValidationError, patient.insert)
 
-	return item.name
+		patient.dob = nowdate()
+		patient.insert()
+		self.assertEqual(getdate(patient.dob), getdate())

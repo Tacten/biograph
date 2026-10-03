@@ -1,6 +1,10 @@
 // Copyright (c) 2017, ESS LLP and contributors
 // For license information, please see license.txt
 
+const show_consumables_message = (message, indicator = "orange") => {
+	frappe.show_alert({ message, indicator }, 7);
+};
+
 frappe.ui.form.on("Clinical Procedure", {
 	setup: function (frm) {
 		frm.set_query("batch_no", "items", function (doc, cdt, cdn) {
@@ -278,7 +282,59 @@ frappe.ui.form.on("Clinical Procedure", {
 	},
 
 	procedure_template: function (frm) {
+		const clear_stock_state = () => {
+			frm.set_value("consume_stock", 0);
+			frm.clear_table("items");
+			frm.refresh_field("items");
+		};
+
 		if (frm.doc.procedure_template) {
+			frappe.db
+				.get_value(
+					"Clinical Procedure Template",
+					frm.doc.procedure_template,
+					"consume_stock",
+				)
+				.then(({ message }) => {
+					if (!message) {
+						clear_stock_state();
+						show_consumables_message(
+							__(
+								"Consumables could not be loaded because the selected Clinical Procedure Template's stock settings could not be fetched.",
+							),
+						);
+						return;
+					}
+
+					const consume_stock = cint(message.consume_stock);
+
+					return frm.set_value("consume_stock", consume_stock).then(() => {
+						if (frm.doc.service_unit) {
+							frm.trigger("service_unit");
+						} else if (consume_stock && !frm.doc.warehouse) {
+							frm.trigger("set_warehouse");
+						}
+
+						if (consume_stock) {
+							frm.trigger("set_procedure_consumables");
+						} else {
+							show_consumables_message(
+								__(
+									"Consumables were not loaded because the selected Clinical Procedure Template does not consume stock.",
+								),
+							);
+						}
+					});
+				})
+				.catch(() => {
+					clear_stock_state();
+					show_consumables_message(
+						__(
+							"Consumables could not be loaded because the selected Clinical Procedure Template's stock settings could not be fetched.",
+						),
+					);
+				});
+
 			frappe.call({
 				method: "frappe.client.get",
 				args: {
@@ -290,18 +346,15 @@ frappe.ui.form.on("Clinical Procedure", {
 						"medical_department",
 						data.message.medical_department,
 					);
-					frm.set_value("consume_stock", data.message.consume_stock);
-					frm.events.set_warehouse(frm);
-					frm.events.set_procedure_consumables(frm);
 					frm.events.set_medical_codes(frm);
 				},
 			});
 		} else {
+			clear_stock_state();
 			frm.clear_table("codification_table");
 			frm.refresh_field("codification_table");
 		}
 	},
-
 	service_unit: function (frm) {
 		if (frm.doc.service_unit) {
 			frappe.call({
@@ -358,29 +411,51 @@ frappe.ui.form.on("Clinical Procedure", {
 	},
 
 	set_procedure_consumables: function (frm) {
+		const clear_consumables = () => {
+			frm.clear_table("items");
+			frm.refresh_field("items");
+		};
+		const requested_template = frm.doc.procedure_template;
+
 		frappe.call({
 			method: "healthcare.healthcare.doctype.clinical_procedure.clinical_procedure.get_procedure_consumables",
 			args: {
-				procedure_template: frm.doc.procedure_template,
+				procedure_template: requested_template,
 			},
 			callback: function (data) {
-				if (data.message) {
-					frm.doc.items = [];
-					$.each(data.message, function (i, v) {
-						let item = frm.add_child("items");
-						item.item_code = v.item_code;
-						item.item_name = v.item_name;
-						item.uom = v.uom;
-						item.stock_uom = v.stock_uom;
-						item.qty = flt(v.qty);
-						item.transfer_qty = v.transfer_qty;
-						item.conversion_factor = v.conversion_factor;
-						item.invoice_separately_as_consumables =
-							v.invoice_separately_as_consumables;
-						item.batch_no = v.batch_no;
-					});
-					refresh_field("items");
+				clear_consumables();
+				if (!data.message || !data.message.length) {
+					show_consumables_message(
+						__(
+							"The selected Clinical Procedure Template does not have any consumables configured.",
+						),
+					);
+					return;
 				}
+
+				$.each(data.message, function (i, v) {
+					let item = frm.add_child("items");
+					item.item_code = v.item_code;
+					item.item_name = v.item_name;
+					item.uom = v.uom;
+					item.stock_uom = v.stock_uom;
+					item.qty = flt(v.qty);
+					item.transfer_qty = v.transfer_qty;
+					item.conversion_factor = v.conversion_factor;
+					item.invoice_separately_as_consumables =
+						v.invoice_separately_as_consumables;
+					item.batch_no = v.batch_no;
+				});
+				frm.refresh_field("items");
+			},
+			error: function () {
+				clear_consumables();
+				show_consumables_message(
+					__(
+						"Consumables could not be loaded for the selected Clinical Procedure Template. Please try again.",
+					),
+					"red",
+				);
 			},
 		});
 	},

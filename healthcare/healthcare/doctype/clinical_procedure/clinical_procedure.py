@@ -8,7 +8,7 @@ from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
 from frappe.utils import add_to_date, flt, get_link_to_form, now_datetime, nowdate, nowtime
 
-from erpnext.stock.get_item_details import get_item_details
+from erpnext.stock.get_item_details import ItemDetailsCtx, get_item_details
 from erpnext.stock.stock_ledger import get_previous_sle
 
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import get_account
@@ -36,14 +36,14 @@ class ClinicalProcedure(Document):
 
 	def before_insert(self):
 		if self.service_request:
-			therapy_session = frappe.db.exists(
+			existing_procedure = frappe.db.exists(
 				"Clinical Procedure",
 				{"service_request": self.service_request, "docstatus": ["!=", 2]},
 			)
-			if therapy_session:
+			if existing_procedure:
 				frappe.throw(
 					_("Clinical Procedure {0} already created from service request {1}").format(
-						frappe.bold(get_link_to_form("Clinical Procedure", therapy_session)),
+						frappe.bold(get_link_to_form("Clinical Procedure", existing_procedure)),
 						frappe.bold(get_link_to_form("Service Request", self.service_request)),
 					),
 				title=_("Already Exist"),
@@ -172,18 +172,20 @@ class ClinicalProcedure(Document):
 
 			for item in self.items:
 				if item.invoice_separately_as_consumables:
-					args = {
-						"doctype": "Sales Invoice",
-						"item_code": item.item_code,
-						"company": self.company,
-						"warehouse": self.warehouse,
-						"customer": customer,
-						"selling_price_list": self.price_list,
-						"price_list_currency": price_list_currency,
-						"plc_conversion_rate": 1.0,
-						"conversion_rate": 1.0,
-					}
-					item_details = get_item_details(args)
+					ctx: ItemDetailsCtx = ItemDetailsCtx(
+						{
+							"doctype": "Sales Invoice",
+							"item_code": item.item_code,
+							"company": self.company,
+							"warehouse": self.warehouse,
+							"customer": customer,
+							"selling_price_list": self.price_list,
+							"price_list_currency": price_list_currency,
+							"plc_conversion_rate": 1.0,
+							"conversion_rate": 1.0,
+						}
+					)
+					item_details = get_item_details(ctx)
 					item_price = item_details.price_list_rate * item.qty
 					item_consumption_details = (
 						item_details.item_name + " " + str(item.qty) + " " + item.uom + " " + str(item_price)
@@ -245,7 +247,7 @@ class ClinicalProcedure(Document):
 		return True
 
 	@frappe.whitelist()
-	def make_material_receipt(self, submit: bool = False) -> dict:
+	def make_material_receipt(self, submit: bool | None = False) -> dict:
 		stock_entry = frappe.new_doc("Stock Entry")
 
 		stock_entry.stock_entry_type = "Material Receipt"
@@ -289,7 +291,7 @@ def get_stock_qty(item_code, warehouse):
 
 
 @frappe.whitelist()
-def get_procedure_consumables(procedure_template):
+def get_procedure_consumables(procedure_template: str) -> list:
 	return get_items("Clinical Procedure Item", procedure_template, "Clinical Procedure Template")
 
 
@@ -343,7 +345,7 @@ def make_stock_entry(doc):
 
 
 @frappe.whitelist()
-def make_procedure(source_name, target_doc=None):
+def make_procedure(source_name: str, target_doc: Document | None = None) -> Document:
 	def set_missing_values(source, target):
 		consume_stock = frappe.db.get_value(
 			"Clinical Procedure Template", source.procedure_template, "consume_stock"
@@ -354,7 +356,7 @@ def make_procedure(source_name, target_doc=None):
 			if source.service_unit:
 				warehouse = frappe.db.get_value("Healthcare Service Unit", source.service_unit, "warehouse")
 			if not warehouse:
-				warehouse = frappe.db.get_value("Stock Settings", None, "default_warehouse")
+				warehouse = frappe.db.get_single_value("Stock Settings", "default_warehouse")
 			if warehouse:
 				target.warehouse = warehouse
 
@@ -392,7 +394,7 @@ def make_procedure(source_name, target_doc=None):
 
 
 @frappe.whitelist()
-def get_procedure_prescribed(patient, encounter=False):
+def get_procedure_prescribed(patient: str, encounter: str | bool | None = False) -> list:
 	hso = frappe.qb.DocType("Service Request")
 	return (
 		frappe.qb.from_(hso)

@@ -19,6 +19,7 @@
 		"patient_age",
 		"inpatient_record",
 		"inpatient_status",
+		"emergency_record",
 		"column_break_6",
 		"company",
 		"status",
@@ -326,6 +327,15 @@
 			"read_only": 1
 		},
 		{
+			"allow_on_submit": 1,
+			"fetch_from": "patient.emergency_record",
+			"fieldname": "emergency_record",
+			"fieldtype": "Link",
+			"label": "Emergency Record",
+			"options": "Emergency Record",
+			"read_only": 1
+		},
+		{
 			"fieldname": "sb_refs",
 			"fieldtype": "Section Break"
 		},
@@ -512,7 +522,7 @@
 			"link_fieldname": "reference_name"
 		}
 	],
-	"modified": "2025-09-28 12:18:20.535746",
+	"modified": "2026-10-03 03:00:00.000000",
 	"modified_by": "Administrator",
 	"module": "Healthcare",
 	"name": "Patient Encounter",

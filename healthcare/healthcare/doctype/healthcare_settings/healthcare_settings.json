@@ -20,6 +20,15 @@
   "enable_free_follow_ups",
   "max_visits",
   "valid_days",
+  "apply_free_follow_ups_on_encounters",
+  "medication_alerts_section",
+  "enable_medication_alerts",
+  "contraindicated_alert_action",
+  "major_alert_action",
+  "moderate_alert_action",
+  "minor_alert_action",
+  "column_break_medication_alerts",
+  "record_alerts_from",
   "inpatient_settings_section",
   "allow_discharge_despite_unbilled_services",
   "allow_discharge_despite_pending_healthcare_services",
@@ -116,6 +125,14 @@
    "fieldtype": "Int",
    "label": "Valid Number of Days",
    "mandatory_depends_on": "eval:doc.enable_free_follow_ups == 1"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.enable_free_follow_ups == 1",
+   "description": "Apply free follow ups to Patient Encounters created without an Appointment",
+   "fieldname": "apply_free_follow_ups_on_encounters",
+   "fieldtype": "Check",
+   "label": "Apply Free Follow-ups on Encounters"
   },
   {
    "description": "You can configure default Items for billing consultation charges, procedure consumption items and inpatient visits",
@@ -450,6 +467,69 @@
    "options": "Item"
   },
   {
+   "default": "0",
+   "description": "Check allergies and interactions when medication is ordered. Off until a site has reviewed its interaction rules",
+   "fieldname": "enable_medication_alerts",
+   "fieldtype": "Check",
+   "label": "Enable Medication Alerts"
+  },
+  {
+   "default": "Block",
+   "depends_on": "enable_medication_alerts",
+   "description": "Block refuses the order. Warn shows the alert and saves. Notify is an indicator only",
+   "fieldname": "contraindicated_alert_action",
+   "fieldtype": "Select",
+   "label": "On Contraindicated",
+   "mandatory_depends_on": "enable_medication_alerts",
+   "options": "Block\nWarn\nNotify"
+  },
+  {
+   "default": "Warn",
+   "depends_on": "enable_medication_alerts",
+   "fieldname": "major_alert_action",
+   "fieldtype": "Select",
+   "label": "On Major",
+   "mandatory_depends_on": "enable_medication_alerts",
+   "options": "Block\nWarn\nNotify"
+  },
+  {
+   "default": "Notify",
+   "depends_on": "enable_medication_alerts",
+   "fieldname": "minor_alert_action",
+   "fieldtype": "Select",
+   "label": "On Minor",
+   "mandatory_depends_on": "enable_medication_alerts",
+   "options": "Block\nWarn\nNotify"
+  },
+  {
+   "depends_on": "enable_medication_alerts",
+   "fieldname": "column_break_medication_alerts",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Contraindicated",
+   "depends_on": "enable_medication_alerts",
+   "description": "Keep a log of alerts at this severity and above. Leave blank to log nothing",
+   "fieldname": "record_alerts_from",
+   "fieldtype": "Select",
+   "label": "Record Alerts From",
+   "options": "\nContraindicated\nMajor\nModerate\nMinor"
+  },
+  {
+   "fieldname": "medication_alerts_section",
+   "fieldtype": "Section Break",
+   "label": "Medication Alerts"
+  },
+  {
+   "default": "Notify",
+   "depends_on": "enable_medication_alerts",
+   "fieldname": "moderate_alert_action",
+   "fieldtype": "Select",
+   "label": "On Moderate",
+   "mandatory_depends_on": "enable_medication_alerts",
+   "options": "Block\nWarn\nNotify"
+  },
+  {
    "fieldname": "patient_duplicate_check_tab",
    "fieldtype": "Tab Break",
    "label": "Patient Duplicate Check"
@@ -554,7 +634,7 @@
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-11-05 15:45:05.268654",
+ "modified": "2026-10-03 03:00:00.000000",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Healthcare Settings",

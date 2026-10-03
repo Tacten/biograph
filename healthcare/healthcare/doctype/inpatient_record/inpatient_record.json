@@ -82,7 +82,8 @@
   "followup_date",
   "sb_discharge_note",
   "discharge_note",
-  "connections_tab"
+  "connections_tab",
+  "emergency_record"
  ],
  "fields": [
   {
@@ -584,6 +585,14 @@
    "fieldtype": "Tab Break",
    "label": "Connections",
    "show_dashboard": 1
+  },
+  {
+   "fetch_from": "patient.emergency_record",
+   "fieldname": "emergency_record",
+   "fieldtype": "Link",
+   "label": "Emergency Record",
+   "options": "Emergency Record",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
@@ -601,7 +610,7 @@
    "link_fieldname": "inpatient_record"
   }
  ],
- "modified": "2025-12-25 09:36:36.211469",
+ "modified": "2026-06-17 18:11:51.318190",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Inpatient Record",

@@ -14,8 +14,10 @@ from frappe.utils.formatters import format_value
 from erpnext.setup.utils import insert_record
 
 from healthcare.healthcare.doctype.fee_validity.fee_validity import (
-	get_fee_validity,
+	is_free_follow_up_enabled,
 	manage_fee_validity,
+	query_fee_validity,
+	set_sales_invoice_reference,
 )
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import (
 	get_income_account,
@@ -25,11 +27,12 @@ from healthcare.healthcare.doctype.observation.observation import add_observatio
 from healthcare.healthcare.doctype.observation_template.observation_template import (
 	get_observation_template_details,
 )
-from healthcare.setup import setup_healthcare
 
 
 @frappe.whitelist()
-def get_healthcare_services_to_invoice(patient, customer, company, link_customer=False):
+def get_healthcare_services_to_invoice(
+	patient: str, customer: str, company: str, link_customer: bool = False
+) -> list[dict]:
 	patient = frappe.get_doc("Patient", patient)
 	if not customer:
 		customer = patient.customer
@@ -41,6 +44,7 @@ def get_healthcare_services_to_invoice(patient, customer, company, link_customer
 		items_to_invoice += get_lab_tests_to_invoice(patient, company)
 		items_to_invoice += get_clinical_procedures_to_invoice(patient, company)
 		items_to_invoice += get_inpatient_services_to_invoice(patient, company)
+		items_to_invoice += get_emergency_services_to_invoice(patient, company)
 		items_to_invoice += get_therapy_plans_to_invoice(patient, company)
 		items_to_invoice += get_therapy_sessions_to_invoice(patient, company)
 		items_to_invoice += get_service_requests_to_invoice(patient, company)
@@ -52,7 +56,7 @@ def get_healthcare_services_to_invoice(patient, customer, company, link_customer
 
 def validate_customer_created(patient, customer, link_customer):
 	message = ""
-	if link_customer:
+	if link_customer and customer:
 		frappe.db.set_value("Patient", patient, "customer", customer)
 		message = _("Customer {0} has been linked to Patient").format(customer)
 	elif not frappe.db.get_value("Patient", patient.name, "customer"):
@@ -150,17 +154,13 @@ def get_appointments_to_invoice(patient, company):
 				)
 		# Consultation Appointments, should check fee validity
 		else:
-			if appointment.practitioner:
-				pract_enabled = frappe.get_cached_value(
-					"Healthcare Practitioner", appointment.practitioner, "enable_free_follow_ups"
-				)
-				settings_enabled = frappe.db.get_single_value("Healthcare Settings", "enable_free_follow_ups")
-
-				if pract_enabled or settings_enabled:
-					if get_fee_validity(appointment.name, appointment.appointment_date, ignore_status=True):
-						continue  # Skip invoicing, fee validity exists
-					if frappe.db.exists("Fee Validity Reference", {"appointment": appointment.name}):
-						continue  # Skip invoicing, fee validty present
+			if is_free_follow_up_enabled(appointment.practitioner):
+				if query_fee_validity(appointment.name, appointment.appointment_date, ignore_status=True):
+					continue  # Skip invoicing, fee validity exists
+				if frappe.db.exists(
+					"Fee Validity Reference", {"reference_dt": "Patient Appointment", "reference_dn": appointment.name}
+				):
+					continue  # Skip invoicing, fee validity present
 
 			practitioner_charge = 0
 			income_account = None
@@ -260,7 +260,16 @@ def get_encounters_to_invoice(patient, company):
 	if encounters:
 		for encounter in encounters:
 			encounter = frappe.get_doc("Patient Encounter", encounter)
-			if not encounter.appointment:
+			if not encounter.appointment:  # TODO: make if not
+				if is_free_follow_up_enabled(encounter.practitioner, "Patient Encounter"):
+					if query_fee_validity(
+						encounter.name,
+						encounter.encounter_date,
+						ignore_status=True,
+						reference_dt="Patient Encounter",
+					):
+						continue  # Skip invoicing, fee validity exists
+
 				practitioner_charge = 0
 				income_account = None
 				service_item = None
@@ -522,6 +531,113 @@ def get_inpatient_services_to_invoice(patient, company):
 			)
 
 	return services_to_invoice
+
+
+def get_emergency_services_to_invoice(patient, company):
+	from healthcare.healthcare.doctype.emergency_record.emergency_record import (
+		get_billable_service_unit_type,
+	)
+
+	services_to_invoice = []
+	er = frappe.qb.DocType("Emergency Record")
+	eo = frappe.qb.DocType("Emergency Occupancy")
+
+	records = (
+		frappe.qb.from_(er)
+		.select(er.name, er.consultation_item, er.consultation_charge, er.attending_practitioner)
+		.where((er.patient == patient.name) & (er.company == company) & (er.invoiced == 0))
+	).run(as_dict=True)
+	for record in records:
+		if record.consultation_item:
+			services_to_invoice.append(
+				{
+					"reference_type": "Emergency Record",
+					"reference_name": record.name,
+					"service": record.consultation_item,
+					"rate": record.consultation_charge,
+					"practitioner": record.attending_practitioner,
+					"qty": 1,
+				}
+			)
+
+	occupancies = (
+		frappe.qb.from_(eo)
+		.join(er)
+		.on(eo.parent == er.name)
+		.select(eo.star)
+		.where((er.patient == patient.name) & (er.company == company) & (eo.invoiced == 0))
+	).run(as_dict=True)
+	for occupancy in occupancies:
+		unit_type = get_billable_service_unit_type(occupancy.service_unit)
+		if not unit_type:
+			continue
+		coverage_line = get_emergency_coverage_line(occupancy, company)
+		if coverage_line:
+			services_to_invoice.append(coverage_line)
+		else:
+			services_to_invoice.append(
+				{
+					"reference_type": "Emergency Occupancy",
+					"reference_name": occupancy.name,
+					"service": unit_type.item,
+					"qty": get_emergency_occupancy_qty(occupancy, unit_type),
+				}
+			)
+
+	return services_to_invoice
+
+
+def get_emergency_occupancy_qty(occupancy, unit_type):
+	# Reuse the single source of truth so the Sales Invoice pull path bills the same
+	# quantity as the Emergency Record push path (create_sales_invoice / coverage).
+	from healthcare.healthcare.doctype.emergency_record.emergency_record import occupancy_qty
+
+	check_out = occupancy.check_out or frappe.utils.now_datetime()
+	hours = flt(time_diff_in_hours(check_out, occupancy.check_in))
+	return occupancy_qty(hours, unit_type.no_of_hours, unit_type.minimum_billable_qty)
+
+
+def get_emergency_coverage_line(occupancy, company):
+	if not occupancy.insurance_coverage:
+		return None
+	coverage = frappe.get_cached_value(
+		"Patient Insurance Coverage",
+		occupancy.insurance_coverage,
+		[
+			"status",
+			"coverage",
+			"discount",
+			"price_list_rate",
+			"item_code",
+			"qty",
+			"policy_number",
+			"coverage_validity_end_date",
+			"company",
+			"insurance_payor",
+		],
+		as_dict=True,
+	)
+	if (
+		not coverage
+		or coverage.status not in ["Approved", "Partly Invoiced"]
+		or getdate() > coverage.coverage_validity_end_date
+		or company != coverage.company
+	):
+		return None
+	return {
+		"reference_type": "Emergency Occupancy",
+		"reference_name": occupancy.name,
+		"insurance_coverage": occupancy.insurance_coverage,
+		"patient_insurance_policy": coverage.policy_number,
+		"insurance_payor": coverage.insurance_payor,
+		"service": coverage.item_code,
+		"rate": coverage.price_list_rate,
+		"coverage_percentage": coverage.coverage,
+		"discount_percentage": coverage.discount,
+		"coverage_rate": coverage.price_list_rate,
+		"coverage_qty": coverage.qty,
+		"qty": coverage.qty,
+	}
 
 
 def get_therapy_plans_to_invoice(patient, company):
@@ -813,6 +929,12 @@ def manage_invoice_submit_cancel(doc, method):
 
 				if item.reference_dt == "Patient Appointment":
 					manage_fee_validity(frappe.get_doc("Patient Appointment", item.reference_dn))
+				elif item.reference_dt == "Patient Encounter":
+					# an encounter manages its fee validity on submit, and only then, so the
+					# invoice is only stamped on a validity that already exists
+					set_sales_invoice_reference(
+						item.reference_dt, item.reference_dn, doc.name if method == "on_submit" else None
+					)
 
 				# set patient as active if registration invoice
 				if item.get("reference_dt") == "Patient":
@@ -831,6 +953,7 @@ def manage_invoice_submit_cancel(doc, method):
 		if (
 			effective_method == "on_submit"
 			and not is_return
+			and not doc.get("return_against")
 			and frappe.db.get_single_value("Healthcare Settings", "create_observation_on_si_submit")
 		):
 			create_sample_collection_and_observation(doc)
@@ -1379,75 +1502,6 @@ def render_doc_as_html(doctype, docname, exclude_fields=None):
 	return {"html": doc_html}
 
 
-def update_address_links(address, method):
-	"""
-	Hook validate Address
-	If Patient is linked in Address, also link the associated Customer
-	"""
-	if "Healthcare" not in frappe.get_active_domains():
-		return
-
-	patient_links = list(filter(lambda link: link.get("link_doctype") == "Patient", address.links))
-
-	for link in patient_links:
-		customer = frappe.db.get_value("Patient", link.get("link_name"), "customer")
-		if customer and not address.has_link("Customer", customer):
-			address.append("links", dict(link_doctype="Customer", link_name=customer))
-
-
-def update_patient_email_and_phone_numbers(contact, method):
-	"""
-	Hook validate Contact
-	Update linked Patients' primary mobile and phone numbers
-	"""
-	if "Healthcare" not in frappe.get_active_domains() or contact.flags.skip_patient_update:
-		return
-
-	if contact.is_primary_contact and (contact.email_id or contact.mobile_no or contact.phone):
-		patient_links = list(filter(lambda link: link.get("link_doctype") == "Patient", contact.links))
-
-		for link in patient_links:
-			contact_details = frappe.db.get_value(
-				"Patient", link.get("link_name"), ["email", "mobile", "phone"], as_dict=1
-			)
-			if contact.email_id and contact.email_id != contact_details.get("email"):
-				frappe.db.set_value("Patient", link.get("link_name"), "email", contact.email_id)
-			if contact.mobile_no and contact.mobile_no != contact_details.get("mobile"):
-				frappe.db.set_value("Patient", link.get("link_name"), "mobile", contact.mobile_no)
-			if contact.phone and contact.phone != contact_details.get("phone"):
-				frappe.db.set_value("Patient", link.get("link_name"), "phone", contact.phone)
-
-
-def before_tests():
-	# complete setup if missing
-	from frappe.desk.page.setup_wizard.setup_wizard import setup_complete
-
-	current_year = frappe.utils.now_datetime().year
-
-	if not frappe.get_list("Company"):
-		setup_complete(
-			{
-				"currency": "INR",
-				"full_name": "Test User",
-				"company_name": "Frappe Care LLC",
-				"timezone": "America/New_York",
-				"company_abbr": "WP",
-				"industry": "Healthcare",
-				"country": "United States",
-				"fy_start_date": f"{current_year}-01-01",
-				"fy_end_date": f"{current_year}-12-31",
-				"language": "english",
-				"company_tagline": "Testing",
-				"email": "test@erpnext.com",
-				"password": "test",
-				"chart_of_accounts": "Standard",
-				"domains": ["Healthcare"],
-			}
-		)
-
-		setup_healthcare()
-
-
 def create_healthcare_service_unit_tree_root(doc, method=None):
 	record = [
 		{
@@ -1635,6 +1689,7 @@ def insert_observation_and_sample_collection(
 		current_parent_observation = add_observation(
 			patient=patient,
 			template=grp.get("name"),
+			company=doc.company,
 			practitioner=doc.ref_practitioner,
 			invoice=doc.name,
 			child=child if child else "",
@@ -1691,12 +1746,13 @@ def insert_observation_and_sample_collection(
 					add_observation(
 						patient=patient,
 						template=comp,
+						company=doc.company,
 						practitioner=doc.ref_practitioner,
 						parent=current_parent_observation,
 						invoice=doc.name,
 						child=child if child else "",
 					)
-		# create sample_colleciton child row for sample_collection_reqd grouped templates
+		# create sample_collection child row for sample_collection_reqd grouped templates
 		if len(sample_reqd_component_obs) > 0:
 			for comp in sample_reqd_component_obs:
 				comp_details = frappe.get_value(
@@ -1732,6 +1788,7 @@ def insert_observation_and_sample_collection(
 			add_observation(
 				patient=patient,
 				template=grp.get("name"),
+				company=doc.company,
 				practitioner=doc.ref_practitioner,
 				invoice=doc.name,
 				child=child if child else "",

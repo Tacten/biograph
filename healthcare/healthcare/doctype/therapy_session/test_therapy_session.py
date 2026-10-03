@@ -3,13 +3,13 @@
 
 
 import frappe
-from frappe.tests import IntegrationTestCase
 from frappe.utils import nowdate
 
 from healthcare.healthcare.doctype.therapy_plan.test_therapy_plan import create_therapy_plan
+from healthcare.tests.utils import HealthcareTestSuite
 
 
-class TestTherapySession(IntegrationTestCase):
+class TestTherapySession(HealthcareTestSuite):
 	def test_exercise_set_from_therapy_type(self):
 		plan = create_therapy_plan()
 		session = create_therapy_session(plan.patient, "Basic Rehab", plan.name)
@@ -30,6 +30,7 @@ def create_therapy_session(patient, therapy_type, therapy_plan, duration=0, star
 	therapy_session.therapy_plan = therapy_plan
 	therapy_session.duration = duration
 	therapy_session.start_date = start_date
+	therapy_session.company = "_Test Company"
 	therapy_session.save()
 
 	return therapy_session

@@ -101,7 +101,7 @@ class TherapyPlan(Document):
 		self.invoiced_amount = paid_amount
 
 	@frappe.whitelist()
-	def set_therapy_details_from_template(self):
+	def set_therapy_details_from_template(self) -> object:
 		# Add therapy types in the child table
 		self.set("therapy_plan_details", [])
 		therapy_plan_template = frappe.get_doc("Therapy Plan Template", self.therapy_plan_template)
@@ -267,6 +267,7 @@ def make_sales_invoice(reference_name, patient, company, items, therapy_plan_tem
 			"customer": si.customer,
 			"selling_price_list": price_list,
 			"price_list_currency": price_list_currency,
+			"currency": price_list_currency,
 			"plc_conversion_rate": 1.0,
 			"conversion_rate": 1.0,
 			"income_account": get_income_account(si.ref_practitioner, company)

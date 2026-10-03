@@ -1,23 +1,21 @@
 import responses
 
 import frappe
-from frappe.tests import IntegrationTestCase
 
 from healthcare.regional.india.abdm.utils import abdm_request
+from healthcare.tests.utils import HealthcareTestSuite
 
 
-class TestPatient(IntegrationTestCase):
-	@classmethod
-	def setUpClass(cls):
-		super().setUpClass()
-
+class TestPatient(HealthcareTestSuite):
+	def setUp(self):
+		super().setUp()
 		doc = frappe.get_doc(
 			{
 				"doctype": "ABDM Settings",
 				"default": 1,
 				"auth_base_url": "https://dev.abdm.gov.in/gateway/",
 				"health_id_base_url": "https://healthidsbx.abdm.gov.in/api/",
-				"Company": frappe.defaults.get_user_default("Company"),
+				"company": frappe.defaults.get_user_default("Company"),
 			}
 		)
 		doc.insert()

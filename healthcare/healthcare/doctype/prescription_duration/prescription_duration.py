@@ -8,7 +8,15 @@ from frappe.utils import cstr
 
 class PrescriptionDuration(Document):
 	def autoname(self):
-		self.name = " ".join(filter(None, [cstr(self.get(f)).strip() for f in ["number", "period"]]))
+		name_parts = []
+
+		for fieldname in ["number", "period"]:
+			value = cstr(self.get(fieldname)).strip()
+
+			if value:
+				name_parts.append(value)
+
+		self.name = " ".join(name_parts)
 
 	def get_days(self):
 		days = 0

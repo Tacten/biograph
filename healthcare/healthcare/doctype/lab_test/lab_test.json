@@ -30,6 +30,7 @@
   "patient_age",
   "patient_sex",
   "inpatient_record",
+  "emergency_record",
   "report_preference",
   "email",
   "mobile",
@@ -632,6 +633,14 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fetch_from": "patient.emergency_record",
+   "fieldname": "emergency_record",
+   "fieldtype": "Link",
+   "label": "Emergency Record",
+   "options": "Emergency Record",
+   "read_only": 1
   }
  ],
  "is_submittable": 1,
@@ -641,7 +650,7 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2025-09-18 12:27:01.235401",
+ "modified": "2026-10-03 03:00:00.000000",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Lab Test",

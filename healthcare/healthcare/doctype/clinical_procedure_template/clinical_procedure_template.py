@@ -103,8 +103,8 @@ def create_item_from_template(doc):
 
 
 def make_item_price(item, item_price):
-	price_list_name = frappe.db.get_value(
-		"Selling Settings", None, "selling_price_list"
+	price_list_name = frappe.db.get_single_value(
+		"Selling Settings", "selling_price_list"
 	) or frappe.db.get_value("Price List", {"selling": 1})
 	frappe.get_doc(
 		{

@@ -1,83 +1,85 @@
 import frappe
-from frappe import DuplicateEntryError
-from frappe.tests import IntegrationTestCase
 from frappe.utils import add_days, add_months, getdate
 
-from healthcare.healthcare.doctype.patient_appointment.test_patient_appointment import (
-	create_appointment_type,
-	create_practitioner,
-)
 from healthcare.healthcare.doctype.therapy_plan.test_therapy_plan import create_encounter
 from healthcare.healthcare.report.diagnosis_trends.diagnosis_trends import execute
+from healthcare.tests.utils import HealthcareTestSuite
 
-months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
+class TestDiagnosisTrends(HealthcareTestSuite):
+	def setUp(self):
+		super().setUp()
+		self.create_test_transactions()
 
-class TestDiagnosisTrends(IntegrationTestCase):
-	@classmethod
-	def setUpClass(cls):
-		cls.create_diagnosis()
+	def create_test_transactions(self):
+		patient_name = frappe.db.get_list("Patient")[0].name
+		cardiology_practitioner = frappe.db.get_value(
+			"Healthcare Practitioner",
+			{
+				"last_name": "Healthcare Practitioner 2",
+				"department": "Cardiology",
+			},
+			"name",
+		)
+		general_practitioner = frappe.db.get_value(
+			"Healthcare Practitioner",
+			{
+				"last_name": "Healthcare Practitioner 0",
+				"department": "_Test Medical Department",
+			},
+			"name",
+		)
 
-	@classmethod
-	def create_diagnosis(cls):
-		medical_department = frappe.get_doc({"doctype": "Medical Department", "department": "Cardiology"})
-		try:
-			medical_department.insert()
-		except DuplicateEntryError:
-			pass
+		self.assertTrue(patient_name)
+		self.assertTrue(cardiology_practitioner)
+		self.assertTrue(general_practitioner)
 
-		patient = frappe.get_list("Patient")[0]
-		practitioner_name = create_practitioner(medical_department=medical_department.name)
-		encounter_cardiology = create_encounter(
-			patient=patient.name,
+		self.heart_attack_encounter = self.create_encounter_with_diagnosis(
+			patient=patient_name,
+			practitioner=cardiology_practitioner,
+			medical_department="Cardiology",
+			diagnosis="Heart Attack",
+		)
+
+		self.fever_encounter = self.create_encounter_with_diagnosis(
+			patient=patient_name,
+			practitioner=general_practitioner,
+			medical_department="_Test Medical Department",
+			diagnosis="Fever",
+		)
+
+	def create_encounter_with_diagnosis(self, patient, practitioner, medical_department, diagnosis):
+		encounter = create_encounter(
+			patient=patient,
 			medical_department=medical_department,
-			practitioner=practitioner_name,
+			practitioner=practitioner,
 			submit=False,
 		)
 
-		try:
-			cls.diagnosis = frappe.get_doc(
-				{
-					"doctype": "Diagnosis",
-					"diagnosis": "Fever",
-				}
-			)
-			cls.diagnosis.insert()
-		except DuplicateEntryError:
-			pass
-
-		try:
-			cls.diagnosis_cardio = frappe.get_doc(
-				{
-					"doctype": "Diagnosis",
-					"diagnosis": "Heart Attack",
-				}
-			)
-			cls.diagnosis_cardio.insert()
-		except DuplicateEntryError:
-			pass
-
-		encounter = frappe.get_doc("Patient Encounter", encounter_cardiology.name)
+		encounter.reload()
+		encounter.source = "Direct"
+		encounter.medical_department = medical_department
 		encounter.append(
 			"diagnosis",
 			{
-				"diagnosis": "Fever",
+				"diagnosis": diagnosis,
 			},
 		)
-		encounter.source = "Direct"
-		encounter.appointment_type = create_appointment_type().name
 		encounter.save()
+		encounter.reload()
 
-		encounter_cardiology.reload()
-		encounter_cardiology.append(
-			"diagnosis",
-			{
-				"diagnosis": "Heart Attack",
-			},
+		self.assertEqual(encounter.medical_department, medical_department)
+		self.assertTrue(
+			frappe.db.exists(
+				"Patient Encounter Diagnosis",
+				{
+					"parent": encounter.name,
+					"diagnosis": diagnosis,
+				},
+			)
 		)
-		encounter.source = "Direct"
-		encounter.appointment_type = create_appointment_type().name
-		encounter_cardiology.save()
+
+		return encounter
 
 	def test_report_data(self):
 		filters = {
@@ -85,22 +87,20 @@ class TestDiagnosisTrends(IntegrationTestCase):
 			"to_date": str(add_days(getdate(), 1)),
 			"range": "Monthly",
 		}
-
 		report = execute(filters)
-		data = [i["diagnosis"] for i in report[1]]
-		self.assertIn(self.diagnosis.diagnosis, data)
+		data = [row["diagnosis"] for row in report[1]]
+
+		self.assertIn("Fever", data)
+		self.assertIn("Heart Attack", data)
 
 	def test_report_data_with_filters(self):
-		medical_department = frappe.get_doc("Medical Department", "Cardiology")
-
 		filters = {
 			"from_date": str(add_months(getdate(), -12)),
 			"to_date": str(add_days(getdate(), 1)),
 			"range": "Monthly",
-			"department": medical_department.name,
+			"department": "Cardiology",
 		}
 		report = execute(filters)
+		data = [row["diagnosis"] for row in report[1]]
 
-		data = [i["diagnosis"] for i in report[1]]
-
-		self.assertIn(self.diagnosis_cardio.diagnosis, data)
+		self.assertIn("Heart Attack", data)

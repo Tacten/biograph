@@ -6,7 +6,7 @@ frappe.ui.form.on('Healthcare Service Unit Type', {
 		frm.set_df_property('item_code', 'read_only', frm.doc.__islocal ? 0 : 1);
 		if (!frm.doc.__islocal && frm.doc.is_billable && frm.doc.item) {
 			frm.add_custom_button(__('Change Item Code'), function() {
-				change_item_code(cur_frm, frm.doc);
+				change_item_code(frm, frm.doc);
 			});
 		}
 		if (!frm.doc.__islocal && frm.doc.is_billable && !frm.doc.item) {

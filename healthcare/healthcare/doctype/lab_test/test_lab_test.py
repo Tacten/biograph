@@ -3,7 +3,6 @@
 
 
 import frappe
-from frappe.tests import IntegrationTestCase
 from frappe.utils import getdate, nowtime
 
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import (
@@ -11,18 +10,12 @@ from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings impor
 	get_receivable_account,
 )
 from healthcare.healthcare.doctype.lab_test.lab_test import create_multiple
-from healthcare.healthcare.doctype.patient_appointment.test_patient_appointment import (
-	create_appointment_type,
-	create_patient,
-)
-from healthcare.healthcare.doctype.patient_medical_record.test_patient_medical_record import (
-	create_lab_test_template as create_blood_test_template,
-)
+from healthcare.tests.utils import HealthcareTestSuite
 
 
-class TestLabTest(IntegrationTestCase):
+class TestLabTest(HealthcareTestSuite):
 	def test_lab_test_item(self):
-		lab_template = create_lab_test_template()
+		lab_template = frappe.get_doc("Lab Test Template", "_Test Lab Test - with Sample")
 		self.assertTrue(frappe.db.exists("Item", lab_template.item))
 		self.assertEqual(
 			frappe.db.get_value("Item Price", {"item_code": lab_template.item}, "price_list_rate"),
@@ -38,8 +31,8 @@ class TestLabTest(IntegrationTestCase):
 		lab_template.disabled = 0
 		lab_template.save()
 
-	def test_descriptive_lab_test(self):
-		lab_template = create_lab_test_template()
+	def test_reqd_result_lab_test_raises(self):
+		lab_template = frappe.get_doc("Lab Test Template", "_Test Lab Test - without Sample")
 
 		# blank result value not allowed as per template
 		lab_test = create_lab_test(lab_template)
@@ -50,7 +43,7 @@ class TestLabTest(IntegrationTestCase):
 
 	def test_sample_collection(self):
 		frappe.db.set_single_value("Healthcare Settings", "create_sample_collection_for_lab_test", 1)
-		lab_template = create_lab_test_template()
+		lab_template = frappe.get_doc("Lab Test Template", "_Test Lab Test - with Sample")
 
 		lab_test = create_lab_test(lab_template)
 		lab_test.descriptive_test_items[0].result_value = 12
@@ -97,12 +90,10 @@ class TestLabTest(IntegrationTestCase):
 				self.assertTrue(
 					frappe.db.exists("Lab Test", {"service_request": service_request.get("name")})
 				)
-		# self.assertTrue(patient_encounter.lab_test_prescription[0].lab_test_created)
-		# self.assertTrue(patient_encounter.lab_test_prescription[0].lab_test_created)
 
 
 def create_lab_test_template(test_sensitivity=0, sample_collection=1):
-	medical_department = create_medical_department()
+	medical_department = "_Test Medical Department"
 	if frappe.db.exists("Lab Test Template", "Insulin Resistance"):
 		return frappe.get_doc("Lab Test Template", "Insulin Resistance")
 	template = frappe.new_doc("Lab Test Template")
@@ -131,23 +122,13 @@ def create_lab_test_template(test_sensitivity=0, sample_collection=1):
 	return template
 
 
-def create_medical_department():
-	medical_department = frappe.db.exists("Medical Department", "_Test Medical Department")
-	if not medical_department:
-		medical_department = frappe.new_doc("Medical Department")
-		medical_department.department = "_Test Medical Department"
-		medical_department.save()
-		medical_department = medical_department.name
-
-	return medical_department
-
-
 def create_lab_test(lab_template):
-	patient = create_patient()
+	patient = frappe.get_list("Patient", pluck="name")[0]
 	lab_test = frappe.new_doc("Lab Test")
 	lab_test.template = lab_template.name
 	lab_test.patient = patient
 	lab_test.patient_sex = "Female"
+	lab_test.company = "_Test Company"
 	lab_test.save()
 
 	return lab_test
@@ -167,10 +148,9 @@ def create_lab_test_sample():
 
 
 def create_sales_invoice():
-	patient = create_patient()
-	medical_department = create_medical_department()
-	insulin_resistance_template = create_lab_test_template()
-	blood_test_template = create_blood_test_template(medical_department)
+	patient = frappe.get_list("Patient", pluck="name")[0]
+	insulin_resistance_template = frappe.get_doc("Lab Test Template", "_Test Lab Test - Sensitivity")
+	blood_test_template = frappe.get_doc("Lab Test Template", "_Test Lab Test - with Sample")
 
 	sales_invoice = frappe.new_doc("Sales Invoice")
 	sales_invoice.patient = patient
@@ -203,15 +183,14 @@ def create_sales_invoice():
 
 
 def create_patient_encounter():
-	patient = create_patient()
-	medical_department = create_medical_department()
-	insulin_resistance_template = create_lab_test_template()
-	blood_test_template = create_blood_test_template(medical_department)
+	patient = frappe.get_list("Patient", pluck="name")[0]
+	insulin_resistance_template = frappe.get_doc("Lab Test Template", "_Test Lab Test - Sensitivity")
+	blood_test_template = frappe.get_doc("Lab Test Template", "_Test Lab Test - with Sample")
 
 	patient_encounter = frappe.new_doc("Patient Encounter")
-	patient_encounter.appointment_type = create_appointment_type().name
+	patient_encounter.appointment_type = "_Test Appointment Type"
 	patient_encounter.patient = patient
-	patient_encounter.practitioner = create_practitioner()
+	patient_encounter.practitioner = frappe.get_list("Healthcare Practitioner", pluck="name")[0]
 	patient_encounter.encounter_date = getdate()
 	patient_encounter.encounter_time = nowtime()
 
@@ -223,18 +202,3 @@ def create_patient_encounter():
 
 	patient_encounter.submit()
 	return patient_encounter
-
-
-def create_practitioner():
-	practitioner = frappe.db.exists("Healthcare Practitioner", "_Test Healthcare Practitioner")
-
-	if not practitioner:
-		practitioner = frappe.new_doc("Healthcare Practitioner")
-		practitioner.first_name = "_Test Healthcare Practitioner"
-		practitioner.gender = "Female"
-		practitioner.op_consulting_charge = 500
-		practitioner.inpatient_visit_charge = 500
-		practitioner.save(ignore_permissions=True)
-		practitioner = practitioner.name
-
-	return practitioner

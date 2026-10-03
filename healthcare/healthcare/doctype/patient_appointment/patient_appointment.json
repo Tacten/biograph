@@ -25,6 +25,7 @@
   "patient_phone",
   "patient_email",
   "inpatient_record",
+  "emergency_record",
   "column_break_4pp7",
   "patient_sex",
   "patient_age",
@@ -166,8 +167,7 @@
    "in_standard_filter": 1,
    "label": "Healthcare Practitioner",
    "options": "Healthcare Practitioner",
-   "search_index": 1,
-   "set_only_once": 1
+   "search_index": 1
   },
   {
    "fetch_from": "practitioner.department",
@@ -292,6 +292,14 @@
    "print_hide": 1,
    "read_only": 1,
    "report_hide": 1
+  },
+  {
+   "fetch_from": "patient.emergency_record",
+   "fieldname": "emergency_record",
+   "fieldtype": "Link",
+   "label": "Emergency Record",
+   "options": "Emergency Record",
+   "read_only": 1
   },
   {
    "fieldname": "mode_of_payment",
@@ -530,7 +538,7 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2025-09-25 13:27:12.862039",
+ "modified": "2026-10-03 03:00:00.000000",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Patient Appointment",

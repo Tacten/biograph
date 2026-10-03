@@ -83,7 +83,8 @@
   "parent_observation",
   "observation_idx",
   "days",
-  "invoiced"
+  "invoiced",
+  "emergency_record"
  ],
  "fields": [
   {
@@ -117,7 +118,8 @@
    "in_standard_filter": 1,
    "label": "Patient",
    "options": "Patient",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "collapsible": 1,
@@ -390,11 +392,11 @@
    "read_only": 1
   },
   {
-   "fetch_from": "sales_invoice.status",
    "fieldname": "sales_invoice_status",
    "fieldtype": "Data",
    "label": "Sales Invoice Status",
-   "read_only": 1
+   "read_only": 1,
+   "is_virtual": 1
   },
   {
    "fieldname": "column_break_zrac",
@@ -564,12 +566,20 @@
    "fieldtype": "Check",
    "label": "Invoiced",
    "read_only": 1
+  },
+  {
+   "fetch_from": "patient.emergency_record",
+   "fieldname": "emergency_record",
+   "fieldtype": "Link",
+   "label": "Emergency Record",
+   "options": "Emergency Record",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-05 10:43:53.244291",
+ "modified": "2026-10-03 03:00:00.000000",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Observation",
@@ -600,6 +610,47 @@
    "read": 1,
    "report": 1,
    "role": "Healthcare Administrator",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "LabTest Approver",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Physician",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Nursing User",
    "share": 1,
    "submit": 1,
    "write": 1

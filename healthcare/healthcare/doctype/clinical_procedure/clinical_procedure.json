@@ -8,10 +8,10 @@
  "field_order": [
   "naming_series",
   "title",
-  "appointment",
   "procedure_template",
   "column_break_30",
   "company",
+  "appointment",
   "section_break_6",
   "patient",
   "patient_name",
@@ -83,7 +83,8 @@
    "in_standard_filter": 1,
    "label": "Patient",
    "options": "Patient",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "patient_age",
@@ -131,7 +132,8 @@
    "in_list_view": 1,
    "label": "Procedure Template",
    "options": "Clinical Procedure Template",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "service_unit",
@@ -372,7 +374,7 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2025-12-25 09:36:38.342353",
+ "modified": "2026-02-16 18:35:08.776702",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Clinical Procedure",

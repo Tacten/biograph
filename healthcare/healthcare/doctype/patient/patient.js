@@ -4,6 +4,8 @@
 
 frappe.ui.form.on('Patient', {
 	refresh: function (frm) {
+		set_dob_max_date(frm);
+
 		frm.set_query('patient', 'patient_relation', function () {
 			return {
 				filters: [
@@ -56,6 +58,8 @@ frappe.ui.form.on('Patient', {
 	},
 
 	onload: function (frm) {
+		set_dob_max_date(frm);
+
 		if (frm.doc.dob) {
 			$(frm.fields_dict['age_html'].wrapper).html(`${__('AGE')} : ${get_age(frm.doc.dob)}`);
 		} else {
@@ -136,6 +140,10 @@ frappe.ui.form.on('Patient', {
 function capitalizeWords(name) {
     return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
 }
+
+let set_dob_max_date = function (frm) {
+	frm.fields_dict.dob.datepicker?.update({ maxDate: new Date() });
+};
 
 frappe.ui.form.on('Patient', 'dob', function(frm) {
 	if (frm.doc.dob) {

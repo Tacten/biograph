@@ -25,6 +25,7 @@ export default defineConfig([
 				Vue: true,
 				SetVueGlobals: true,
 				erpnext: true,
+				healthcare: true,
 				hub: true,
 				$: true,
 				jQuery: true,

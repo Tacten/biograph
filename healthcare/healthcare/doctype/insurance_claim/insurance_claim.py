@@ -195,7 +195,8 @@ class InsuranceClaim(Document):
 	def get_coverages(self):
 		if not self.insurance_payor or not self.company:
 			frappe.throw(
-				_("Company and Insurance Provider are mandatory"), title=_("Missing Mandatory Fields")
+				_("Company and Insurance Provider are mandatory"),
+				title=_("Missing Mandatory Fields"),
 			)
 
 		valid_statuses = ["Partly Invoiced", "Invoiced"]
@@ -275,6 +276,7 @@ class InsuranceClaim(Document):
 				_("No matching Patient Insurance Coverages found, please check the filters"),
 				title=_("No Data"),
 			)
+
 		for coverage in coverages:
 			self.append("coverages", coverage)
 

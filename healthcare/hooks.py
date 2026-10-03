@@ -120,8 +120,8 @@ after_migrate = "healthcare.after_migrate.execute_migrate"
 # ---------------
 # Override standard doctype classes
 
-override_doctype_class = {
-	"Sales Invoice": "healthcare.healthcare.custom_doctype.sales_invoice.HealthcareSalesInvoice",
+extend_doctype_class = {
+	"Sales Invoice": "healthcare.healthcare.custom_doctype.sales_invoice.SalesInvoiceMixin",
 }
 
 # Document Events
@@ -193,7 +193,7 @@ scheduler_events = {
 # Testing
 # -------
 
-before_tests = "healthcare.healthcare.utils.before_tests"
+# before_tests = "healthcare.healthcare.utils.before_tests"
 
 # Overriding Methods
 # ------------------------------

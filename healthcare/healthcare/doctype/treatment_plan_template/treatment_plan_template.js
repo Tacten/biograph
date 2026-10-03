@@ -24,7 +24,7 @@ frappe.ui.form.on("Treatment Plan Template", {
 			if (row.medication) {
 				return {
 					query: "healthcare.healthcare.doctype.patient_encounter.patient_encounter.get_medications_query",
-					filters: { name: row.medication },
+					filters: { is_stock_item: 1, medication: row.medication },
 				};
 			} else {
 				return {

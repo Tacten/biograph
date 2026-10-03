@@ -5,7 +5,6 @@
 import datetime
 
 import frappe
-from frappe.tests import IntegrationTestCase
 from frappe.utils import getdate, now_datetime
 
 from healthcare.healthcare.doctype.inpatient_medication_order.test_inpatient_medication_order import (
@@ -19,21 +18,21 @@ from healthcare.healthcare.doctype.inpatient_record.inpatient_record import (
 )
 from healthcare.healthcare.doctype.inpatient_record.test_inpatient_record import (
 	create_inpatient,
-	create_patient,
 	get_healthcare_service_unit,
 	mark_invoiced_inpatient_occupancy,
 )
 from healthcare.healthcare.report.inpatient_medication_orders.inpatient_medication_orders import (
 	execute,
 )
+from healthcare.tests.utils import HealthcareTestSuite
 
 
-class TestInpatientMedicationOrders(IntegrationTestCase):
-	@classmethod
-	def setUpClass(self):
+class TestInpatientMedicationOrders(HealthcareTestSuite):
+	def setUp(self):
+		super().setUp()
 		frappe.db.sql("delete from `tabInpatient Medication Order` where company='_Test Company'")
 		frappe.db.sql("delete from `tabInpatient Medication Entry` where company='_Test Company'")
-		self.patient = create_patient()
+		self.patient = "_Test IPD Patient"
 		self.ip_record = create_records(self.patient)
 
 	def test_inpatient_medication_orders_report(self):
@@ -42,7 +41,7 @@ class TestInpatientMedicationOrders(IntegrationTestCase):
 			"from_date": getdate(),
 			"to_date": getdate(),
 			"patient": "_Test IPD Patient",
-			"service_unit": "_Test Service Unit Ip Occupancy - _TC",
+			"service_unit": "_Test HSU - Occupancy - _TC",
 		}
 
 		report = execute(filters)
@@ -51,7 +50,7 @@ class TestInpatientMedicationOrders(IntegrationTestCase):
 			{
 				"patient": "_Test IPD Patient",
 				"inpatient_record": self.ip_record.name,
-				"practitioner": None,
+				"healthcare_practitioner": None,
 				"drug": "Dextromethorphan",
 				"drug_name": "Dextromethorphan",
 				"dosage": 1.0,
@@ -59,12 +58,12 @@ class TestInpatientMedicationOrders(IntegrationTestCase):
 				"date": getdate(),
 				"time": datetime.timedelta(seconds=32400),
 				"is_completed": 0,
-				"healthcare_service_unit": "_Test Service Unit Ip Occupancy - _TC",
+				"healthcare_service_unit": "_Test HSU - Occupancy - _TC",
 			},
 			{
 				"patient": "_Test IPD Patient",
 				"inpatient_record": self.ip_record.name,
-				"practitioner": None,
+				"healthcare_practitioner": None,
 				"drug": "Dextromethorphan",
 				"drug_name": "Dextromethorphan",
 				"dosage": 1.0,
@@ -72,12 +71,12 @@ class TestInpatientMedicationOrders(IntegrationTestCase):
 				"date": getdate(),
 				"time": datetime.timedelta(seconds=50400),
 				"is_completed": 0,
-				"healthcare_service_unit": "_Test Service Unit Ip Occupancy - _TC",
+				"healthcare_service_unit": "_Test HSU - Occupancy - _TC",
 			},
 			{
 				"patient": "_Test IPD Patient",
 				"inpatient_record": self.ip_record.name,
-				"practitioner": None,
+				"healthcare_practitioner": None,
 				"drug": "Dextromethorphan",
 				"drug_name": "Dextromethorphan",
 				"dosage": 1.0,
@@ -85,7 +84,7 @@ class TestInpatientMedicationOrders(IntegrationTestCase):
 				"date": getdate(),
 				"time": datetime.timedelta(seconds=75600),
 				"is_completed": 0,
-				"healthcare_service_unit": "_Test Service Unit Ip Occupancy - _TC",
+				"healthcare_service_unit": "_Test HSU - Occupancy - _TC",
 			},
 		]
 
@@ -100,7 +99,7 @@ class TestInpatientMedicationOrders(IntegrationTestCase):
 			"from_date": getdate(),
 			"to_date": getdate(),
 			"patient": "_Test IPD Patient",
-			"service_unit": "_Test Service Unit Ip Occupancy - _TC",
+			"service_unit": "_Test HSU - Occupancy - _TC",
 			"show_completed_orders": 0,
 		}
 
@@ -136,7 +135,7 @@ def create_records(patient):
 	ip_record.expected_length_of_stay = 0
 	ip_record.save()
 	ip_record.reload()
-	service_unit = get_healthcare_service_unit("_Test Service Unit Ip Occupancy")
+	service_unit = get_healthcare_service_unit()
 	admit_patient(ip_record, service_unit, now_datetime())
 
 	ipmo = create_ipmo(patient)

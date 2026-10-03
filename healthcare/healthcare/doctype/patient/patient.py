@@ -32,6 +32,7 @@ class Patient(Document):
 
 	def validate(self):
 		self.set_full_name()
+		self.validate_dob()
 		self.flags.is_new_doc = self.is_new()
 		self.flags.existing_customer = self.is_new() and bool(self.customer)
 		
@@ -91,6 +92,10 @@ class Patient(Document):
 			info = get_dashboard_info("Customer", self.customer, None)
 			self.set_onload("dashboard_info", info)
 
+	def validate_dob(self):
+		if self.dob and getdate(self.dob) > getdate():
+			frappe.throw(_("Date of Birth cannot be greater than today"), title=_("Invalid Date of Birth"))
+
 	def set_full_name(self):
 		self.patient_name = " ".join(
 			[name for name in [self.first_name, self.middle_name, self.last_name] if name]
@@ -100,7 +105,7 @@ class Patient(Document):
 		if not self.customer_group:
 			self.customer_group = frappe.db.get_single_value(
 				"Selling Settings", "customer_group"
-			) or get_root_of("Customer Group")
+			) or frappe.db.exists("Customer Group", "Individual")
 		if not self.territory:
 			self.territory = frappe.db.get_single_value("Selling Settings", "territory") or get_root_of(
 				"Territory"

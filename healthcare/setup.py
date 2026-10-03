@@ -5,6 +5,11 @@ from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from healthcare.healthcare.setup.patient_duplicate_check import setup_patient_duplicate_check_rules
 from erpnext.setup.utils import insert_record	
 
+from healthcare.healthcare.doctype.allergy.allergy_seed import create_allergies
+from healthcare.healthcare.doctype.medication_class.medication_class_seed import (
+	create_medication_classes,
+)
+
 
 data = {
 	"desktop_icons": [
@@ -328,13 +333,16 @@ def create_default_root_service_units():
 def create_custom_records():
 	create_medical_departments()
 	create_antibiotics()
+	create_medication_classes()
+	create_allergies()
 	create_lab_test_uom()
 	create_duration()
 	create_dosage()
 	create_dosage_form()
-	create_customer_groups()
 	create_healthcare_item_groups()
 	create_sensitivity()
+	create_triage_levels()
+	create_vital_sign_observation_templates()
 	setup_patient_history_settings()
 	setup_service_request_masters()
 	setup_order_status_codes()
@@ -828,18 +836,6 @@ def create_healthcare_item_groups():
 	insert_record(records)
 
 
-def create_customer_groups():
-	records = [
-		{
-			"doctype": "Customer Group",
-			"customer_group_name": _("Insurance Payor"),
-			"is_group": 0,
-			"parent_customer_group": _("All Customer Groups"),
-		}
-	]
-	insert_record(records)
-
-
 def get_item_group_records():
 	return [
 		{
@@ -857,6 +853,56 @@ def get_item_group_records():
 			"parent_item_group": _("All Item Groups"),
 		},
 	]
+
+
+def create_triage_levels():
+	levels = [
+		{
+			"triage_level": "Emergency",
+			"code": "RED",
+			"color": "#e24c4c",
+			"priority": 1,
+			"target_reassessment_mins": 0,
+		},
+		{
+			"triage_level": "Urgent",
+			"code": "YELLOW",
+			"color": "#ecad4b",
+			"priority": 2,
+			"target_reassessment_mins": 30,
+		},
+		{
+			"triage_level": "Non-urgent",
+			"code": "GREEN",
+			"color": "#4caf50",
+			"priority": 3,
+			"target_reassessment_mins": 120,
+		},
+	]
+	records = [{"doctype": "Triage Level", **level} for level in levels]
+	insert_record(records)
+
+
+def create_vital_sign_observation_templates():
+	vitals = [
+		(_("Pulse"), "PR"),
+		(_("Respiratory Rate"), "RR"),
+		(_("Temperature"), "TEMP"),
+		(_("BP Systolic"), "BPS"),
+		(_("BP Diastolic"), "BPD"),
+		(_("SpO2"), "SPO2"),
+	]
+	records = [
+		{
+			"doctype": "Observation Template",
+			"observation": observation,
+			"abbr": abbr,
+			"observation_category": "Vital Signs",
+			"permitted_data_type": "Quantity",
+		}
+		for observation, abbr in vitals
+	]
+	insert_record(records)
 
 
 def create_sensitivity():
