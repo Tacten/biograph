@@ -82,53 +82,55 @@ def get_columns():
 	]
 
 
-def get_data(filters):
-	conditions, values = get_conditions(filters)
+def get_data(filters=None):
+	filters = frappe._dict(filters or {})
 
-	data = frappe.db.sql(
-		f"""
-		SELECT
-			parent.patient, parent.inpatient_record, parent.practitioner,
-			child.drug, child.drug_name, child.dosage, child.dosage_form,
-			child.date, child.time, child.is_completed, child.name
-		FROM `tabInpatient Medication Order` parent
-		INNER JOIN `tabInpatient Medication Order Entry` child
-		ON child.parent = parent.name
-		WHERE
-			parent.docstatus = 1
-			{conditions}
-		ORDER BY date, time
-	""",
-		values,
-		as_dict=1,
+	parent = frappe.qb.DocType("Inpatient Medication Order")
+	child = frappe.qb.DocType("Inpatient Medication Order Entry")
+
+	query = (
+		frappe.qb.from_(parent)
+		.inner_join(child)
+		.on(child.parent == parent.name)
+		.select(
+			parent.patient,
+			parent.inpatient_record,
+			parent.practitioner.as_("healthcare_practitioner"),
+			child.drug,
+			child.drug_name,
+			child.dosage,
+			child.dosage_form,
+			child.date,
+			child.time,
+			child.is_completed,
+			child.name.as_("order_entry"),
+		)
+		.where(parent.docstatus == 1)
 	)
+
+	query = get_conditions(query, filters, parent, child)
+
+	data = query.orderby(child.date).orderby(child.time).run(as_dict=True)
 
 	data = get_inpatient_details(data, filters.get("service_unit"))
 
 	return data
 
 
-def get_conditions(filters):
-	conditions = ""
-	values = dict()
-
+def get_conditions(query, filters, parent, child):
 	if filters.get("company"):
-		conditions += " AND parent.company = %(company)s"
-		values["company"] = filters.get("company")
+		query = query.where(parent.company == filters.get("company"))
 
 	if filters.get("from_date") and filters.get("to_date"):
-		conditions += " AND child.date BETWEEN %(from_date)s and %(to_date)s"
-		values["from_date"] = filters.get("from_date")
-		values["to_date"] = filters.get("to_date")
+		query = query.where(child.date.between(filters.get("from_date"), filters.get("to_date")))
 
 	if filters.get("patient"):
-		conditions += " AND parent.patient = %(patient)s"
-		values["patient"] = filters.get("patient")
+		query = query.where(parent.patient == filters.get("patient"))
 
 	if not filters.get("show_completed_orders"):
-		conditions += " AND child.is_completed = 0"
+		query = query.where(child.is_completed == 0)
 
-	return conditions, values
+	return query
 
 
 def get_inpatient_details(data, service_unit):
@@ -136,13 +138,14 @@ def get_inpatient_details(data, service_unit):
 
 	for entry in data:
 		entry["healthcare_service_unit"] = get_current_healthcare_service_unit(entry.inpatient_record)
+
 		if entry.is_completed:
-			entry["inpatient_medication_entry"] = get_inpatient_medication_entry(entry.name)
+			entry["inpatient_medication_entry"] = get_inpatient_medication_entry(entry.order_entry)
 
 		if service_unit and entry.healthcare_service_unit and service_unit != entry.healthcare_service_unit:
 			service_unit_filtered_data.append(entry)
 
-		entry.pop("name", None)
+		entry.pop("order_entry", None)
 
 	for entry in service_unit_filtered_data:
 		data.remove(entry)

@@ -1,5 +1,4 @@
-frappe.ui.form.on(cur_frm.doctype, {
-	// nosemgrep
+const request_event_handler = {
 	onload: function (frm) {
 		if (frm.doc.__islocal) {
 			frm.set_value("order_time", frappe.datetime.now_time());
@@ -171,7 +170,10 @@ frappe.ui.form.on(cur_frm.doctype, {
 		let age_str = calculate_age(frm.doc.patient_birth_date);
 		frm.set_value("patient_age_data", age_str);
 	},
-});
+};
+
+frappe.ui.form.on("Service Request", request_event_handler);
+frappe.ui.form.on("Medication Request", request_event_handler);
 
 let calculate_age = function (birth) {
 	let ageMS = Date.parse(Date()) - Date.parse(birth);

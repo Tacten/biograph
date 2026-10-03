@@ -421,6 +421,7 @@ let transfer_patient_dialog = function (frm) {
 			filters: {
 				inpatient_occupancy: 1,
 				allow_appointments: 0,
+				is_ot: 0,
 			},
 		};
 	};
@@ -533,9 +534,7 @@ let transfer_for_procedure_dialog = function (frm) {
 			if (check_in > frappe.datetime.now_datetime()) {
 				frappe.msgprint({
 					title: __("Not Allowed"),
-					message: __(
-						"Check-in time cannot be greater than the current time",
-					),
+					message: __("Check-in time cannot be after current time"),
 					indicator: "red",
 				});
 				return;

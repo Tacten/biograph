@@ -48,7 +48,8 @@
   "more_information_section",
   "service_request",
   "invoiced",
-  "amended_from"
+  "amended_from",
+  "emergency_record"
  ],
  "fields": [
   {
@@ -258,6 +259,14 @@
    "label": "More Information"
   },
   {
+   "fetch_from": "patient.emergency_record",
+   "fieldname": "emergency_record",
+   "fieldtype": "Link",
+   "label": "Emergency Record",
+   "options": "Emergency Record",
+   "read_only": 1
+  },
+  {
    "collapsible": 1,
    "fieldname": "consumables_section",
    "fieldtype": "Section Break",
@@ -348,7 +357,7 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2025-09-25 12:17:43.610989",
+ "modified": "2026-10-03 03:00:00.000000",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Therapy Session",

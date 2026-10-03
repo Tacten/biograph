@@ -38,7 +38,7 @@ class LabTest(Document):
 			frappe.db.set_value("Service Request", self.service_request, "status", "active-Request Status")
 		self.reload()
 
-	def on_update(self):
+	def before_save(self):
 		if self.sensitivity_test_items:
 			sensitivity = sorted(self.sensitivity_test_items, key=lambda x: x.antibiotic_sensitivity)
 			for i, item in enumerate(sensitivity):

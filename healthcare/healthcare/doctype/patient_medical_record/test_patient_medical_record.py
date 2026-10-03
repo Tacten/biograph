@@ -3,29 +3,27 @@
 
 
 import frappe
-from frappe.tests import IntegrationTestCase
 from frappe.utils import add_days, nowdate
 
 from erpnext.accounts.doctype.pos_profile.test_pos_profile import make_pos_profile
 
 from healthcare.healthcare.doctype.patient_appointment.test_patient_appointment import (
 	create_appointment,
-	create_clinical_procedure_template,
 	create_encounter,
-	create_healthcare_docs,
-	create_medical_department,
 )
+from healthcare.tests.utils import HealthcareTestSuite
 
 
-class TestPatientMedicalRecord(IntegrationTestCase):
+class TestPatientMedicalRecord(HealthcareTestSuite):
 	def setUp(self):
+		super().setUp()
 		frappe.db.set_single_value("Healthcare Settings", "enable_free_follow_ups", 0)
 		frappe.db.set_single_value("Healthcare Settings", "show_payment_popup", 1)
 		make_pos_profile()
 
 	def test_medical_record(self):
-		patient, practitioner = create_healthcare_docs()
-		medical_department = create_medical_department()
+		patient = frappe.get_list("Patient", pluck="name")[0]
+		practitioner = frappe.get_list("Healthcare Practitioner", pluck="name")[0]
 		appointment = create_appointment(patient, practitioner, nowdate(), invoice=1)
 		encounter = create_encounter(appointment)
 
@@ -42,7 +40,7 @@ class TestPatientMedicalRecord(IntegrationTestCase):
 		)
 		self.assertTrue(medical_rec)
 
-		procedure_template = create_clinical_procedure_template().get("name")
+		procedure_template = "_Test Procedure - Knee Surgery and Rehab"
 		appointment = create_appointment(
 			patient, practitioner, add_days(nowdate(), 1), invoice=1, procedure_template=procedure_template
 		)
@@ -55,7 +53,7 @@ class TestPatientMedicalRecord(IntegrationTestCase):
 		)
 		self.assertTrue(medical_rec)
 
-		template = create_lab_test_template(medical_department)
+		template = frappe.get_doc("Lab Test Template", "_Test Lab Test - with Sample")
 		lab_test = create_lab_test(template.name, patient)
 		# check for lab test
 		medical_rec = frappe.db.exists(
@@ -110,6 +108,10 @@ def create_lab_test(template, patient):
 	lab_test.patient = patient
 	lab_test.patient_sex = frappe.db.get_value("Patient", patient, "sex")
 	lab_test.template = template
+	lab_test.save()
+	lab_test.descriptive_test_items[0].result_value = 12
+	lab_test.descriptive_test_items[1].result_value = 1
+	lab_test.descriptive_test_items[2].result_value = 2.3
 	lab_test.save()
 	lab_test.submit()
 	return lab_test

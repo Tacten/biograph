@@ -47,6 +47,8 @@ healthcare.ObservationWidget = class {
 						font-size: 11px;
 						padding-left: 15px;
 						margin-right: 15px;
+						padding-bottom: 14px;
+						margin-bottom: 3px;
 						border-radius: var(--border-radius-md);
 						background-color: var(--fg-color);
 						box-shadow: var(--card-shadow);"
@@ -139,13 +141,17 @@ healthcare.ObservationWidget = class {
 
 	init_field_group(obs_data, wrapper) {
 		var me = this;
-		var default_input = ""
-		if( ['Range', 'Ratio', 'Quantity', 'Numeric'].includes(obs_data.permitted_data_type)) {
-			default_input = obs_data.result_data
-
-		} else if (obs_data.permitted_data_type=='Text') {
-			default_input = trim_html(obs_data.result_text)
-
+		me._is_rendering_result_field = me._is_rendering_result_field || {};
+		me._is_rendering_result_field[obs_data.name] = true;
+		var default_input = "";
+		if (
+			["Range", "Ratio", "Quantity", "Numeric"].includes(
+				obs_data.permitted_data_type,
+			)
+		) {
+			default_input = obs_data.result_data;
+		} else if (obs_data.permitted_data_type == "Text") {
+			default_input = trim_html(obs_data.result_text);
 		}
 		let fieldtype = "Data"
 		let options = ""
@@ -181,10 +187,13 @@ healthcare.ObservationWidget = class {
 					fieldname: 'result',
 					fieldtype: fieldtype,
 					options: options,
-					read_only: 1 ? (obs_data.status=='Approved') : 0,
-					change: (s) => {
-						me.frm.dirty()
-						me.set_result_n_name(obs_data.name)
+					read_only: 1 ? obs_data.status == "Approved" : 0,
+					change: () => {
+						if (me._is_rendering_result_field[obs_data.name]) {
+							return;
+						}
+						me.frm.dirty();
+						me.set_result_n_name(obs_data.name);
 					},
 					default: default_input,
 					hidden: 1 ? obs_data.observation_category == "Imaging" : 0,
@@ -223,9 +232,8 @@ healthcare.ObservationWidget = class {
 					fieldtype: 'Section Break',
 				},
 				{
-					fieldname: 'note_text',
-					fieldtype: 'Text',
-					read_only: 1,
+					fieldname: "note_text",
+					fieldtype: "HTML",
 				},
 				{
 					fieldtype: 'Section Break',
@@ -238,9 +246,8 @@ healthcare.ObservationWidget = class {
 					click: () => me.add_finding_interpretation(obs_data, "Findings"),
 				},
 				{
-					fieldname: 'findings_text',
-					fieldtype: 'Text',
-					read_only: 1,
+					fieldname: "findings_text",
+					fieldtype: "HTML",
 				},
 				{
 					'fieldtype': 'Column Break',
@@ -252,16 +259,29 @@ healthcare.ObservationWidget = class {
 					click: () => me.add_finding_interpretation(obs_data, "Interpretation"),
 				},
 				{
-					fieldname: 'result_interpretation',
-					fieldtype: 'Text',
-					read_only: 1,
+					fieldname: "result_interpretation",
+					fieldtype: "HTML",
 				},
 
 			],
 			body: wrapper
 		})
 		me[obs_data.name].make();
-		me.set_values(this, obs_data)
+		me.set_values(this, obs_data);
+		setTimeout(() => {
+			me._is_rendering_result_field[obs_data.name] = false;
+		}, 0);
+	}
+
+	render_note_html(html, label = __("Note")) {
+		if (!html) return "";
+		return `<div class="observation-note" style="margin-top:6px; padding:6px 8px;
+			background-color: var(--subtle-fg, var(--bg-color));
+			border-radius: var(--border-radius-sm, 4px);">
+			<div class="text-muted" style="font-size:9px; font-weight:600; text-transform:uppercase;
+				letter-spacing:0.5px; margin-bottom:3px;">${label}</div>
+			<div class="text-muted" style="font-size:11px; line-height:1.5;">${html}</div>
+		</div>`;
 	}
 
 	set_values(th, obs_data) {
@@ -340,21 +360,34 @@ healthcare.ObservationWidget = class {
 		let note_html = `<div><span class="add-note-observation-btn btn btn-link"
 			id="add-note-observation-btn-${obs_data.name}">
 			<svg class="icon icon-sm"><use xlink:href="#icon-small-message"></use></svg>
-			</span>`
-		note_html += `</div>`
-		me[obs_data.name].get_field('note_button').html(note_html);
-		var myButton = document.getElementById(`add-note-observation-btn-${obs_data.name}`);
-		myButton.addEventListener("click", function() {
-			me.add_note(obs_data.name, obs_data.note)
-		  });
+			</span>`;
+		note_html += `</div>`;
+		me[obs_data.name].get_field("note_button").html(note_html);
+		var myButton = document.getElementById(
+			`add-note-observation-btn-${obs_data.name}`,
+		);
+		myButton.addEventListener("click", function () {
+			me.add_note(obs_data);
+		});
 
 		if (obs_data.note) {
-			me[obs_data.name].set_value("note_text", obs_data.note)
+			me[obs_data.name]
+				.get_field("note_text")
+				.html(me.render_note_html(obs_data.note));
 		}
 
 		if (obs_data.observation_category == "Imaging") {
-			me[obs_data.name].set_value("findings_text", obs_data.result_text)
-			me[obs_data.name].set_value("result_interpretation", obs_data.result_interpretation)
+			me[obs_data.name]
+				.get_field("findings_text")
+				.html(me.render_note_html(obs_data.result_text, __("Findings")));
+			me[obs_data.name]
+				.get_field("result_interpretation")
+				.html(
+					me.render_note_html(
+						obs_data.result_interpretation,
+						__("Interpretation"),
+					),
+				);
 		}
 
 	}
@@ -374,49 +407,47 @@ healthcare.ObservationWidget = class {
 		}
 	}
 
-	add_note (observation, note) {
+	add_note(obs_data) {
 		var me = this;
-		let observation_name = observation;
-		let note_text = me[observation].get_value('note_text') || note
-		// let result = note;
-			var d = new frappe.ui.Dialog({
-				title: __('Add Note'),
-				static: true,
-				fields: [
-					{
-						"label": __("Observation"),
-						"fieldname": "observation",
-						"fieldtype": "Link",
-						"options": "Observation",
-						"default": observation_name,
-						"hidden": 1,
-					},
-					{
-						"label": __("Note"),
-						"fieldname": "note",
-						"fieldtype": "Text Editor",
-						"default": note_text,
-					}
-				],
-				primary_action: function() {
-					me.frm.dirty()
-					var data = d.get_values();
-					me[observation].set_value("note_text", data.note)
-					if (me.result.length > 0) {
-						me.result.forEach(function(res) {
-						if (res.observation == observation) {
-							res["note"] =  data.note
-						}
-						});
-					} else {
-						me.result.push({"observation": observation, "note": data.note})
-					}
-					d.hide();
+		let observation = obs_data.name;
+		var d = new frappe.ui.Dialog({
+			title: __("Add Note"),
+			static: true,
+			fields: [
+				{
+					label: __("Observation"),
+					fieldname: "observation",
+					fieldtype: "Link",
+					options: "Observation",
+					default: observation,
+					hidden: 1,
 				},
-				primary_action_label: __("Add Note")
-			});
-			d.show();
-			d.get_close_btn().show();
+				{
+					label: __("Note"),
+					fieldname: "note",
+					fieldtype: "Text Editor",
+					default: obs_data.note,
+				},
+			],
+			primary_action: function () {
+				me.frm.dirty();
+				var data = d.get_values();
+				obs_data.note = data.note;
+				me[observation]
+					.get_field("note_text")
+					.html(me.render_note_html(data.note));
+				let existing = me.result.find(res => res.observation === observation);
+				if (existing) {
+					existing.note = data.note;
+				} else {
+					me.result.push({ observation: observation, note: data.note });
+				}
+				d.hide();
+			},
+			primary_action_label: __("Add Note"),
+		});
+		d.show();
+		d.get_close_btn().show();
 	}
 
 	auth_observation (observation, status) {
@@ -472,18 +503,19 @@ healthcare.ObservationWidget = class {
 
 	add_finding_interpretation (obs_data, type) {
 		var me = this;
-		let template = ""
-		let note = ""
-		if (type=="Findings") {
-			template = obs_data.result_template
-			note = me[obs_data.name].get_value('result_text') || obs_data.result_text
-		} else if (type=="Interpretation") {
-			template = obs_data.interpretation_template
-			note = me[obs_data.name].get_value('result_interpretation') || obs_data.result_interpretation
+		let template = "";
+		let note = "";
+		if (type == "Findings") {
+			template = obs_data.result_template;
+			note = obs_data.result_text;
+		} else if (type == "Interpretation") {
+			template = obs_data.interpretation_template;
+			note = obs_data.result_interpretation;
 		}
 		var d = new frappe.ui.Dialog({
 			title: __(type),
 			static: true,
+			size: "large",
 			fields: [
 				{
 					"label": "Observation",
@@ -512,14 +544,20 @@ healthcare.ObservationWidget = class {
 				var data = d.get_values();
 				let val_dict = {};
 				var values = [];
-				val_dict["observation"] = obs_data.name
-				val_dict["result"] = ""
-				if (type=="Findings") {
-					val_dict["result"] = data.note
-					me[obs_data.name].set_value("findings_text", data.note)
-				} else if (type=="Interpretation") {
-					val_dict["interpretation"] = data.note
-					me[obs_data.name].set_value("result_interpretation", data.note)
+				val_dict["observation"] = obs_data.name;
+				val_dict["result"] = "";
+				if (type == "Findings") {
+					val_dict["result"] = data.note;
+					obs_data.result_text = data.note;
+					me[obs_data.name]
+						.get_field("findings_text")
+						.html(me.render_note_html(data.note, __(type)));
+				} else if (type == "Interpretation") {
+					val_dict["interpretation"] = data.note;
+					obs_data.result_interpretation = data.note;
+					me[obs_data.name]
+						.get_field("result_interpretation")
+						.html(me.render_note_html(data.note, __(type)));
 				}
 				d.hide();
 				values.push(val_dict);

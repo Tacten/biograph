@@ -26,6 +26,7 @@
   "uid",
   "inpatient_record",
   "inpatient_status",
+  "emergency_record",
   "report_preference",
   "mobile",
   "phone",
@@ -104,10 +105,18 @@
    "read_only": 1
   },
   {
+   "fieldname": "emergency_record",
+   "fieldtype": "Link",
+   "label": "Emergency Record",
+   "no_copy": 1,
+   "options": "Emergency Record",
+   "read_only": 1
+  },
+  {
    "fieldname": "naming_series",
    "fieldtype": "Select",
    "label": "Series",
-   "options": "HLC-PAT-.YYYY.-",
+   "options": "HLC-PAT-.YYYY.-\nER-.YYYY.-",
    "print_hide": 1,
    "report_hide": 1,
    "set_only_once": 1
@@ -405,6 +414,7 @@
    "fieldname": "customer_group",
    "fieldtype": "Link",
    "label": "Customer Group",
+   "link_filters": "[[\"Customer Group\",\"is_group\",\"=\",0]]",
    "options": "Customer Group"
   },
   {
@@ -643,7 +653,7 @@
   }
  ],
  "max_attachments": 50,
- "modified": "2025-09-02 13:04:27.771400",
+ "modified": "2026-10-03 03:00:00.000000",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Patient",

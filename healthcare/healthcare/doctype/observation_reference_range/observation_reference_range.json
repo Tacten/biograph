@@ -80,7 +80,6 @@
    "label": "Reference Text"
   },
   {
-   "depends_on": "eval:doc.permitted_data_type!=\"Quantity\";",
    "fieldname": "column_break_l8sr",
    "fieldtype": "Column Break"
   },

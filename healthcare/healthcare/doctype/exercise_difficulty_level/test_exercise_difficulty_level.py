@@ -3,8 +3,8 @@
 
 
 # import frappe
-from frappe.tests import IntegrationTestCase
+from healthcare.tests.utils import HealthcareTestSuite
 
 
-class TestExerciseDifficultyLevel(IntegrationTestCase):
+class TestExerciseDifficultyLevel(HealthcareTestSuite):
 	pass

@@ -3,7 +3,6 @@
 
 
 import frappe
-from frappe.tests import IntegrationTestCase
 from frappe.utils import add_days, getdate, now_datetime
 
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import get_account
@@ -22,19 +21,20 @@ from healthcare.healthcare.doctype.inpatient_record.inpatient_record import (
 )
 from healthcare.healthcare.doctype.inpatient_record.test_inpatient_record import (
 	create_inpatient,
-	create_patient,
 	get_healthcare_service_unit,
 	mark_invoiced_inpatient_occupancy,
 )
+from healthcare.tests.utils import HealthcareTestSuite
 
 
-class TestInpatientMedicationEntry(IntegrationTestCase):
+class TestInpatientMedicationEntry(HealthcareTestSuite):
 	def setUp(self):
+		super().setUp()
 		frappe.db.sql("""delete from `tabInpatient Record`""")
 		frappe.db.sql("""delete from `tabInpatient Medication Order`""")
 		frappe.db.sql("""delete from `tabInpatient Medication Entry`""")
-		self.patient = create_patient()
 
+		self.patient = "_Test IPD Patient"
 		# Admit
 		ip_record = create_inpatient(self.patient)
 		ip_record.expected_length_of_stay = 0

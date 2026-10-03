@@ -10,6 +10,8 @@
  "field_order": [
   "patient",
   "patient_name",
+  "inpatient_record",
+  "emergency_record",
   "gender",
   "age",
   "practitioner",
@@ -45,6 +47,24 @@
    "in_list_view": 1,
    "label": "Patient Name",
    "read_only": 1
+  },
+  {
+   "fetch_from": "patient.inpatient_record",
+   "fieldname": "inpatient_record",
+   "fieldtype": "Link",
+   "label": "Inpatient Record",
+   "options": "Inpatient Record",
+   "read_only": 1,
+   "fetch_if_empty": 1
+  },
+  {
+   "fetch_from": "patient.emergency_record",
+   "fieldname": "emergency_record",
+   "fieldtype": "Link",
+   "label": "Emergency Record",
+   "options": "Emergency Record",
+   "read_only": 1,
+   "fetch_if_empty": 1
   },
   {
    "fieldname": "column_break_v6l1",
@@ -204,3 +224,4 @@
  "title_field": "title",
  "track_changes": 1
 }
+

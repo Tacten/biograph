@@ -304,6 +304,7 @@ frappe.ui.form.on("Patient Encounter", {
 			return {
 				filters: {
 					disabled: false,
+					is_orderable: 1,
 				},
 			};
 		});
@@ -326,7 +327,11 @@ frappe.ui.form.on("Patient Encounter", {
 		) {
 			frm.set_query("drug_code", "drug_prescription", function (doc, cdt, cdn) {
 				let row = frappe.get_doc(cdt, cdn);
-				let filters = { is_stock_item: 1 };
+				let filters = {
+					is_stock_item: 1,
+					company: doc.company,
+					patient: doc.patient,
+				};
 				if (row.medication) {
 					filters.medication = row.medication;
 				}
@@ -474,12 +479,28 @@ frappe.ui.form.on("Patient Encounter", {
 			args: { encounter: frm.doc },
 			freeze: true,
 			freeze_message: __("Fetching Treatment Plans"),
-			callback: function () {
+			callback: function (r) {
+				let applicable_plans = (r.message || []).map(plan => plan.name);
+
+				if (!applicable_plans.length) {
+					frappe.msgprint(
+						__(
+							"No Treatment Plan Templates match this patient's age, gender, or diagnosis.",
+						),
+					);
+					return;
+				}
+
 				new frappe.ui.form.MultiSelectDialog({
 					doctype: "Treatment Plan Template",
 					target: this.cur_frm,
 					setters: {
 						medical_department: "",
+					},
+					get_query() {
+						return {
+							filters: { name: ["in", applicable_plans] },
+						};
 					},
 					action(selections) {
 						frappe
@@ -897,6 +918,12 @@ frappe.ui.form.on("Drug Prescription", {
 	},
 
 	medication: function (frm, cdt, cdn) {
+		healthcare.medication_safety.show_for_medication(
+			frm,
+			frappe.get_doc(cdt, cdn).medication,
+			cdn,
+			(frm.doc.drug_prescription || []).map(row => row.medication),
+		);
 		// to set drug_code(item) if Medication Item table have only one item
 		let child = locals[cdt][cdn];
 		if (!child.medication) {

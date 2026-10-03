@@ -2,30 +2,29 @@
 # See license.txt
 
 import frappe
-from frappe.tests import IntegrationTestCase
 from frappe.utils import nowdate
 
 from healthcare.healthcare.doctype.patient_appointment.test_patient_appointment import (
 	create_appointment,
-	create_patient,
-	create_practitioner,
 )
+from healthcare.tests.utils import HealthcareTestSuite
 
 
-class IntegrationTestPractitionerAvailability(IntegrationTestCase):
+class IntegrationTestPractitionerAvailability(HealthcareTestSuite):
 	"""
 	Integration tests for Practitioner Availability.
 	Use this class for testing interactions between multiple components.
 	"""
 
 	def setUp(self):
+		super().setUp()
 		frappe.db.sql("DELETE FROM `tabPractitioner Availability`")
 		frappe.db.sql("DELETE FROM `tabPatient Appointment`")
 
 		frappe.db.set_single_value("Healthcare Settings", "show_payment_popup", 0)
-		self.patient = create_patient()
-		self.practitioner = create_practitioner()
-		self.practitioner_1 = create_practitioner(id=1)
+		self.patient = frappe.get_list("Patient", pluck="name")[0]
+		self.practitioner = frappe.get_list("Healthcare Practitioner", pluck="name")[0]
+		self.practitioner_1 = frappe.get_list("Healthcare Practitioner", pluck="name")[1]
 
 	def create_practitioner_availability(
 		self,

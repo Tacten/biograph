@@ -34,7 +34,7 @@
    "label": "Counts Target"
   },
   {
-   "depends_on": "eval:doc.parenttype==\"Therapy\";",
+   "depends_on": "eval:doc.parenttype==\"Therapy Session\";",
    "fieldname": "counts_completed",
    "fieldtype": "Int",
    "label": "Counts Completed",

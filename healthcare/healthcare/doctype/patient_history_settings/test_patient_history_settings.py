@@ -5,16 +5,14 @@
 import json
 
 import frappe
-from frappe.tests import IntegrationTestCase
 from frappe.utils import getdate, strip_html
 
-from healthcare.healthcare.doctype.patient_appointment.test_patient_appointment import (
-	create_patient,
-)
+from healthcare.tests.utils import HealthcareTestSuite
 
 
-class TestPatientHistorySettings(IntegrationTestCase):
+class TestPatientHistorySettings(HealthcareTestSuite):
 	def setUp(self):
+		super().setUp()
 		dt = create_custom_doctype()
 		settings = frappe.get_single("Patient History Settings")
 		settings.append(
@@ -35,7 +33,7 @@ class TestPatientHistorySettings(IntegrationTestCase):
 
 	def test_custom_doctype_medical_record(self):
 		# tests for medical record creation of standard doctypes in test_patient_medical_record.py
-		patient = create_patient()
+		patient = frappe.get_list("Patient", pluck="name")[0]
 		doc = create_doc(patient)
 		# check for medical record
 		medical_rec = frappe.db.exists(

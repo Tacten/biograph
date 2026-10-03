@@ -175,10 +175,13 @@ frappe.ui.form.on('Patient Appointment', {
 			}
 		}
 
-		if (!frm.doc.__islocal && ["Open", "Confirmed"].includes(frm.doc.status) && frm.doc.appointment_based_on_check_in) {
+		if (
+			!frm.doc.__islocal &&
+			["Open", "Confirmed", "No Show"].includes(frm.doc.status) &&
+			frm.doc.appointment_based_on_check_in
+		) {
 			frm.add_custom_button(__("Check In"), () => {
-				frm.set_value("status", "Checked In");
-				frm.save();
+				check_in_appointment(frm);
 			});
 		}
 
@@ -207,7 +210,7 @@ frappe.ui.form.on('Patient Appointment', {
 			frappe.db.get_single_value("Healthcare Settings", "show_payment_popup").then(async val => {
 				let fee_validity = (await frappe.call(
 					"healthcare.healthcare.doctype.fee_validity.fee_validity.get_fee_validity",
-					{ "appointment_name": frm.doc.name, "date": frm.doc.appointment_date , "ignore_status": true })).message;
+					{ "reference_dn": frm.doc.name, "date": frm.doc.appointment_date , "ignore_status": true })).message;
 
 				if (val && !fee_validity.length) {
 					frm.add_custom_button(__("Make Payment"), function () {
@@ -261,7 +264,7 @@ frappe.ui.form.on('Patient Appointment', {
 				await frappe.db.get_single_value("Healthcare Settings", "show_payment_popup").then(val => {
 					frappe.call({
 						method: "healthcare.healthcare.doctype.fee_validity.fee_validity.check_fee_validity",
-						args: { "appointment": frm.doc },
+						args: { "visit": frm.doc },
 						callback: (r) => {
 							if (val && !r.message && !frm.doc.invoiced) {
 								make_payment(frm, val);
@@ -697,15 +700,18 @@ let check_and_set_availability = function(frm) {
 						await frappe.db.get_single_value("Healthcare Settings", "show_payment_popup").then(val => {
 							frappe.call({
 								method: "healthcare.healthcare.doctype.fee_validity.fee_validity.check_fee_validity",
-								args: { "appointment": frm.doc },
+								args: { "visit": frm.doc },
 								callback: (r) => {
 									if (val && !r.message && !frm.doc.invoiced) {
 										make_payment(frm, val);
-									} else {
+									} else if (val) {
 										frappe.call({
 											method: "healthcare.healthcare.doctype.patient_appointment.patient_appointment.update_fee_validity",
 											args: { "appointment": frm.doc }
 										});
+									} else {
+										// fee validity is already managed server side, in on_update
+										frm.reload_doc();
 									}
 								}
 							});
@@ -1492,7 +1498,52 @@ let update_status = function(frm, status) {
 	);
 };
 
-let calculate_age = function(birth) {
+let check_in_appointment = function (frm) {
+	let d = new frappe.ui.Dialog({
+		title: __("Check In"),
+		fields: [
+			{
+				fieldtype: "Link",
+				options: "Healthcare Practitioner",
+				fieldname: "practitioner",
+				label: __("Practitioner"),
+				default: frm.doc.practitioner,
+			},
+			{ fieldtype: "Column Break" },
+			{
+				fieldtype: "Link",
+				options: "Healthcare Service Unit",
+				fieldname: "service_unit",
+				label: __("Service Unit"),
+				default: frm.doc.service_unit,
+				get_query: function () {
+					return { filters: { company: frm.doc.company } };
+				},
+			},
+		],
+		primary_action_label: __("Check In"),
+		primary_action: function (values) {
+			frappe.call({
+				method: "healthcare.healthcare.doctype.patient_appointment.patient_appointment.check_in_appointment",
+				args: {
+					appointment_id: frm.doc.name,
+					practitioner: values.practitioner,
+					service_unit: values.service_unit,
+				},
+				freeze: true,
+				callback: function (data) {
+					if (!data.exc) {
+						d.hide();
+						frm.reload_doc();
+					}
+				},
+			});
+		},
+	});
+	d.show();
+};
+
+let calculate_age = function (birth) {
 	let ageMS = Date.parse(Date()) - Date.parse(birth);
 	let age = new Date();
 	age.setTime(ageMS);

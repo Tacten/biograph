@@ -119,7 +119,7 @@ frappe.ui.form.on("Lab Test", {
 						frm.doc.codification_table = [];
 						$.each(r.message, function (k, val) {
 							if (val.code_value) {
-								var child = cur_frm.add_child("codification_table");
+								var child = frm.add_child("codification_table");
 								child.code_value = val.code_value;
 								child.code_system = val.code_system;
 								child.code = val.code;
@@ -197,16 +197,16 @@ frappe.ui.form.on("Lab Test", "patient", function (frm) {
 });
 
 frappe.ui.form.on("Normal Test Result", {
-	normal_test_items_remove: function () {
+	normal_test_items_remove: function (frm, cdt, cdn) {
 		frappe.msgprint(__("Not permitted, configure Lab Test Template as required"));
-		cur_frm.reload_doc();
+		frm.reload_doc();
 	},
 });
 
 frappe.ui.form.on("Descriptive Test Result", {
-	descriptive_test_items_remove: function () {
+	descriptive_test_items_remove: function (frm, cdt, cdn) {
 		frappe.msgprint(__("Not permitted, configure Lab Test Template as required"));
-		cur_frm.reload_doc();
+		frm.reload_doc();
 	},
 });
 
@@ -218,11 +218,12 @@ var status_update = function (approve, frm) {
 	} else {
 		status = "Rejected";
 	}
+	var curfrm = frm;
 	frappe.call({
 		method: "healthcare.healthcare.doctype.lab_test.lab_test.update_status",
 		args: { status: status, name: doc.name },
 		callback: function () {
-			cur_frm.reload_doc();
+			curfrm.reload_doc();
 		},
 	});
 };

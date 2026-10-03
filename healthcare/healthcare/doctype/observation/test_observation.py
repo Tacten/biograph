@@ -3,34 +3,25 @@
 
 import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
-from frappe.tests.utils import FrappeTestCase
 from frappe.utils import flt, getdate, nowtime
 
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import (
 	get_income_account,
 	get_receivable_account,
 )
-from healthcare.healthcare.doctype.lab_test.test_lab_test import create_practitioner
-from healthcare.healthcare.doctype.observation_template.test_observation_template import (
-	create_grouped_observation_template,
-	create_observation_template,
-)
-from healthcare.healthcare.doctype.patient_appointment.test_patient_appointment import (
-	create_patient,
-)
+from healthcare.healthcare.doctype.observation.observation import add_note
+from healthcare.tests.utils import HealthcareTestSuite
 
 
-class TestObservation(FrappeTestCase):
-	def setUp(self):
-		clear_table()
+class TestObservation(HealthcareTestSuite):
+	def test_single_observation_from_invoice_without_sample(self):
+		self.enable_observation_on_invoice_submit()
 
-	def test_single_observation_from_invoice(self):
-		frappe.db.set_single_value("Healthcare Settings", "create_observation_on_si_submit", 1)
-		obs_name = "Total Cholesterol"
-		# observation without sample
-		patient = create_patient()
-		obs_template = create_observation_template(obs_name)
+		obs_name = "_Test Observation without Sample"
+		patient = self.get_test_patient()
+		obs_template = frappe.get_doc("Observation Template", obs_name)
 		sales_invoice = create_sales_invoice(patient, obs_name)
+
 		self.assertTrue(
 			frappe.db.exists(
 				"Observation",
@@ -52,11 +43,13 @@ class TestObservation(FrappeTestCase):
 			)
 		)
 
-		# observation with sample
-		patient = create_patient()
-		idx = 1
-		obs_template = create_observation_template(obs_name, idx, True)
-		sales_invoice = create_sales_invoice(patient, obs_name + str(idx))
+	def test_single_observation_from_invoice_with_sample(self):
+		self.enable_observation_on_invoice_submit()
+
+		patient = self.get_test_patient()
+		obs_name = "_Test Observation with Sample"
+		obs_template = frappe.get_doc("Observation Template", obs_name)
+		sales_invoice = create_sales_invoice(patient, obs_name)
 
 		sample_docname = frappe.db.exists(
 			"Sample Collection",
@@ -86,14 +79,14 @@ class TestObservation(FrappeTestCase):
 			)
 		)
 
-	def test_has_component_observation_from_invoice(self):
-		frappe.db.set_single_value("Healthcare Settings", "create_observation_on_si_submit", 1)
-		patient = create_patient()
-		idx = 2
-		obs_name = "Complete Blood Count (CBC)"
-		obs_template = create_grouped_observation_template(obs_name, idx)
-		sales_invoice = create_sales_invoice(patient, obs_name + str(idx))
-		# parent_observation
+	def test_has_component_observation_from_invoice_without_sample(self):
+		self.enable_observation_on_invoice_submit()
+
+		patient = self.get_test_patient()
+		obs_name = "_Test Observation Grouped without Sample"
+		obs_template = frappe.get_doc("Observation Template", obs_name)
+		sales_invoice = create_sales_invoice(patient, obs_name)
+
 		self.assertTrue(
 			frappe.db.exists(
 				"Observation",
@@ -105,12 +98,11 @@ class TestObservation(FrappeTestCase):
 			)
 		)
 
-		# child_observation
 		self.assertTrue(
 			frappe.db.exists(
 				"Observation",
 				{
-					"observation_template": obs_name + str(idx + 1),
+					"observation_template": obs_name,
 					"patient": patient,
 					"sales_invoice": sales_invoice.name,
 				},
@@ -127,13 +119,14 @@ class TestObservation(FrappeTestCase):
 			)
 		)
 
-		# observation with sample
-		patient = create_patient()
-		idx = 4  # since 3 is selected in previous grouped test
-		obs_template = create_grouped_observation_template(obs_name, idx, True)
-		sales_invoice = create_sales_invoice(patient, obs_name + str(idx))
+	def test_has_component_observation_from_invoice_with_sample(self):
+		self.enable_observation_on_invoice_submit()
 
-		# parent_observation
+		patient = self.get_test_patient()
+		obs_name = "_Test Observation Grouped with Sample"
+		obs_template = frappe.get_doc("Observation Template", obs_name)
+		sales_invoice = create_sales_invoice(patient, obs_name)
+
 		self.assertTrue(
 			frappe.db.exists(
 				"Observation",
@@ -174,9 +167,10 @@ class TestObservation(FrappeTestCase):
 		)
 
 	def test_observation_from_encounter(self):
-		observation_template = create_observation_template("Total Cholesterol")
-		patient = create_patient()
+		observation_template = frappe.get_doc("Observation Template", "_Test Observation without Sample")
+		patient = self.get_test_patient()
 		encounter = create_patient_encounter(patient, observation_template.name)
+
 		self.assertTrue(
 			frappe.db.exists(
 				"Service Request",
@@ -188,12 +182,228 @@ class TestObservation(FrappeTestCase):
 			)
 		)
 
-	def test_with_formula(self):
-		patient = create_patient()
-		with_correct_formula(self, patient=patient)
-		with_incorrect_operand(self, patient)
-		with_custom_field_in_patient(self, patient)
-		with_condition_patient(self, patient)
+	def test_formula_computes_result(self):
+		self.enable_observation_on_invoice_submit()
+		patient = self.get_test_patient()
+
+		result = self.run_formula_test_case(
+			patient=patient,
+			input_value_1=5,
+			input_value_2=2,
+			operator="+",
+		)
+
+		self.assertEqual(flt(result["formula_1_result"]), 7)
+
+	def test_formula_with_invalid_operand_keeps_result_empty(self):
+		self.enable_observation_on_invoice_submit()
+		patient = self.get_test_patient()
+
+		result = self.run_formula_test_case(
+			patient=patient,
+			input_value_1="a",
+			input_value_2=8,
+			operator="*",
+			operand_1_db_set=True,
+		)
+
+		self.assertIsNone(result["formula_1_result"])
+
+	def test_formula_can_use_patient_custom_field(self):
+		self.enable_observation_on_invoice_submit()
+		self.ensure_patient_custom_field()
+
+		patient = self.get_test_patient()
+		custom_field_value = 10
+		frappe.db.set_value("Patient", patient, "test_custom_field", custom_field_value)
+
+		result = self.run_formula_test_case(
+			patient=patient,
+			input_value_1=5,
+			input_value_2=2,
+			operator="+",
+			custom_formula=f"+{custom_field_value}",
+		)
+
+		self.assertEqual(flt(result["formula_1_result"]), 17)
+
+	def test_formula_respects_patient_condition(self):
+		self.enable_observation_on_invoice_submit()
+		patient = self.get_test_patient()
+
+		result = self.run_formula_test_case(
+			patient=patient,
+			input_value_1=7,
+			input_value_2=5,
+			operator="+",
+			condition1="gender=='Male'",
+			condition2="gender=='Female'",
+		)
+
+		self.assertEqual(flt(result["formula_2_result"]), 2)
+
+	def test_sanitize_input_strips_unsafe_html(self):
+		observation = frappe.new_doc("Observation")
+		observation.result_text = "<p>Normal</p><script>alert('xyz')</script>"
+		observation.result_interpretation = "<b>High</b><img src=xyz onerror=alert(1)>"
+		observation.note = "<span onclick='steal_data()'>Note</span>"
+
+		observation.sanitize_input()
+
+		self.assertNotIn("<script", observation.result_text)
+		self.assertIn("Normal", observation.result_text)
+		self.assertNotIn("onerror", observation.result_interpretation)
+		self.assertIn("High", observation.result_interpretation)
+		self.assertNotIn("onclick", observation.note)
+		self.assertIn("Note", observation.note)
+
+	def test_add_note_sanitizes_unsafe_html(self):
+		observation = frappe.get_doc(
+			{
+				"doctype": "Observation",
+				"observation_template": "_Test Observation without Sample",
+				"patient": self.get_test_patient(),
+				"company": "_Test Company",
+				"observation_category": "Laboratory",
+			}
+		).insert()
+
+		add_note(
+			note='<p onclick="steal_data()">Note</p><script>alert(1)</script>',
+			observation=observation.name,
+		)
+
+		observation.reload()
+		self.assertNotIn("<script", observation.note)
+		self.assertNotIn("onclick", observation.note)
+		self.assertIn("Note", observation.note)
+
+	def run_formula_test_case(
+		self,
+		patient,
+		input_value_1,
+		input_value_2,
+		operator,
+		custom_formula="",
+		condition1=None,
+		condition2=None,
+		operand_1_db_set=False,
+	):
+		obs_name = "_Test Observation Grouped without Sample"
+		obs_template = frappe.get_doc("Observation Template", obs_name)
+
+		first_component = obs_template.observation_component[0]
+		first_abbr = first_component.abbr
+		first_obs_template = first_component.observation_template
+
+		operand_2_template = frappe.get_doc("Observation Template", "_Test Observation Operand 2")
+		result_template_1 = frappe.get_doc("Observation Template", "_Test Observation Formula Result 1")
+
+		obs_template.append(
+			"observation_component",
+			{
+				"observation_template": operand_2_template.name,
+				"abbr": operand_2_template.abbr,
+			},
+		)
+
+		obs_template.append(
+			"observation_component",
+			{
+				"observation_template": result_template_1.name,
+				"abbr": "TF1",
+				"based_on_formula": 1,
+				"formula": f"{first_abbr}{operator}{operand_2_template.abbr} {custom_formula}".strip(),
+				"condition": condition1,
+			},
+		)
+
+		result_template_2 = None
+		if condition2:
+			result_template_2 = frappe.get_doc("Observation Template", "_Test Observation Formula Result 2")
+			obs_template.append(
+				"observation_component",
+				{
+					"observation_template": result_template_2.name,
+					"abbr": "TF2",
+					"based_on_formula": 1,
+					"formula": f"{first_abbr}-{operand_2_template.abbr}",
+					"condition": condition2,
+				},
+			)
+
+		obs_template.save()
+
+		create_sales_invoice(patient, obs_template.name)
+
+		child_obs_1 = self.get_latest_observation_name(patient, first_obs_template)
+		child_obs_2 = self.get_latest_observation_name(patient, operand_2_template.name)
+
+		if not operand_1_db_set:
+			child_obs_1_doc = frappe.get_doc("Observation", child_obs_1)
+			child_obs_1_doc.result_data = str(input_value_1)
+			child_obs_1_doc.save()
+		else:
+			frappe.db.set_value("Observation", child_obs_1, "result_data", str(input_value_1))
+
+		child_obs_2_doc = frappe.get_doc("Observation", child_obs_2)
+		child_obs_2_doc.result_data = str(input_value_2)
+		child_obs_2_doc.save()
+
+		return {
+			"formula_1_result": self.get_result_data(patient, result_template_1.name),
+			"formula_2_result": self.get_result_data(patient, result_template_2.name)
+			if result_template_2
+			else None,
+		}
+
+	def get_latest_observation_name(self, patient, observation_template):
+		rows = frappe.get_all(
+			"Observation",
+			filters={
+				"patient": patient,
+				"observation_template": observation_template,
+			},
+			fields=["name"],
+			order_by="creation desc",
+			limit=1,
+		)
+
+		self.assertTrue(rows, f"No Observation found for template {observation_template}")
+		return rows[0].name
+
+	def get_result_data(self, patient, observation_template):
+		rows = frappe.get_all(
+			"Observation",
+			filters={
+				"patient": patient,
+				"observation_template": observation_template,
+			},
+			fields=["name", "result_data"],
+			order_by="creation desc",
+			limit=1,
+		)
+
+		self.assertTrue(rows, f"No Observation found for template {observation_template}")
+		return rows[0].result_data
+
+	def get_test_patient(self):
+		return frappe.get_list("Patient", pluck="name")[0]
+
+	def enable_observation_on_invoice_submit(self):
+		frappe.db.set_single_value("Healthcare Settings", "create_observation_on_si_submit", 1)
+
+	def ensure_patient_custom_field(self):
+		custom_fields = {
+			"Patient": [
+				{
+					"fieldname": "test_custom_field",
+					"label": "Test Calculation",
+					"fieldtype": "Int",
+				}
+			]
+		}
+		create_custom_fields(custom_fields, update=True)
 
 
 def create_sales_invoice(patient, item):
@@ -219,7 +429,6 @@ def create_sales_invoice(patient, item):
 	)
 
 	sales_invoice.set_missing_values()
-
 	sales_invoice.submit()
 	return sales_invoice
 
@@ -227,7 +436,8 @@ def create_sales_invoice(patient, item):
 def create_patient_encounter(patient, observation_template):
 	patient_encounter = frappe.new_doc("Patient Encounter")
 	patient_encounter.patient = patient
-	patient_encounter.practitioner = create_practitioner()
+	patient_encounter.practitioner = frappe.get_list("Healthcare Practitioner", pluck="name")[0]
+	patient_encounter.appointment_type = "_Test Appointment Type"
 	patient_encounter.encounter_date = getdate()
 	patient_encounter.encounter_time = nowtime()
 
@@ -235,177 +445,3 @@ def create_patient_encounter(patient, observation_template):
 
 	patient_encounter.submit()
 	return patient_encounter
-
-
-def observation_with_formula(**kwargs):
-	idx = 1
-	obs_name = "Test Observation"
-	operator = kwargs.get("operator")
-	custom_formula = kwargs.get("custom_formula")
-	condition1 = kwargs.get("condition1")
-	condition2 = kwargs.get("condition2")
-	obs_template = create_grouped_observation_template(obs_name, idx)
-	first_abbr = obs_template.observation_component[0].abbr
-	first_obs_template = obs_template.observation_component[0].observation_template
-
-	obs_template_component = create_observation_template("Observation Comp ", idx + 2)
-	obs_template_component_1 = create_observation_template("Observation Comp ", idx + 3)
-
-	obs_template.append(
-		"observation_component",
-		{
-			"observation_template": obs_template_component.name,
-		},
-	)
-
-	obs_template.append(
-		"observation_component",
-		{
-			"observation_template": obs_template_component_1.name,
-			"based_on_formula": True,
-			"formula": f"{first_abbr}{operator}{obs_template_component.abbr} {'+ test_custom_field' if custom_formula else ''}",
-			"condition": condition1,
-		},
-	)
-
-	if condition2:
-		obs_template.append(
-			"observation_component",
-			{
-				"observation_template": obs_template_component_1.name,
-				"abbr": "TC5",
-				"based_on_formula": True,
-				"formula": f"{first_abbr}-{obs_template_component.abbr}",
-				"condition": condition2,
-			},
-		)
-
-	obs_template.save()
-
-	create_sales_invoice(kwargs.get("patient"), obs_template.name)
-	child_obs_1 = frappe.db.get_value(
-		"Observation", {"observation_template": first_obs_template}, "name"
-	)
-	child_obs_2 = frappe.db.get_value(
-		"Observation", {"observation_template": obs_template_component.name}, "name"
-	)
-	if not kwargs.get("operand_1_db_set"):
-		child_obs_1_doc = frappe.get_doc("Observation", child_obs_1)
-		child_obs_1_doc.result_data = str(kwargs.get("input_value_1"))
-		child_obs_1_doc.save()
-	else:
-		frappe.db.set_value("Observation", child_obs_2, "result_data", str(kwargs.get("input_value_1")))
-
-	child_obs_2_doc = frappe.get_doc("Observation", child_obs_2)
-	child_obs_2_doc.result_data = str(kwargs.get("input_value_2"))
-	child_obs_2_doc.save()
-
-	result_value = frappe.db.get_value(
-		"Observation",
-		{"observation_template": obs_template_component_1.name},
-		"result_data",
-	)
-	if kwargs.get("operand_1_db_set"):
-		return obs_template_component_1.name
-
-	return result_value
-
-
-def with_correct_formula(self, **kwargs):
-	clear_table()
-	custom_formula = ""
-	if kwargs.get("patient_custom_formula"):
-		custom_formula = kwargs.get("patient_custom_formula")
-
-	input_value_1 = kwargs.get("value1") if kwargs.get("value1") else 5
-	input_value_2 = kwargs.get("value2") if kwargs.get("value2") else 2
-	operator = "+"
-
-	result = frappe.safe_eval(str(input_value_1) + operator + str(input_value_2) + custom_formula)
-	result_value = observation_with_formula(
-		patient=kwargs.get("patient"),
-		input_value_1=input_value_1,
-		input_value_2=input_value_2,
-		operator=operator,
-		operand_1_db_set=False,
-		custom_formula=custom_formula,
-		condition1=kwargs.get("condition1"),
-		condition2=kwargs.get("condition2"),
-	)
-
-	if kwargs.get("condition2"):
-		return result_value
-
-	self.assertEqual(flt(result_value), result)
-
-
-def with_incorrect_operand(self, patient):
-	clear_table()
-	input_value_1 = "a"
-	input_value_2 = 8
-	operator = "*"
-	result_observ_temp = observation_with_formula(
-		patient=patient,
-		input_value_1=input_value_1,
-		input_value_2=input_value_2,
-		operator=operator,
-		operand_1_db_set=True,
-	)
-	self.assertTrue(
-		frappe.db.exists(
-			"Observation", {"observation_template": result_observ_temp, "result_data": None}
-		)
-	)
-
-
-def with_custom_field_in_patient(self, patient):
-	clear_table()
-	custom_fields = {
-		"Patient": [
-			dict(
-				fieldname="test_custom_field",
-				label="Test Calculation",
-				fieldtype="Int",
-			),
-		]
-	}
-	create_custom_fields(custom_fields, update=True)
-	custom_field_value = 10
-	frappe.db.set_value("Patient", patient, "test_custom_field", custom_field_value)
-
-	with_correct_formula(self, patient=patient, patient_custom_formula=f"+{custom_field_value}")
-
-
-def with_condition_patient(self, patient):
-	clear_table()
-	condition1 = "gender=='Male'"
-	condition2 = "gender=='Female'"
-	result = with_correct_formula(
-		self, patient=patient, condition1=condition1, condition2=condition2, value1=7, value2=5
-	)
-	# equation is 7-5 result must be 2 for Female as Patient is Female
-	self.assertEqual(flt(result), 2)
-
-
-def clear_table():
-	frappe.db.sql("""delete from `tabObservation Template`""")
-	frappe.db.sql("""delete from `tabObservation`""")
-	frappe.db.sql("""delete from `tabObservation Component`""")
-	frappe.db.sql(
-		"""
-		delete from `tabItem`
-		where
-			name like '%Observation%'
-			or name like '%CBC%'
-			or name like '%Cholesterol%'
-	"""
-	)
-	frappe.db.sql(
-		"""
-		delete from `tabItem Price`
-		where
-			item_code like '%Observation%'
-			or item_code like '%CBC%'
-			or item_code like '%Cholesterol%'
-	"""
-	)

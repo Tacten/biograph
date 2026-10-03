@@ -1,11 +1,11 @@
 import frappe
-from frappe.tests import IntegrationTestCase
 
-EXTRA_TEST_RECORD_DEPENDENCIES = ["Sales Invoice"]
+from healthcare.tests.utils import HealthcareTestSuite
 
 
-class TestSalesInvoice(IntegrationTestCase):
+class TestSalesInvoice(HealthcareTestSuite):
 	def test_set_healthcare_services_should_preserve_state(self):
+		self.load_test_records("Sales Invoice")
 		invoice = frappe.copy_doc(self.globalTestRecords["Sales Invoice"][0])
 
 		count = len(invoice.items)

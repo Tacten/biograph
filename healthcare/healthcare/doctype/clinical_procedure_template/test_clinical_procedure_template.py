@@ -2,8 +2,8 @@
 # See license.txt
 
 
-from frappe.tests import IntegrationTestCase
+from healthcare.tests.utils import HealthcareTestSuite
 
 
-class TestClinicalProcedureTemplate(IntegrationTestCase):
+class TestClinicalProcedureTemplate(HealthcareTestSuite):
 	pass

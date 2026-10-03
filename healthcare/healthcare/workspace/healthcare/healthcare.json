@@ -732,7 +732,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-03-12 20:21:34.532012",
+ "modified": "2026-10-03 03:00:00.000000",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Healthcare",
@@ -809,5 +809,6 @@
    "type": "Dashboard"
   }
  ],
- "title": "Healthcare"
+ "title": "Healthcare",
+ "type": "Workspace"
 }
