@@ -1635,6 +1635,7 @@ def insert_observation_and_sample_collection(
 		current_parent_observation = add_observation(
 			patient=patient,
 			template=grp.get("name"),
+			company=doc.company,
 			practitioner=doc.ref_practitioner,
 			invoice=doc.name,
 			child=child if child else "",
@@ -1691,6 +1692,7 @@ def insert_observation_and_sample_collection(
 					add_observation(
 						patient=patient,
 						template=comp,
+						company=doc.company,
 						practitioner=doc.ref_practitioner,
 						parent=current_parent_observation,
 						invoice=doc.name,
@@ -1732,6 +1734,7 @@ def insert_observation_and_sample_collection(
 			add_observation(
 				patient=patient,
 				template=grp.get("name"),
+				company=doc.company,
 				practitioner=doc.ref_practitioner,
 				invoice=doc.name,
 				child=child if child else "",

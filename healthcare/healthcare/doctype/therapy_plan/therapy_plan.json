@@ -28,6 +28,9 @@
   "total_invoiced_session",
   "column_break_11",
   "total_sessions_completed",
+  "more_information_section",
+  "source_doc",
+  "order_group",
   "section_break_zmve",
   "total_plan_amount",
   "column_break_dryw",
@@ -106,6 +109,28 @@
    "fieldtype": "Int",
    "label": "Total Sessions Completed",
    "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "more_information_section",
+   "fieldtype": "Section Break",
+   "label": "More Information"
+  },
+  {
+   "fieldname": "source_doc",
+   "fieldtype": "Link",
+   "label": "Source Doc",
+   "no_copy": 1,
+   "options": "DocType",
+   "read_only": 1
+  },
+  {
+   "fieldname": "order_group",
+   "fieldtype": "Dynamic Link",
+   "label": "Order Group",
+   "no_copy": 1,
+   "options": "source_doc",
    "read_only": 1
   },
   {
@@ -207,7 +232,7 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2025-09-27 21:14:22.974335",
+ "modified": "2026-10-15 15:30:00.000000",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Therapy Plan",

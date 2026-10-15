@@ -184,8 +184,7 @@ def aggregate_and_return_observation_data(observations):
 
 	for obs in observations:
 		if not obs.get("has_component"):
-			if obs.get("permitted_data_type"):
-				obs_length += 1
+			obs_length += 1
 
 			if obs.get("permitted_data_type") == "Select" and obs.get("options"):
 				obs["options_list"] = obs.get("options").split("\n")
@@ -236,8 +235,7 @@ def return_child_observation_data_as_dict(child_observations, obs, obs_length=0)
 			if not grand_dict.get("obs_approved", False):
 				all_children_approved = False
 		else:
-			if child.get("permitted_data_type"):
-				obs_length += 1
+			obs_length += 1
 			if child.get("permitted_data_type") == "Select" and child.get("options"):
 				child["options_list"] = child.get("options").split("\n")
 			if child.get("specimen"):
@@ -346,6 +344,7 @@ def add_observation(**args):
 	observation_doc.sales_invoice = args.get("invoice")
 	observation_doc.healthcare_practitioner = args.get("practitioner")
 	observation_doc.specimen = args.get("specimen")
+	observation_doc.company = args.get("company")
 	if args.get("data_type") in ["Range", "Ratio", "Quantity", "Numeric"]:
 		observation_doc.result_data = args.get("result")
 	# elif data_type in ["Quantity", "Numeric"]:

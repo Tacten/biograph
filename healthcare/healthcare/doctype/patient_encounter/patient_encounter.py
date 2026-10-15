@@ -629,6 +629,9 @@ def create_therapy_plan(encounter):
 		doc = frappe.new_doc("Therapy Plan")
 		doc.patient = encounter.patient
 		doc.start_date = encounter.encounter_date
+		doc.company = encounter.company
+		doc.source_doc = encounter.doctype
+		doc.order_group = encounter.name
 		for entry in encounter.therapies:
 			doc.append(
 				"therapy_plan_details",

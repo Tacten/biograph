@@ -91,7 +91,7 @@ def insert_observation(selected, sample_collection, component_observations=None,
 		sample_col_doc = frappe.db.get_value(
 			"Sample Collection",
 			sample_collection,
-			["reference_name", "patient", "referring_practitioner"],
+			["reference_name", "patient", "referring_practitioner", "company"],
 			as_dict=1,
 		)
 		selected = json.loads(selected)
@@ -112,6 +112,7 @@ def insert_observation(selected, sample_collection, component_observations=None,
 					observation = add_observation(
 						patient=sample_col_doc.get("patient"),
 						template=obs.get("observation_template"),
+						company=sample_col_doc.get("company"),
 						doc="Sample Collection",
 						docname=sample_collection,
 						parent=parent_observation,
@@ -143,6 +144,7 @@ def insert_observation(selected, sample_collection, component_observations=None,
 							observation = add_observation(
 								patient=sample_col_doc.get("patient"),
 								template=comp.get("observation_template"),
+								company=sample_col_doc.get("company"),
 								doc="Sample Collection",
 								docname=sample_collection,
 								parent=obs.get("component_observation_parent"),

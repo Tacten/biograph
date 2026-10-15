@@ -47,6 +47,23 @@ class TestClinicalProcedure(IntegrationTestCase):
 		# check consumption
 		self.assertTrue(frappe.db.exists("Stock Entry", result))
 
+	def test_start_and_end_time(self):
+		procedure_template = create_clinical_procedure_template()
+		procedure_template.default_duration = 3600
+		procedure_template.save()
+		patient, practitioner = create_healthcare_docs()
+
+		procedure = create_procedure(procedure_template, patient, practitioner)
+		self.assertTrue(procedure.planned_end_datetime)
+
+		procedure.start_procedure()
+		self.assertEqual(procedure.status, "In Progress")
+		self.assertTrue(procedure.actual_start_datetime)
+
+		procedure.complete_procedure()
+		self.assertEqual(procedure.status, "Completed")
+		self.assertTrue(procedure.actual_end_datetime)
+
 
 def create_consumable():
 	if frappe.db.exists("Item", "Syringe"):
@@ -69,5 +86,7 @@ def create_procedure(procedure_template, patient, practitioner):
 	procedure.items = procedure_template.items
 	procedure.company = "_Test Company"
 	procedure.warehouse = "_Test Warehouse - _TC"
+	procedure.start_date = frappe.utils.getdate()
+	procedure.start_time = frappe.utils.nowtime()
 	procedure.submit()
 	return procedure
