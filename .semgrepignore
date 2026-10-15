@@ -1,3 +1,5 @@
+.agents/
+skills-lock.json
 healthcare/public/dist/.*
 cypress/.*
 healthcare/__init__.py
