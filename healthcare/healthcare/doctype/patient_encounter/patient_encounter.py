@@ -11,6 +11,11 @@ from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
 from frappe.utils import add_days, getdate
 
+from healthcare.healthcare.doctype.fee_validity.fee_validity import (
+	cancel_fee_validity,
+	manage_fee_validity,
+	validate_fee_validity_cancellation,
+)
 from healthcare.healthcare.doctype.medication.medication import validate_medication_is_orderable
 from healthcare.healthcare.doctype.medication_alert_log.medication_alert_log import (
 	check_document,
@@ -53,7 +58,14 @@ class PatientEncounter(Document):
 		self.save("Update")
 		self.db_set("status", "Completed")
 
+		if not self.appointment:
+			# an encounter booked through an appointment is billed, and counted, on the appointment
+			manage_fee_validity(self)
+
 	def before_cancel(self):
+		if not self.appointment:
+			validate_fee_validity_cancellation(self)
+
 		orders = frappe.get_all("Service Request", {"order_group": self.name})
 		for order in orders:
 			order_doc = frappe.get_doc("Service Request", order.name)
@@ -65,6 +77,8 @@ class PatientEncounter(Document):
 
 		if self.appointment:
 			frappe.db.set_value("Patient Appointment", self.appointment, "status", "Open")
+		else:
+			cancel_fee_validity(self)
 
 		if self.inpatient_record and self.drug_prescription:
 			delete_ip_medication_order(self)

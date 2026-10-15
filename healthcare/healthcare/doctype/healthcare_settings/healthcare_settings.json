@@ -20,6 +20,7 @@
   "enable_free_follow_ups",
   "max_visits",
   "valid_days",
+  "apply_free_follow_ups_on_encounters",
   "medication_alerts_section",
   "enable_medication_alerts",
   "contraindicated_alert_action",
@@ -336,6 +337,12 @@
    "fieldname": "enable_free_follow_ups",
    "fieldtype": "Check",
    "label": "Enable Free Follow-ups"
+  },
+  {
+   "depends_on": "eval:doc.enable_free_follow_ups == 1",
+   "fieldname": "apply_free_follow_ups_on_encounters",
+   "fieldtype": "Check",
+   "label": "Apply Free Follow-ups on Encounters"
   },
   {
    "fieldname": "inpatient_settings_section",
