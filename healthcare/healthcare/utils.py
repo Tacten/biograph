@@ -502,7 +502,7 @@ def get_inpatient_services_to_invoice(patient, company):
 			)
 			qty = 0.5
 			if hours_occupied > 0:
-				actual_qty = hours_occupied / service_unit_type.no_of_hours
+				actual_qty = hours_occupied / (service_unit_type.no_of_hours or 1)
 				floor = math.floor(actual_qty)
 				decimal_part = actual_qty - floor
 				if decimal_part > 0.5:

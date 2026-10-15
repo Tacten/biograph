@@ -82,7 +82,7 @@
 		{
 			"bold": 1,
 			"default": "0",
-			"depends_on": "eval:doc.inpatient_occupancy == 1 && doc.allow_appointments != 1",
+			"depends_on": "eval:(doc.inpatient_occupancy == 1 || doc.is_ot == 1) && doc.allow_appointments != 1",
 			"fieldname": "is_billable",
 			"fieldtype": "Check",
 			"hide_days": 1,
@@ -108,7 +108,7 @@
 			"read_only": 1
 		},
 		{
-			"fetch_from": "item.item_name",
+			"fetch_from": "item.item_code",
 			"fieldname": "item_code",
 			"fieldtype": "Data",
 			"hide_days": 1,
@@ -136,6 +136,7 @@
 			"options": "UOM"
 		},
 		{
+			"default": "1",
 			"fieldname": "no_of_hours",
 			"fieldtype": "Int",
 			"hide_days": 1,
