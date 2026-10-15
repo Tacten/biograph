@@ -29,6 +29,10 @@
   "minor_alert_action",
   "column_break_medication_alerts",
   "record_alerts_from",
+  "medication_administration_section",
+  "auto_schedule_medication_doses",
+  "medication_dose_lead_time",
+  "manage_inpatient_medication_stock",
   "inpatient_settings_section",
   "allow_discharge_despite_unbilled_services",
   "allow_discharge_despite_pending_healthcare_services",
@@ -628,6 +632,33 @@
    "fieldtype": "Select",
    "label": "Record Alerts From",
    "options": "\nContraindicated\nMajor\nModerate\nMinor"
+  },
+  {
+   "fieldname": "medication_administration_section",
+   "fieldtype": "Section Break",
+   "label": "Medication Administration"
+  },
+  {
+   "fieldname": "auto_schedule_medication_doses",
+   "fieldtype": "Check",
+   "label": "Automatically Schedule Medication Doses",
+   "description": "Create a Medication Administration record for each dose as it falls due",
+   "default": "0"
+  },
+  {
+   "fieldname": "medication_dose_lead_time",
+   "fieldtype": "Int",
+   "label": "Schedule Dose Before (Minutes)",
+   "default": "30",
+   "depends_on": "auto_schedule_medication_doses",
+   "description": "A dose due at 14:00 with 30 minutes here appears on the round at 13:30"
+  },
+  {
+   "default": "0",
+   "description": "Transfer medication to the warehouse of the bed the patient occupies, and issue it when a dose is administered. A warehouse is created for every inpatient bed that does not have one",
+   "fieldname": "manage_inpatient_medication_stock",
+   "fieldtype": "Check",
+   "label": "Manage Inpatient Medication Stock at the Bed"
   }
  ],
  "issingle": 1,
