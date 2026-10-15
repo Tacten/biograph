@@ -22,7 +22,6 @@ from healthcare.healthcare.doctype.fee_validity.fee_validity import (
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import (
 	get_income_account,
 )
-from healthcare.healthcare.doctype.lab_test.lab_test import create_multiple
 from healthcare.healthcare.doctype.observation.observation import add_observation
 from healthcare.healthcare.doctype.observation_template.observation_template import (
 	get_observation_template_details,
@@ -940,6 +939,8 @@ def manage_invoice_submit_cancel(doc, method):
 
 	if effective_method == "on_submit" and not is_return:
 		if frappe.db.get_single_value("Healthcare Settings", "create_lab_test_on_si_submit"):
+			from healthcare.healthcare.doctype.lab_test.lab_test import create_multiple
+
 			create_multiple("Sales Invoice", doc.name)
 
 		post_transfer_journal_entry_and_update_coverage(doc)
