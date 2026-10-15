@@ -236,6 +236,7 @@ healthcare.Orders = class Orders {
 						"fieldname": "order_template_type",
 						"fieldtype": "Link",
 						"options": "DocType",
+						"only_select": true,
 						"reqd": 1,
 						get_query: () => {
 							let order_template_doctypes = [
