@@ -179,6 +179,8 @@ class InpatientRecord(Document):
 			)[0]
 
 			for inpatient in ip_records:
+				if not inpatient.get("item"):
+					continue
 				item_name, stock_uom = frappe.db.get_value(
 					"Item", inpatient.get("item"), ["item_name", "stock_uom"]
 				)
