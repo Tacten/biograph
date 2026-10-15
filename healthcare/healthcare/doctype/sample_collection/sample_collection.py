@@ -40,10 +40,7 @@ class SampleCollection(Document):
 					if not any((comp["status"] == "Open") for comp in component_observations):
 						obs.status = "Collected"
 
-		if not any((obs.get("status") == "Open") for obs in self.observation_sample_collection):
-			self.status = "Collected"
-		else:
-			self.status = "Partly Collected"
+		self.status = get_collection_status(self.observation_sample_collection)
 
 	# def before_submit(self):
 	# 	if [sample for sample in self.observation_sample_collection if sample.status != "Collected"]:
@@ -193,15 +190,14 @@ def insert_observation(selected, sample_collection, component_observations=None,
 				child_db_set_dict,
 			)
 		if sample_collection:
-			non_collected_samples = frappe.db.get_all(
-				"Observation Sample Collection", {"parent": sample_collection, "status": ["!=", "Collected"]}
+			child_rows = frappe.db.get_all(
+				"Observation Sample Collection",
+				{"parent": sample_collection},
+				["status"],
 			)
-			if non_collected_samples and len(non_collected_samples) > 0:
-				set_status = "Partly Collected"
-			else:
-				set_status = "Collected"
-
-			frappe.db.set_value("Sample Collection", sample_collection, "status", set_status)
+			frappe.db.set_value(
+				"Sample Collection", sample_collection, "status", get_collection_status(child_rows)
+			)
 
 	except Exception as e:
 		frappe.log_error(message=e, title="Failed to mark Collected!")
@@ -212,6 +208,14 @@ def insert_observation(selected, sample_collection, component_observations=None,
 		doctype="Sample Collection",
 		docname=sample_collection,
 	)
+
+
+def get_collection_status(child_rows):
+	if all(row.get("status") == "Collected" for row in child_rows) or not child_rows:
+		return "Collected"
+	if all(row.get("status") == "Open" for row in child_rows):
+		return "Pending"
+	return "Partly Collected"
 
 
 def create_specimen(patient, selected, component_observations):

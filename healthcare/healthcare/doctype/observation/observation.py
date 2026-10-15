@@ -100,7 +100,14 @@ class Observation(Document):
 		return False
 
 	def component_has_result(self):
-		component_obs = frappe.db.get_all("Observation", {"parent_observation": self.name}, pluck="name")
+		component_obs = frappe.db.get_all(
+			"Observation",
+			{
+				"parent_observation": self.name,
+				"docstatus": ["!=", 2],
+			},
+			pluck="name",
+		)
 		for obs in component_obs:
 			obs_doc = frappe.get_doc("Observation", obs)
 			if obs_doc.has_component:
@@ -111,6 +118,12 @@ class Observation(Document):
 					return False
 
 		return True
+
+	def is_ready_for_approval(self):
+		if self.has_component:
+			return self.component_has_result()
+
+		return self.has_result()
 
 	def validate_input(self):
 		if self.permitted_data_type in ["Quantity", "Numeric"]:
@@ -133,6 +146,13 @@ class Observation(Document):
 
 @frappe.whitelist()
 def get_observation_details(docname):
+	observation = get_root_observations(docname)
+	out_data, obs_length = aggregate_and_return_observation_data(observation)
+	return out_data, obs_length
+
+
+def get_root_observations(docname):
+	"""Observations of a Diagnostic Report that are not components of another Observation."""
 	reference = frappe.get_value(
 		"Diagnostic Report", docname, ["docname", "ref_doctype"], as_dict=True
 	)
@@ -174,9 +194,7 @@ def get_observation_details(docname):
 			order_by="creation",
 		)
 
-	out_data, obs_length = aggregate_and_return_observation_data(observation)
-
-	return out_data, obs_length
+	return observation
 
 
 def aggregate_and_return_observation_data(observations):
@@ -487,11 +505,10 @@ def get_observation_result_template(template_name, observation):
 def set_observation_status(observation, status, reason=None, parent_obs=None):
 	observation_doc = frappe.get_doc("Observation", observation)
 
-	if not (observation_doc.has_result() or observation_doc.has_component):
+	if not observation_doc.is_ready_for_approval():
+		if observation_doc.has_component:
+			frappe.throw(_("Please enter result for all components to Approve."))
 		frappe.throw(_("Please enter result to Approve."))
-
-	if observation_doc.has_component and not observation_doc.component_has_result():
-		frappe.throw(_("Please enter result for all components to Approve."))
 
 	observation_doc.status = status
 	if reason:
@@ -503,6 +520,7 @@ def set_observation_status(observation, status, reason=None, parent_obs=None):
 		if not observation_doc.has_component:
 			observation_doc.cancel()
 		new_doc = frappe.copy_doc(observation_doc)
+		new_doc.docstatus = 0
 		new_doc.status = ""
 		new_doc.disapproval_reason = ""
 		if parent_obs:
@@ -512,17 +530,63 @@ def set_observation_status(observation, status, reason=None, parent_obs=None):
 			parent_obs = new_doc.name
 
 	if observation_doc.has_component:
-
-		component_obs = frappe.db.get_all(
-			"Observation",
-			filters={"parent_observation": observation},
-			pluck="name",
-		)
-
-		for obs in component_obs:
+		for obs in get_component_observations(observation, status):
 			set_observation_status(obs, status, reason, parent_obs)
 		if status == "Rejected" and observation_doc.docstatus == 1:
 			observation_doc.cancel()
+
+
+def get_component_observations(observation, status):
+	filters = {"parent_observation": observation}
+	if status == "Approved":
+		filters.update({"status": ["!=", "Approved"], "docstatus": 0})
+
+	return frappe.db.get_all("Observation", filters=filters, pluck="name")
+
+
+@frappe.whitelist()
+def approve_all_observations(diagnostic_report):
+	"""Approve every Observation of the report that has a result, skip the rest."""
+	approved, skipped = [], []
+
+	for observation in get_root_observations(diagnostic_report):
+		if observation.get("status") == "Approved" or observation.get("docstatus") != 0:
+			continue
+
+		observation_doc = frappe.get_doc("Observation", observation.get("name"))
+		if not observation_doc.is_ready_for_approval():
+			skipped.append(get_observation_label(observation_doc))
+			continue
+
+		set_observation_status(observation_doc.name, "Approved")
+		approved.append(observation_doc.name)
+
+	return {"approved": approved, "skipped": skipped}
+
+
+@frappe.whitelist()
+def reject_all_observations(diagnostic_report, reason):
+	"""Reject every approved Observation of the report."""
+	if not reason:
+		frappe.throw(_("Please enter a reason to Reject."))
+
+	rejected, skipped = [], []
+
+	for observation in get_root_observations(diagnostic_report):
+		if observation.get("status") != "Approved":
+			skipped.append(get_observation_label(observation))
+			continue
+
+		set_observation_status(observation.get("name"), "Rejected", reason)
+		rejected.append(observation.get("name"))
+
+	return {"rejected": rejected, "skipped": skipped}
+
+
+def get_observation_label(observation_doc):
+	return (
+		observation_doc.preferred_display_name or observation_doc.observation_template or observation_doc.name
+	)
 
 
 def set_diagnostic_report_status(doc):
