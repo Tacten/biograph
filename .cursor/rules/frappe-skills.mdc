@@ -1,0 +1,30 @@
+---
+description: Follow the vendored Frappe skills for semantic and syntactic correctness on every Biograph feature.
+alwaysApply: true
+---
+
+# Frappe skills are the rules for Biograph features
+
+Skills from https://github.com/frappe/skills are vendored in `@.agents/skills/` and linked from `@.cursor/skills/`. `skills-lock.json` records the installed hashes. Before writing or changing a feature, read the matching `SKILL.md` with tools and follow it. Load only the reference files that match the task.
+
+## Semantic correctness
+
+Behavior, data model, permissions, and lifecycle come from `@.agents/skills/frappe-app-dev/SKILL.md`.
+
+- This repository is an existing app. Read `@.agents/skills/frappe-app-dev/references/existing-app.md` before extending it.
+- Then read the topic file named in that skill: DocTypes, controllers, whitelisted APIs, database and ORM, hooks, permissions, jobs, caching, realtime, tests, or frontend (desk, portal, Vue).
+- Keep business rules and validation on the server.
+- Before treating a feature as done, review the diff against `@.agents/skills/frappe-code-review/SKILL.md` (correctness, security, performance, concurrency, API shape, tests).
+
+## Syntactic correctness
+
+Shape of the code comes from `@.agents/skills/code-style/SKILL.md` on every edit: small functions, files split by responsibility, public functions above helpers, comments only for surprises, and abstractions after repeated use. When a Frappe pattern and a general style note both apply, keep the Frappe pattern and still apply the style rules to structure.
+
+## Matching tasks
+
+- Desk, portal, or Vue UI: `@.agents/skills/frappe-app-dev/references/frontend.md`, then `@.agents/skills/ui-design/SKILL.md` where no Frappe-specific design rule applies.
+- Docs, commit messages, and pull requests: `@.agents/skills/technical-writing/SKILL.md`.
+
+## Invoke only when asked
+
+`/deep-app-audit`, `/draft-security-advisory`, `/ship-it`, `/fix-issue`, and `/resolve-backport-conflicts` stay unused until the user runs that command.
