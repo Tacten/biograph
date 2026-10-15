@@ -4,6 +4,7 @@
 
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, today
 import json
@@ -218,7 +219,35 @@ def get_services_details(self):
 
 	
 @frappe.whitelist()
-def make_therapy_session(patient, therapy_type, company, therapy_plan=None, appointment=None):
+def make_therapy_session(
+	patient,
+	therapy_type,
+	company,
+	therapy_plan=None,
+	appointment=None,
+	service_request=None,
+	practitioner=None,
+):
+	if not service_request and therapy_plan:
+		order_group = frappe.db.get_value("Therapy Plan", therapy_plan, "order_group")
+		if order_group:
+			service_request = frappe.db.exists(
+				"Service Request",
+				{"template_dn": therapy_type, "order_group": order_group},
+			)
+
+	sr_doc = None
+	if service_request:
+		if (
+			frappe.db.get_single_value("Healthcare Settings", "process_service_request_only_if_paid")
+			and frappe.db.get_value("Service Request", service_request, "billing_status") != "Invoiced"
+		):
+			frappe.throw(
+				_("Service Request need to be invoiced before proceeding"),
+				title=_("Payment Required"),
+			)
+		sr_doc = frappe.get_doc("Service Request", service_request)
+
 	therapy_type = frappe.get_doc("Therapy Type", therapy_type)
 
 	therapy_session = frappe.new_doc("Therapy Session")
@@ -228,6 +257,8 @@ def make_therapy_session(patient, therapy_type, company, therapy_plan=None, appo
 	therapy_session.therapy_type = therapy_type.name
 	therapy_session.duration = therapy_type.default_duration
 	therapy_session.rate = therapy_type.rate
+	if practitioner:
+		therapy_session.practitioner = practitioner
 	if not therapy_session.exercises and therapy_type.exercises:
 		for exercise in therapy_type.exercises:
 			therapy_session.append(
@@ -235,6 +266,9 @@ def make_therapy_session(patient, therapy_type, company, therapy_plan=None, appo
 				(frappe.copy_doc(exercise)).as_dict(),
 			)
 	therapy_session.appointment = appointment
+	therapy_session.service_request = service_request
+	if sr_doc:
+		therapy_session.invoiced = 1 if sr_doc.billing_status == "Invoiced" else 0
 
 	if frappe.flags.in_test:
 		therapy_session.start_date = today()

@@ -100,7 +100,7 @@ class Patient(Document):
 		if not self.customer_group:
 			self.customer_group = frappe.db.get_single_value(
 				"Selling Settings", "customer_group"
-			) or get_root_of("Customer Group")
+			) or frappe.db.exists("Customer Group", "Individual")
 		if not self.territory:
 			self.territory = frappe.db.get_single_value("Selling Settings", "territory") or get_root_of(
 				"Territory"
@@ -345,7 +345,8 @@ def create_customer(doc):
 			"doctype": "Customer",
 			"customer_name": doc.patient_name,
 			"customer_group": doc.customer_group
-			or frappe.db.get_single_value("Selling Settings", "customer_group"),
+			or frappe.db.get_single_value("Selling Settings", "customer_group")
+			or frappe.db.exists("Customer Group", "Individual"),
 			"territory": doc.territory or frappe.db.get_single_value("Selling Settings", "territory"),
 			"customer_type": "Individual",
 			"default_currency": doc.default_currency,

@@ -21,6 +21,7 @@
 		"item_group",
 		"uom",
 		"no_of_hours",
+		"minimum_billable_qty",
 		"column_break_11",
 		"rate",
 		"description",
@@ -143,6 +144,11 @@
 			"mandatory_depends_on": "eval: doc.is_billable == 1"
 		},
 		{
+			"fieldname": "minimum_billable_qty",
+			"fieldtype": "Int",
+			"label": "Minimum Billable Quantity"
+		},
+		{
 			"fieldname": "column_break_11",
 			"fieldtype": "Column Break",
 			"hide_days": 1,
@@ -188,7 +194,7 @@
 			"link_fieldname": "service_unit_type"
 		}
 	],
-	"modified": "2025-09-25 15:04:43.831015",
+	"modified": "2026-10-15 17:10:00.000000",
 	"modified_by": "Administrator",
 	"module": "Healthcare",
 	"name": "Healthcare Service Unit Type",

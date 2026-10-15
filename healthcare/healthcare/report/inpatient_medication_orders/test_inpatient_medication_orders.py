@@ -51,7 +51,7 @@ class TestInpatientMedicationOrders(IntegrationTestCase):
 			{
 				"patient": "_Test IPD Patient",
 				"inpatient_record": self.ip_record.name,
-				"practitioner": None,
+				"healthcare_practitioner": None,
 				"drug": "Dextromethorphan",
 				"drug_name": "Dextromethorphan",
 				"dosage": 1.0,
@@ -64,7 +64,7 @@ class TestInpatientMedicationOrders(IntegrationTestCase):
 			{
 				"patient": "_Test IPD Patient",
 				"inpatient_record": self.ip_record.name,
-				"practitioner": None,
+				"healthcare_practitioner": None,
 				"drug": "Dextromethorphan",
 				"drug_name": "Dextromethorphan",
 				"dosage": 1.0,
@@ -77,7 +77,7 @@ class TestInpatientMedicationOrders(IntegrationTestCase):
 			{
 				"patient": "_Test IPD Patient",
 				"inpatient_record": self.ip_record.name,
-				"practitioner": None,
+				"healthcare_practitioner": None,
 				"drug": "Dextromethorphan",
 				"drug_name": "Dextromethorphan",
 				"dosage": 1.0,

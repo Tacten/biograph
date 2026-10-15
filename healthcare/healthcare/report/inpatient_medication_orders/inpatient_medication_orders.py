@@ -88,7 +88,7 @@ def get_data(filters):
 	data = frappe.db.sql(
 		f"""
 		SELECT
-			parent.patient, parent.inpatient_record, parent.practitioner,
+			parent.patient, parent.inpatient_record, parent.practitioner as healthcare_practitioner,
 			child.drug, child.drug_name, child.dosage, child.dosage_form,
 			child.date, child.time, child.is_completed, child.name
 		FROM `tabInpatient Medication Order` parent

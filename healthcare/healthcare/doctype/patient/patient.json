@@ -405,6 +405,7 @@
    "fieldname": "customer_group",
    "fieldtype": "Link",
    "label": "Customer Group",
+   "link_filters": "[[\"Customer Group\",\"is_group\",\"=\",0]]",
    "options": "Customer Group"
   },
   {
@@ -643,7 +644,7 @@
   }
  ],
  "max_attachments": 50,
- "modified": "2025-09-02 13:04:27.771400",
+ "modified": "2026-10-15 17:00:00.000000",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Patient",

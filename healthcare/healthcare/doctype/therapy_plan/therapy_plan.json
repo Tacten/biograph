@@ -17,6 +17,7 @@
   "column_break_4",
   "company",
   "practitioner",
+  "practitioner_name",
   "status",
   "start_date",
   "section_break_3",
@@ -151,8 +152,18 @@
   {
    "fieldname": "practitioner",
    "fieldtype": "Link",
-   "label": "Healthcare Practitioner",
-   "options": "Healthcare Practitioner"
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Ordered By Practitioner",
+   "options": "Healthcare Practitioner",
+   "search_index": 1
+  },
+  {
+   "fetch_from": "practitioner.practitioner_name",
+   "fieldname": "practitioner_name",
+   "fieldtype": "Data",
+   "label": "Ordered By Practitioner Name",
+   "read_only": 1
   },
   {
    "fieldname": "therapy_plan_template",
@@ -232,7 +243,7 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2026-10-15 15:30:00.000000",
+ "modified": "2026-10-15 17:00:00.000000",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Therapy Plan",
