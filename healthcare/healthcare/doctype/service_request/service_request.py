@@ -18,6 +18,10 @@ from healthcare.healthcare.doctype.observation.observation import add_observatio
 from healthcare.healthcare.doctype.observation_template.observation_template import (
 	get_observation_template_details,
 )
+from healthcare.healthcare.utils import (
+	create_non_sample_observations,
+	has_sample_required_component,
+)
 
 
 class ServiceRequest(ServiceRequestController):
@@ -304,21 +308,26 @@ def insert_observation_and_sample_collection(
 	if grp.get("has_component"):
 		diag_report_required = True
 
-		# parent observation
-		current_parent_observation = add_observation(
-			patient=patient,
-			template=grp.get("name"),
-			company=service_request.company,
-			practitioner=service_request.practitioner,
-			child=child if child else "",
-			parent=parent_observation,
-			doc="Patient Encounter",
-			docname=service_request.order_group,
-			service_request=service_request.name,
+		sample_reqd_component_obs, non_sample_reqd_component_obs = get_observation_template_details(
+			grp.get("name")
 		)
 
-		add_to_sample_collection = has_direct_leaf_component(grp.get("name"))
-		if add_to_sample_collection:
+		current_parent_observation = None
+		if parent_observation is None or non_sample_reqd_component_obs:
+			current_parent_observation = add_observation(
+				patient=patient,
+				template=grp.get("name"),
+				company=service_request.company,
+				practitioner=service_request.practitioner,
+				child=child if child else "",
+				parent=parent_observation,
+				doc="Patient Encounter",
+				docname=service_request.order_group,
+				service_request=service_request.name,
+			)
+
+		add_to_sample_collection = has_sample_required_component(grp.get("name"))
+		if add_to_sample_collection and parent_observation is None:
 			sample_collection.append(
 				"observation_sample_collection",
 				{
@@ -332,38 +341,36 @@ def insert_observation_and_sample_collection(
 				},
 			)
 
-		sample_reqd_component_obs, non_sample_reqd_component_obs = get_observation_template_details(
-			grp.get("name")
-		)
-		# create observation for non sample_collection_reqd grouped templates
-
 		if len(non_sample_reqd_component_obs) > 0:
 			for comp in non_sample_reqd_component_obs:
-				comp_details = frappe.get_value(
-					"Observation Template",
-					comp,
-					[
-						"name",
-						"has_component",
-						"sample_collection_required",
-						"sample",
-						"sample_type",
-						"container_closure_color",
-					],
-					as_dict=True,
-				)
-				if comp_details.get("has_component"):
-					# recurse if component is also a template with components
-					sub_sc, sub_drc = insert_observation_and_sample_collection(
-						service_request,
-						patient,
-						comp_details,
-						sample_collection,
-						child,
-						parent_observation=current_parent_observation,
+				comp_has_component = frappe.db.get_value("Observation Template", comp, "has_component")
+				if comp_has_component and has_sample_required_component(comp):
+					continue
+				if comp_has_component:
+					sub_observation = add_observation(
+						patient=patient,
+						template=comp,
+						company=service_request.company,
+						practitioner=service_request.practitioner,
+						parent=current_parent_observation,
+						child=child if child else "",
+						doc="Patient Encounter",
+						docname=service_request.order_group,
+						service_request=service_request.name,
 					)
-					sample_collection = sub_sc
-					diag_report_required = diag_report_required or sub_drc
+					create_non_sample_observations(
+						comp,
+						sub_observation,
+						{
+							"patient": patient,
+							"company": service_request.company,
+							"practitioner": service_request.practitioner,
+							"doc": "Patient Encounter",
+							"docname": service_request.order_group,
+							"service_request": service_request.name,
+							"child": child if child else "",
+						},
+					)
 				else:
 					add_observation(
 						patient=patient,
@@ -372,8 +379,10 @@ def insert_observation_and_sample_collection(
 						practitioner=service_request.practitioner,
 						parent=current_parent_observation,
 						child=child if child else "",
+						doc="Patient Encounter",
+						docname=service_request.order_group,
+						service_request=service_request.name,
 					)
-		# create sample_colleciton child row for sample_collection_reqd grouped templates
 		if len(sample_reqd_component_obs) > 0:
 			for comp in sample_reqd_component_obs:
 				comp_details = frappe.get_value(
@@ -390,7 +399,6 @@ def insert_observation_and_sample_collection(
 					as_dict=True,
 				)
 				if comp_details.get("has_component"):
-					# recurse into nested template
 					sub_sc, sub_drc = insert_observation_and_sample_collection(
 						service_request,
 						patient,
@@ -404,7 +412,6 @@ def insert_observation_and_sample_collection(
 
 	else:
 		diag_report_required = True
-		# create observation for non sample_collection_reqd individual templates
 		if not grp.get("sample_collection_required"):
 			add_observation(
 				patient=patient,
@@ -412,9 +419,11 @@ def insert_observation_and_sample_collection(
 				company=service_request.company,
 				practitioner=service_request.practitioner,
 				child=child if child else "",
+				doc="Patient Encounter",
+				docname=service_request.order_group,
+				service_request=service_request.name,
 			)
 		else:
-			# create sample_colleciton child row for sample_collection_reqd individual templates
 			sample_collection.append(
 				"observation_sample_collection",
 				{
@@ -512,23 +521,3 @@ def make_appointment(source_name, target_doc=None, ignore_permissions=False):
 	)
 
 	return doclist
-
-
-def has_direct_leaf_component(template_name):
-	"""Return True if the given template has at least one direct leaf child."""
-	sample_reqd_component_obs, non_sample_reqd_component_obs = get_observation_template_details(
-		template_name
-	)
-	all_components = sample_reqd_component_obs + non_sample_reqd_component_obs
-
-	for comp in all_components:
-		comp_details = frappe.db.get_value(
-			"Observation Template",
-			comp,
-			["has_component", "sample_collection_required"],
-			as_dict=True,
-		)
-		if not comp_details.get("has_component") and comp_details.get("sample_collection_required"):
-			return True
-
-	return False
