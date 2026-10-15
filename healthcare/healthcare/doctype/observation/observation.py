@@ -16,6 +16,11 @@ from erpnext.setup.doctype.terms_and_conditions.terms_and_conditions import (
 
 
 class Observation(Document):
+	@property
+	def sales_invoice_status(self):
+		if self.sales_invoice:
+			return frappe.db.get_value("Sales Invoice", self.sales_invoice, "status")
+
 	def validate(self):
 		self.set_age()
 		self.set_result_time()

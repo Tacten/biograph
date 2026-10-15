@@ -391,9 +391,9 @@
    "read_only": 1
   },
   {
-   "fetch_from": "sales_invoice.status",
    "fieldname": "sales_invoice_status",
    "fieldtype": "Data",
+   "is_virtual": 1,
    "label": "Sales Invoice Status",
    "read_only": 1
   },

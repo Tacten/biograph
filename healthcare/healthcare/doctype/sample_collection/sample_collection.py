@@ -91,7 +91,7 @@ def insert_observation(selected, sample_collection, component_observations=None,
 		sample_col_doc = frappe.db.get_value(
 			"Sample Collection",
 			sample_collection,
-			["reference_name", "patient", "referring_practitioner", "company"],
+			["reference_name", "reference_doc", "patient", "referring_practitioner", "company"],
 			as_dict=1,
 		)
 		selected = json.loads(selected)
