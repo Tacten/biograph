@@ -14,8 +14,10 @@ def create_allergies():
 
 
 def read_seed():
-	seed_text = files("healthcare.healthcare.doctype.allergy").joinpath("allergy_seed.json").read_text(
-		encoding="utf-8"
+	seed_text = (
+		files("healthcare.healthcare.doctype.allergy")
+		.joinpath("allergy_seed.json")
+		.read_text(encoding="utf-8")
 	)
 	return json.loads(seed_text)
 
