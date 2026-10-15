@@ -488,9 +488,7 @@ def get_data_from_service_requests(patients):
 		)
 		.select(
 			observation.name.as_("observation"),
-			observation.result_data,
-			observation.result_text,
-			observation.result_select,
+			observation.result,
 		)
 		.select(
 			observation_template.permitted_unit,
@@ -585,9 +583,7 @@ def get_data_from_invoices(patients):
 		)
 		.select(
 			observation.name.as_("observation"),
-			observation.result_data,
-			observation.result_text,
-			observation.result_select,
+			observation.result,
 		)
 		.select(
 			sample_collection_item.name.as_("observation_sample_collection"),
@@ -614,16 +610,7 @@ def get_data_from_invoices(patients):
 
 
 def get_observation_result(obs_data):
-	result = None
-	template_doc = frappe.get_doc("Observation Template", obs_data.observation_template)
-	if template_doc.permitted_data_type in ["Range", "Ratio", "Quantity", "Numeric"]:
-		result = obs_data.result_data
-	elif obs_data.permitted_data_type == "Text":
-		result = obs_data.result_text
-	elif obs_data.permitted_data_type == "Select":
-		result = obs_data.result_select
-
-	return result
+	return obs_data.get("result")
 
 
 def get_payment_gateway():

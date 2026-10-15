@@ -2,16 +2,16 @@
 # See license.txt
 
 import frappe
-from frappe.tests import IntegrationTestCase
 
 from healthcare.healthcare.doctype.observation.observation import (
 	approve_all_observations,
 	reject_all_observations,
 )
 from healthcare.healthcare.doctype.observation.test_observation import create_sales_invoice
+from healthcare.tests.utils import HealthcareTestSuite
 
 
-class TestDiagnosticReport(IntegrationTestCase):
+class TestDiagnosticReport(HealthcareTestSuite):
 	def test_approve_all_approves_observations_with_result(self):
 		diagnostic_report, observations = self.create_report("_Test Observation without Sample")
 		self.set_results(observations)
@@ -115,5 +115,5 @@ class TestDiagnosticReport(IntegrationTestCase):
 	def set_results(self, observations):
 		for observation in observations:
 			observation_doc = frappe.get_doc("Observation", observation)
-			observation_doc.result_data = "5"
+			observation_doc.result = "5"
 			observation_doc.save()
