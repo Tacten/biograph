@@ -114,7 +114,7 @@ class PatientEncounter(Document):
 
 	@frappe.whitelist()
 	def set_treatment_plans(self, treatment_plans=None):
-		for treatment_plan in treatment_plans:
+		for treatment_plan in treatment_plans or []:
 			self.set_treatment_plan(treatment_plan)
 
 	def set_treatment_plan(self, plan):
@@ -709,42 +709,75 @@ def create_medication_request(encounter):
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_medications_query(doctype, txt, searchfield, start, page_len, filters):
-	medication_name = filters.get("medication")
+	filters = filters or {}
+	linked_items = get_linked_medication_items(txt, start, page_len, filters)
+	warehouse = get_default_warehouse(filters.get("company"))
+	quantities = get_actual_quantities([row.item for row in linked_items], warehouse)
+	return tuple(get_search_columns(row, warehouse, quantities) for row in linked_items)
 
-	medication_child = frappe.qb.DocType("Medication Linked Item")
-	medication = frappe.qb.DocType("Medication")
+
+def get_linked_medication_items(txt, start, page_len, filters):
+	linked_item = frappe.qb.DocType("Medication Linked Item")
 	item = frappe.qb.DocType("Item")
 	query = (
-		frappe.qb.select(medication_child.brand, medication_child.manufacturer, medication_child.item)
-		.from_(medication_child)
-		.left_join(medication)
-		.on(medication.name == medication_child.parent)
-		.left_join(item)
-		.on(item.name == medication_child.item)
+		frappe.qb.select(linked_item.item, linked_item.brand, linked_item.manufacturer)
+		.from_(linked_item)
+		.inner_join(item)
+		.on(item.name == linked_item.item)
 		.where(item.disabled == 0)
+		.orderby(linked_item.item)
+		.limit(page_len)
+		.offset(start)
 	)
-	if medication_name:
-		query = query.where(medication.name == medication_name)
 
-	data = query.run(as_dict=True)
-	data_list = []
-	for d in data:
-		display_list = []
-		if d.get("item"):
-			display_list.append(d.get("item"))
-		if d.get("brand"):
-			display_list.append(d.get("brand"))
-		if d.get("manufacturer"):
-			display_list.append(d.get("manufacturer"))
-		default_warehouse = frappe.get_cached_value("Stock Settings", None, "default_warehouse")
-		if default_warehouse:
-			actual_qty = frappe.db.get_value(
-				"Bin", {"warehouse": default_warehouse, "item_code": d.get("item")}, "actual_qty"
-			)
-			display_list.append("<br>Actual Qty : " + (str(actual_qty) if actual_qty else "0"))
-		data_list.append(display_list)
-	res = tuple(tuple(sub) for sub in data_list)
-	return res
+	medication = filters.get("medication") or filters.get("name")
+	if medication:
+		query = query.where(linked_item.parent == medication)
+	if filters.get("is_stock_item"):
+		query = query.where(item.is_stock_item == 1)
+	if txt:
+		query = query.where(get_search_condition(linked_item, txt))
+
+	return query.run(as_dict=True)
+
+
+def get_search_condition(linked_item, txt):
+	pattern = f"%{txt}%"
+	return (
+		linked_item.item.like(pattern)
+		| linked_item.brand.like(pattern)
+		| linked_item.manufacturer.like(pattern)
+	)
+
+
+def get_actual_quantities(item_codes, warehouse):
+	if not warehouse or not item_codes:
+		return {}
+
+	bins = frappe.get_all(
+		"Bin",
+		filters={"warehouse": warehouse, "item_code": ["in", item_codes]},
+		fields=["item_code", "actual_qty"],
+	)
+	return {bin_row.item_code: bin_row.actual_qty for bin_row in bins}
+
+
+def get_default_warehouse(company=None):
+	company = company or frappe.defaults.get_user_default("Company")
+	if not company:
+		return None
+	return frappe.get_cached_value("Company", company, "default_warehouse")
+
+
+def get_search_columns(row, warehouse, quantities):
+	columns = [row.item]
+	if row.brand:
+		columns.append(row.brand)
+	if row.manufacturer:
+		columns.append(row.manufacturer)
+	if warehouse:
+		columns.append(f"<br>{_('Actual Qty')} : {quantities.get(row.item, 0)}")
+	return tuple(columns)
 
 
 @frappe.whitelist()
