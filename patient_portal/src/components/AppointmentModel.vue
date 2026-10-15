@@ -38,11 +38,11 @@
 						</p>
 
 						<p class="mt-1 mb-1 text-xs text-gray-600 leading-snug break-words whitespace-normal">
-							<FeatherIcon name="calendar" class="inline w-3 h-3 mr-1 text-gray-500" />
+							<FeatherIcon name="calendar" class="inline w-3 h-3 me-1 text-gray-500" />
 							{{ formatDate(item.appointment_date) }}
 						</p>
 						<p class="mt-1 text-xs text-gray-600 whitespace-nowrap">
-							<FeatherIcon name="clock" class="inline w-3 h-3 mr-1 text-gray-500" />
+							<FeatherIcon name="clock" class="inline w-3 h-3 me-1 text-gray-500" />
 							{{ item.appointment_time }} ({{ item.duration }} mins)
 						</p>
 					</Card>
@@ -103,7 +103,7 @@
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:[&>section]:h-full">
 					<section class="md:col-start-1 md:row-start-1">
 						<div class="flex items-start gap-4 px-2">
-							<img v-if="selectedAppointment.patient_image" :src="selectedAppointment.patient_image"
+							<img v-if="selectedAppointment.patient_image" :src="selectedAppointment.patient_image" alt=""
 								class="w-20 h-20 rounded-full object-cover border" />
 							<div v-else
 								class="w-20 h-20 rounded-full flex items-center justify-center text-gray-700 text-2xl font-semibold border">
@@ -136,7 +136,7 @@
 					<section class="md:col-start-1 md:row-start-2">
 						<div class="flex items-start gap-4 px-2">
 							<img v-if="selectedAppointment.practitioner_image"
-								:src="selectedAppointment.practitioner_image"
+								:src="selectedAppointment.practitioner_image" alt=""
 								class="w-20 h-20 rounded-full object-cover border" />
 							<div v-else
 								class="w-20 h-20 rounded-full flex items-center justify-center text-gray-700 text-2xl font-semibold border">

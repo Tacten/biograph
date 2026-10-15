@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 from frappe.utils import cint, get_system_timezone
+from frappe.utils.jinja_globals import is_rtl
 from frappe.utils.telemetry import capture
 
 no_cache = 1
@@ -25,9 +26,13 @@ def get_context_for_dev():
 
 
 def get_boot():
+	frappe.set_user_lang(frappe.session.user)
+
 	return frappe._dict(
 		{
 			"frappe_version": frappe.__version__,
+			"lang": frappe.local.lang,
+			"text_direction": "rtl" if is_rtl() else "ltr",
 			"default_route": get_default_route(),
 			"site_name": frappe.local.site,
 			"read_only_mode": frappe.flags.read_only,
