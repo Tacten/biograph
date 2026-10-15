@@ -1505,7 +1505,7 @@ def make_encounter(source_name, target_doc=None):
 					["invoiced", "invoiced"],
 					["company", "company"],
 				],
-				"field_no_map": ["practitioner"],
+				"field_no_map": ["practitioner", "naming_series"],
 			}
 		},
 		target_doc,
