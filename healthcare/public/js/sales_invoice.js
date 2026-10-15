@@ -151,7 +151,7 @@ var get_healthcare_services_to_invoice = function (frm, link_customer) {
 		patient: frm.doc.patient,
 	});
 	dialog.fields_dict["patient"].df.onchange = () => {
-		var patient = dialog.fields_dict.patient.input.value;
+		var patient = dialog.get_value("patient");
 		if (patient && patient != selected_patient) {
 			selected_patient = patient;
 			var method =
@@ -266,7 +266,7 @@ var set_primary_action = function (frm, dialog, $results, invoice_healthcare_ser
 		let checked_values = get_checked_values($results);
 		if (checked_values.length > 0) {
 			if (invoice_healthcare_services) {
-				frm.set_value("patient", dialog.fields_dict.patient.input.value);
+				frm.set_value("patient", dialog.get_value("patient"));
 			}
 			frm.set_value("items", []);
 			add_to_item_line(frm, checked_values, invoice_healthcare_services);

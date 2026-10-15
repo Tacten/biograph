@@ -218,7 +218,7 @@ def get_services_details(self):
 
 	
 @frappe.whitelist()
-def make_therapy_session(therapy_plan, patient, therapy_type, company, appointment=None):
+def make_therapy_session(patient, therapy_type, company, therapy_plan=None, appointment=None):
 	therapy_type = frappe.get_doc("Therapy Type", therapy_type)
 
 	therapy_session = frappe.new_doc("Therapy Session")
