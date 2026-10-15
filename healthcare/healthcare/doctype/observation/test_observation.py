@@ -15,6 +15,7 @@ from healthcare.healthcare.doctype.observation_template.test_observation_templat
 	create_grouped_observation_template,
 	create_observation_template,
 )
+from healthcare.healthcare.doctype.observation.observation import add_note
 from healthcare.healthcare.doctype.patient_appointment.test_patient_appointment import (
 	create_patient,
 )
@@ -172,6 +173,27 @@ class TestObservation(FrappeTestCase):
 				},
 			)
 		)
+
+	def test_add_note_sanitizes_unsafe_html(self):
+		observation = frappe.get_doc(
+			{
+				"doctype": "Observation",
+				"observation_template": "_Test Observation without Sample",
+				"patient": create_patient(),
+				"company": "_Test Company",
+				"observation_category": "Laboratory",
+			}
+		).insert()
+
+		add_note(
+			note='<p onclick="steal_data()">Note</p><script>alert(1)</script>',
+			observation=observation.name,
+		)
+
+		observation.reload()
+		self.assertNotIn("<script", observation.note)
+		self.assertNotIn("onclick", observation.note)
+		self.assertIn("Note", observation.note)
 
 	def test_observation_from_encounter(self):
 		observation_template = create_observation_template("Total Cholesterol")
