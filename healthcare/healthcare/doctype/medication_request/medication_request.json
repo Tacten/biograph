@@ -31,6 +31,7 @@
   "patient_mobile",
   "inpatient_record",
   "inpatient_status",
+  "emergency_record",
   "order_source_section",
   "practitioner",
   "practitioner_name",
@@ -288,6 +289,14 @@
    "fieldname": "inpatient_status",
    "fieldtype": "Data",
    "label": "Inpatient Status",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "patient.emergency_record",
+   "fieldname": "emergency_record",
+   "fieldtype": "Link",
+   "label": "Emergency Record",
+   "options": "Emergency Record",
    "read_only": 1
   },
   {

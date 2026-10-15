@@ -41,6 +41,7 @@ def get_healthcare_services_to_invoice(patient, customer, company, link_customer
 		items_to_invoice += get_lab_tests_to_invoice(patient, company)
 		items_to_invoice += get_clinical_procedures_to_invoice(patient, company)
 		items_to_invoice += get_inpatient_services_to_invoice(patient, company)
+		items_to_invoice += get_emergency_services_to_invoice(patient, company)
 		items_to_invoice += get_therapy_plans_to_invoice(patient, company)
 		items_to_invoice += get_therapy_sessions_to_invoice(patient, company)
 		items_to_invoice += get_service_requests_to_invoice(patient, company)
@@ -522,6 +523,76 @@ def get_inpatient_services_to_invoice(patient, company):
 			)
 
 	return services_to_invoice
+
+
+def get_emergency_services_to_invoice(patient, company):
+	from healthcare.healthcare.doctype.emergency_record.emergency_record import (
+		get_billable_service_unit_type,
+	)
+
+	services_to_invoice = []
+	er = frappe.qb.DocType("Emergency Record")
+	eo = frappe.qb.DocType("Emergency Occupancy")
+
+	records = (
+		frappe.qb.from_(er)
+		.select(er.name, er.consultation_item, er.consultation_charge, er.attending_practitioner)
+		.where((er.patient == patient.name) & (er.company == company) & (er.invoiced == 0))
+	).run(as_dict=True)
+	for record in records:
+		if record.consultation_item:
+			services_to_invoice.append(
+				{
+					"reference_type": "Emergency Record",
+					"reference_name": record.name,
+					"service": record.consultation_item,
+					"rate": record.consultation_charge,
+					"practitioner": record.attending_practitioner,
+					"qty": 1,
+				}
+			)
+
+	occupancies = (
+		frappe.qb.from_(eo)
+		.join(er)
+		.on(eo.parent == er.name)
+		.select(eo.star)
+		.where((er.patient == patient.name) & (er.company == company) & (eo.invoiced == 0))
+	).run(as_dict=True)
+	for occupancy in occupancies:
+		unit_type = get_billable_service_unit_type(occupancy.service_unit)
+		if not unit_type:
+			continue
+		coverage_details = get_valid_insurance_coverage_details(occupancy.insurance_coverage, company)
+		if coverage_details:
+			services_to_invoice.append(
+				get_insurance_invoice_line(
+					"Emergency Occupancy",
+					occupancy.name,
+					occupancy.insurance_coverage,
+					coverage_details,
+					qty=get_emergency_occupancy_qty(occupancy, unit_type),
+				)
+			)
+		else:
+			services_to_invoice.append(
+				{
+					"reference_type": "Emergency Occupancy",
+					"reference_name": occupancy.name,
+					"service": unit_type.item,
+					"qty": get_emergency_occupancy_qty(occupancy, unit_type),
+				}
+			)
+
+	return services_to_invoice
+
+
+def get_emergency_occupancy_qty(occupancy, unit_type):
+	from healthcare.healthcare.doctype.emergency_record.emergency_record import occupancy_qty
+
+	check_out = occupancy.check_out or frappe.utils.now_datetime()
+	hours = flt(time_diff_in_hours(check_out, occupancy.check_in))
+	return occupancy_qty(hours, unit_type.no_of_hours, unit_type.minimum_billable_qty)
 
 
 def get_therapy_plans_to_invoice(patient, company):

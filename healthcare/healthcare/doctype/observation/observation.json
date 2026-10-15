@@ -83,7 +83,8 @@
   "parent_observation",
   "observation_idx",
   "days",
-  "invoiced"
+  "invoiced",
+  "emergency_record"
  ],
  "fields": [
   {
@@ -564,6 +565,14 @@
    "fieldname": "invoiced",
    "fieldtype": "Check",
    "label": "Invoiced",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "patient.emergency_record",
+   "fieldname": "emergency_record",
+   "fieldtype": "Link",
+   "label": "Emergency Record",
+   "options": "Emergency Record",
    "read_only": 1
   }
  ],

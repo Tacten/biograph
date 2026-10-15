@@ -82,7 +82,8 @@
   "followup_date",
   "sb_discharge_note",
   "discharge_note",
-  "connections_tab"
+  "connections_tab",
+  "emergency_record"
  ],
  "fields": [
   {
@@ -584,6 +585,14 @@
    "fieldtype": "Tab Break",
    "label": "Connections",
    "show_dashboard": 1
+  },
+  {
+   "fetch_from": "patient.emergency_record",
+   "fieldname": "emergency_record",
+   "fieldtype": "Link",
+   "label": "Emergency Record",
+   "options": "Emergency Record",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,

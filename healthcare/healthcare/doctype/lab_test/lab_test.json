@@ -30,6 +30,7 @@
   "patient_age",
   "patient_sex",
   "inpatient_record",
+  "emergency_record",
   "report_preference",
   "email",
   "mobile",
@@ -86,6 +87,14 @@
    "fieldtype": "Link",
    "label": "Inpatient Record",
    "options": "Inpatient Record",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "patient.emergency_record",
+   "fieldname": "emergency_record",
+   "fieldtype": "Link",
+   "label": "Emergency Record",
+   "options": "Emergency Record",
    "read_only": 1
   },
   {
