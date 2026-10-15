@@ -11,3 +11,4 @@ import "./recurring_appointments.js";
 import "./form.js";
 import "./triage_indicator.js";
 import "./send_to_emergency.js";
+import "./medication_safety/medication_safety.js";
