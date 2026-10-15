@@ -2,8 +2,8 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "field:generic_name",
- "creation": "2020-03-24 15:56:36.583587",
+ "autoname": "format:{dosage_form} {generic_name} {strength}{strength_uom}",
+ "creation": "2026-09-09 16:22:34.821370",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -13,6 +13,7 @@
   "abbr",
   "national_drug_code",
   "is_combination",
+  "is_orderable",
   "column_break_4",
   "disabled",
   "strength",
@@ -48,8 +49,7 @@
    "fieldname": "generic_name",
    "fieldtype": "Data",
    "label": "Generic Name",
-   "no_copy": 1,
-   "unique": 1
+   "reqd": 1
   },
   {
    "fieldname": "medication_class",
@@ -83,6 +83,7 @@
    "label": "Defaults"
   },
   {
+   "depends_on": "is_orderable",
    "fieldname": "default_prescription_dosage",
    "fieldtype": "Link",
    "label": "Default Prescription Dosage",
@@ -90,6 +91,7 @@
    "options": "Prescription Dosage"
   },
   {
+   "depends_on": "is_orderable",
    "fieldname": "default_prescription_duration",
    "fieldtype": "Link",
    "label": "Default Prescription Duration",
@@ -97,12 +99,14 @@
    "options": "Prescription Duration"
   },
   {
+   "depends_on": "is_orderable",
    "fieldname": "default_interval",
    "fieldtype": "Int",
    "label": "Default Interval",
    "mandatory_depends_on": "dosage_by_interval"
   },
   {
+   "depends_on": "is_orderable",
    "fieldname": "default_interval_uom",
    "fieldtype": "Select",
    "label": "Default Interval UOM",
@@ -147,19 +151,22 @@
    "fieldname": "dosage_form",
    "fieldtype": "Link",
    "label": "Dosage Form",
-   "options": "Dosage Form"
+   "options": "Dosage Form",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_16",
    "fieldtype": "Column Break"
   },
   {
+   "depends_on": "is_orderable",
    "description": "Properties of the linked Item, you may further configure Batch Number and Expiry, Serial Number, Shelf Life etc. in the Item master",
    "fieldname": "item_details",
    "fieldtype": "Section Break",
    "label": "Linked Item"
   },
   {
+   "depends_on": "is_orderable",
    "fieldname": "staff_role",
    "fieldtype": "Link",
    "label": "Staff Role",
@@ -185,6 +192,7 @@
    "label": "Is Combination"
   },
   {
+   "depends_on": "is_orderable",
    "fieldname": "linked_items",
    "fieldtype": "Table",
    "label": "Linked Items",
@@ -208,19 +216,27 @@
    "fieldtype": "Section Break"
   },
   {
+   "depends_on": "is_orderable",
    "fieldname": "price_list",
    "fieldtype": "Link",
    "label": "Price List",
    "options": "Price List"
+  },
+  {
+   "default": "1",
+   "description": "Uncheck for a record that exists only as an ingredient of a combination. It stays available for allergy and interaction checking, but cannot be prescribed or linked to an Item",
+   "fieldname": "is_orderable",
+   "fieldtype": "Check",
+   "label": "Is Orderable"
   }
  ],
  "grid_page_length": 50,
  "links": [],
- "modified": "2025-09-02 12:26:22.513604",
+ "modified": "2026-09-09 17:23:28.174740",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Medication",
- "naming_rule": "By fieldname",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
@@ -250,7 +266,7 @@
  ],
  "row_format": "Dynamic",
  "search_fields": "abbr, national_drug_code, generic_name",
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "track_changes": 1

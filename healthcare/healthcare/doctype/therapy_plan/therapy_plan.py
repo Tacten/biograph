@@ -4,6 +4,7 @@
 
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, today
 import json
@@ -101,7 +102,7 @@ class TherapyPlan(Document):
 		self.invoiced_amount = paid_amount
 
 	@frappe.whitelist()
-	def set_therapy_details_from_template(self):
+	def set_therapy_details_from_template(self) -> object:
 		# Add therapy types in the child table
 		self.set("therapy_plan_details", [])
 		therapy_plan_template = frappe.get_doc("Therapy Plan Template", self.therapy_plan_template)
@@ -218,7 +219,45 @@ def get_services_details(self):
 
 	
 @frappe.whitelist()
-def make_therapy_session(therapy_plan, patient, therapy_type, company, appointment=None):
+def make_therapy_session(
+	patient: str,
+	therapy_type: str,
+	company: str,
+	therapy_plan: str | None = None,
+	appointment: str | None = None,
+	service_request: str | None = None,
+	practitioner: str | None = None,
+) -> dict:
+	tp_doc = None
+	if not service_request and therapy_plan:
+		tp_doc = frappe.get_cached_doc("Therapy Plan", therapy_plan)
+		if tp_doc.order_group:
+			service_request = frappe.db.exists(
+				"Service Request",
+				{"template_dn": therapy_type, "order_group": tp_doc.order_group},
+			)
+
+	sr_doc = None
+	if service_request:
+		if (
+			frappe.db.get_single_value("Healthcare Settings", "process_service_request_only_if_paid")
+			and frappe.db.get_value("Service Request", service_request, "billing_status") != "Invoiced"
+		):
+			frappe.throw(
+				_("Service Request need to be invoiced before proceeding"),
+				title=_("Payment Required"),
+			)
+		sr_doc = frappe.get_doc("Service Request", service_request)
+
+	if not tp_doc and therapy_plan:
+		tp_doc = frappe.get_cached_doc("Therapy Plan", therapy_plan)
+
+	practitioner = (
+		practitioner
+		or (sr_doc.practitioner if sr_doc else None)
+		or (tp_doc.practitioner if tp_doc else None)
+	)
+
 	therapy_type = frappe.get_doc("Therapy Type", therapy_type)
 
 	therapy_session = frappe.new_doc("Therapy Session")
@@ -228,6 +267,8 @@ def make_therapy_session(therapy_plan, patient, therapy_type, company, appointme
 	therapy_session.therapy_type = therapy_type.name
 	therapy_session.duration = therapy_type.default_duration
 	therapy_session.rate = therapy_type.rate
+	if practitioner:
+		therapy_session.practitioner = practitioner
 	if not therapy_session.exercises and therapy_type.exercises:
 		for exercise in therapy_type.exercises:
 			therapy_session.append(
@@ -235,6 +276,9 @@ def make_therapy_session(therapy_plan, patient, therapy_type, company, appointme
 				(frappe.copy_doc(exercise)).as_dict(),
 			)
 	therapy_session.appointment = appointment
+	therapy_session.service_request = service_request
+	if sr_doc:
+		therapy_session.invoiced = 1 if sr_doc.billing_status == "Invoiced" else 0
 
 	if frappe.flags.in_test:
 		therapy_session.start_date = today()
@@ -267,6 +311,7 @@ def make_sales_invoice(reference_name, patient, company, items, therapy_plan_tem
 			"customer": si.customer,
 			"selling_price_list": price_list,
 			"price_list_currency": price_list_currency,
+			"currency": price_list_currency,
 			"plc_conversion_rate": 1.0,
 			"conversion_rate": 1.0,
 			"income_account": get_income_account(si.ref_practitioner, company)

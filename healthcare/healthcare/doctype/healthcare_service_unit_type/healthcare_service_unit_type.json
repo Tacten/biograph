@@ -21,6 +21,7 @@
 		"item_group",
 		"uom",
 		"no_of_hours",
+		"minimum_billable_qty",
 		"column_break_11",
 		"rate",
 		"description",
@@ -81,7 +82,7 @@
 		{
 			"bold": 1,
 			"default": "0",
-			"depends_on": "eval:doc.inpatient_occupancy == 1 && doc.allow_appointments != 1",
+			"depends_on": "eval:(doc.inpatient_occupancy == 1 || doc.is_ot == 1) && doc.allow_appointments != 1",
 			"fieldname": "is_billable",
 			"fieldtype": "Check",
 			"hide_days": 1,
@@ -107,7 +108,7 @@
 			"read_only": 1
 		},
 		{
-			"fetch_from": "item.item_name",
+			"fetch_from": "item.item_code",
 			"fieldname": "item_code",
 			"fieldtype": "Data",
 			"hide_days": 1,
@@ -135,12 +136,18 @@
 			"options": "UOM"
 		},
 		{
+			"default": "1",
 			"fieldname": "no_of_hours",
 			"fieldtype": "Int",
 			"hide_days": 1,
 			"hide_seconds": 1,
 			"label": "UOM Conversion in Hours",
 			"mandatory_depends_on": "eval: doc.is_billable == 1"
+		},
+		{
+			"fieldname": "minimum_billable_qty",
+			"fieldtype": "Int",
+			"label": "Minimum Billable Quantity"
 		},
 		{
 			"fieldname": "column_break_11",
@@ -188,7 +195,7 @@
 			"link_fieldname": "service_unit_type"
 		}
 	],
-	"modified": "2025-09-25 15:04:43.831015",
+	"modified": "2026-10-15 17:10:00.000000",
 	"modified_by": "Administrator",
 	"module": "Healthcare",
 	"name": "Healthcare Service Unit Type",

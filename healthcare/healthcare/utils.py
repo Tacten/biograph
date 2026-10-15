@@ -14,8 +14,10 @@ from frappe.utils.formatters import format_value
 from erpnext.setup.utils import insert_record
 
 from healthcare.healthcare.doctype.fee_validity.fee_validity import (
-	get_fee_validity,
+	is_free_follow_up_enabled,
 	manage_fee_validity,
+	query_fee_validity,
+	set_sales_invoice_reference,
 )
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import (
 	get_income_account,
@@ -41,6 +43,7 @@ def get_healthcare_services_to_invoice(patient, customer, company, link_customer
 		items_to_invoice += get_lab_tests_to_invoice(patient, company)
 		items_to_invoice += get_clinical_procedures_to_invoice(patient, company)
 		items_to_invoice += get_inpatient_services_to_invoice(patient, company)
+		items_to_invoice += get_emergency_services_to_invoice(patient, company)
 		items_to_invoice += get_therapy_plans_to_invoice(patient, company)
 		items_to_invoice += get_therapy_sessions_to_invoice(patient, company)
 		items_to_invoice += get_service_requests_to_invoice(patient, company)
@@ -150,17 +153,9 @@ def get_appointments_to_invoice(patient, company):
 				)
 		# Consultation Appointments, should check fee validity
 		else:
-			if appointment.practitioner:
-				pract_enabled = frappe.get_cached_value(
-					"Healthcare Practitioner", appointment.practitioner, "enable_free_follow_ups"
-				)
-				settings_enabled = frappe.db.get_single_value("Healthcare Settings", "enable_free_follow_ups")
-
-				if pract_enabled or settings_enabled:
-					if get_fee_validity(appointment.name, appointment.appointment_date, ignore_status=True):
-						continue  # Skip invoicing, fee validity exists
-					if frappe.db.exists("Fee Validity Reference", {"appointment": appointment.name}):
-						continue  # Skip invoicing, fee validty present
+			if is_free_follow_up_enabled(appointment.practitioner):
+				if query_fee_validity(appointment.name, appointment.appointment_date, ignore_status=True):
+					continue  # Skip invoicing, fee validity exists
 
 			practitioner_charge = 0
 			income_account = None
@@ -261,6 +256,15 @@ def get_encounters_to_invoice(patient, company):
 		for encounter in encounters:
 			encounter = frappe.get_doc("Patient Encounter", encounter)
 			if not encounter.appointment:
+				if is_free_follow_up_enabled(encounter.practitioner, "Patient Encounter"):
+					if query_fee_validity(
+						encounter.name,
+						encounter.encounter_date,
+						ignore_status=True,
+						reference_dt="Patient Encounter",
+					):
+						continue  # Skip invoicing, fee validity exists
+
 				practitioner_charge = 0
 				income_account = None
 				service_item = None
@@ -502,7 +506,7 @@ def get_inpatient_services_to_invoice(patient, company):
 			)
 			qty = 0.5
 			if hours_occupied > 0:
-				actual_qty = hours_occupied / service_unit_type.no_of_hours
+				actual_qty = hours_occupied / (service_unit_type.no_of_hours or 1)
 				floor = math.floor(actual_qty)
 				decimal_part = actual_qty - floor
 				if decimal_part > 0.5:
@@ -522,6 +526,76 @@ def get_inpatient_services_to_invoice(patient, company):
 			)
 
 	return services_to_invoice
+
+
+def get_emergency_services_to_invoice(patient, company):
+	from healthcare.healthcare.doctype.emergency_record.emergency_record import (
+		get_billable_service_unit_type,
+	)
+
+	services_to_invoice = []
+	er = frappe.qb.DocType("Emergency Record")
+	eo = frappe.qb.DocType("Emergency Occupancy")
+
+	records = (
+		frappe.qb.from_(er)
+		.select(er.name, er.consultation_item, er.consultation_charge, er.attending_practitioner)
+		.where((er.patient == patient.name) & (er.company == company) & (er.invoiced == 0))
+	).run(as_dict=True)
+	for record in records:
+		if record.consultation_item:
+			services_to_invoice.append(
+				{
+					"reference_type": "Emergency Record",
+					"reference_name": record.name,
+					"service": record.consultation_item,
+					"rate": record.consultation_charge,
+					"practitioner": record.attending_practitioner,
+					"qty": 1,
+				}
+			)
+
+	occupancies = (
+		frappe.qb.from_(eo)
+		.join(er)
+		.on(eo.parent == er.name)
+		.select(eo.star)
+		.where((er.patient == patient.name) & (er.company == company) & (eo.invoiced == 0))
+	).run(as_dict=True)
+	for occupancy in occupancies:
+		unit_type = get_billable_service_unit_type(occupancy.service_unit)
+		if not unit_type:
+			continue
+		coverage_details = get_valid_insurance_coverage_details(occupancy.insurance_coverage, company)
+		if coverage_details:
+			services_to_invoice.append(
+				get_insurance_invoice_line(
+					"Emergency Occupancy",
+					occupancy.name,
+					occupancy.insurance_coverage,
+					coverage_details,
+					qty=get_emergency_occupancy_qty(occupancy, unit_type),
+				)
+			)
+		else:
+			services_to_invoice.append(
+				{
+					"reference_type": "Emergency Occupancy",
+					"reference_name": occupancy.name,
+					"service": unit_type.item,
+					"qty": get_emergency_occupancy_qty(occupancy, unit_type),
+				}
+			)
+
+	return services_to_invoice
+
+
+def get_emergency_occupancy_qty(occupancy, unit_type):
+	from healthcare.healthcare.doctype.emergency_record.emergency_record import occupancy_qty
+
+	check_out = occupancy.check_out or frappe.utils.now_datetime()
+	hours = flt(time_diff_in_hours(check_out, occupancy.check_in))
+	return occupancy_qty(hours, unit_type.no_of_hours, unit_type.minimum_billable_qty)
 
 
 def get_therapy_plans_to_invoice(patient, company):
@@ -837,6 +911,10 @@ def manage_invoice_submit_cancel(doc, method):
 
 				if item.reference_dt == "Patient Appointment":
 					manage_fee_validity(frappe.get_doc("Patient Appointment", item.reference_dn))
+				elif item.reference_dt == "Patient Encounter":
+					set_sales_invoice_reference(
+						item.reference_dt, item.reference_dn, doc.name if effective_method == "on_submit" else None
+					)
 
 				# set patient as active if registration invoice
 				if item.get("reference_dt") == "Patient":
@@ -855,6 +933,7 @@ def manage_invoice_submit_cancel(doc, method):
 		if (
 			effective_method == "on_submit"
 			and not is_return
+			and not doc.get("return_against")
 			and frappe.db.get_single_value("Healthcare Settings", "create_observation_on_si_submit")
 		):
 			create_sample_collection_and_observation(doc)
@@ -872,12 +951,8 @@ def manage_invoice_submit_cancel(doc, method):
 			and doc.items
 		):
 			for item in doc.items:
-				if item.reference_dt == "Patient Appointment":
-					fee_validity = frappe.db.exists(
-						"Fee Validity", {"patient_appointment": item.reference_dn}
-					)
-					if fee_validity:
-						frappe.db.set_value("Fee Validity", fee_validity, "sales_invoice_ref", doc.name)
+				if item.reference_dt in ("Patient Appointment", "Patient Encounter"):
+					set_sales_invoice_reference(item.reference_dt, item.reference_dn, doc.name)
 	elif effective_method == "on_submit" and is_return:
 		# Cancelling a return invoice should re-apply invoiced coverage.
 		update_insurance_coverage(doc, is_reversal=False)
@@ -1655,18 +1730,27 @@ def insert_observation_and_sample_collection(
 	if grp.get("has_component"):
 		diag_report_required = True
 
-		# parent observation
-		current_parent_observation = add_observation(
-			patient=patient,
-			template=grp.get("name"),
-			practitioner=doc.ref_practitioner,
-			invoice=doc.name,
-			child=child if child else "",
-			parent=parent_observation,
+		sample_reqd_component_obs, non_sample_reqd_component_obs = get_observation_template_details(
+			grp.get("name")
 		)
 
-		add_to_sample_collection = has_direct_leaf_component(grp.get("name"))
-		if add_to_sample_collection:
+		# A sub-panel only needs its own Observation here if it has
+		# non-sample children to parent - its sample side is chained later.
+		current_parent_observation = None
+		if parent_observation is None or non_sample_reqd_component_obs:
+			current_parent_observation = add_observation(
+				patient=patient,
+				template=grp.get("name"),
+				company=doc.company,
+				practitioner=doc.ref_practitioner,
+				invoice=doc.name,
+				child=child if child else "",
+				parent=parent_observation,
+			)
+
+		add_to_sample_collection = has_sample_required_component(grp.get("name"))
+		# Only the top-level template gets its own Sample Collection row.
+		if add_to_sample_collection and parent_observation is None:
 			sample_collection.append(
 				"observation_sample_collection",
 				{
@@ -1679,48 +1763,48 @@ def insert_observation_and_sample_collection(
 				},
 			)
 
-		sample_reqd_component_obs, non_sample_reqd_component_obs = get_observation_template_details(
-			grp.get("name")
-		)
 		# create observation for non sample_collection_reqd grouped templates
 
 		if len(non_sample_reqd_component_obs) > 0:
 			for comp in non_sample_reqd_component_obs:
-				comp_details = frappe.get_value(
-					"Observation Template",
-					comp,
-					[
-						"name",
-						"has_component",
-						"sample_collection_required",
-						"sample",
-						"sample_type",
-						"container_closure_color",
-					],
-					as_dict=True,
-				)
-				if comp_details.get("has_component"):
-					# recurse if component is also a template with components
-					sub_sc, sub_drc = insert_observation_and_sample_collection(
-						doc,
-						patient,
-						comp_details,
-						sample_collection,
-						child,
-						parent_observation=current_parent_observation,
-					)
-					sample_collection = sub_sc
-					diag_report_required = diag_report_required or sub_drc
-				else:
-					add_observation(
+				comp_has_component = frappe.db.get_value("Observation Template", comp, "has_component")
+				if comp_has_component and has_sample_required_component(comp):
+					# A mixed sub-panel is chained later, non-sample
+					# children included - an Observation here would duplicate it.
+					continue
+				if comp_has_component:
+					# Pure non-sample sub-panel - never chained elsewhere.
+					sub_observation = add_observation(
 						patient=patient,
 						template=comp,
+						company=doc.company,
 						practitioner=doc.ref_practitioner,
 						parent=current_parent_observation,
 						invoice=doc.name,
 						child=child if child else "",
 					)
-		# create sample_colleciton child row for sample_collection_reqd grouped templates
+					create_non_sample_observations(
+						comp,
+						sub_observation,
+						{
+							"patient": patient,
+							"company": doc.company,
+							"practitioner": doc.ref_practitioner,
+							"invoice": doc.name,
+							"child": child if child else "",
+						},
+					)
+				else:
+					add_observation(
+						patient=patient,
+						template=comp,
+						company=doc.company,
+						practitioner=doc.ref_practitioner,
+						parent=current_parent_observation,
+						invoice=doc.name,
+						child=child if child else "",
+					)
+		# create sample_collection child row for sample_collection_reqd grouped templates
 		if len(sample_reqd_component_obs) > 0:
 			for comp in sample_reqd_component_obs:
 				comp_details = frappe.get_value(
@@ -1756,6 +1840,7 @@ def insert_observation_and_sample_collection(
 			add_observation(
 				patient=patient,
 				template=grp.get("name"),
+				company=doc.company,
 				practitioner=doc.ref_practitioner,
 				invoice=doc.name,
 				child=child if child else "",
@@ -1775,8 +1860,9 @@ def insert_observation_and_sample_collection(
 	return sample_collection, diag_report_required
 
 
-def has_direct_leaf_component(template_name):
-	"""Return True if the given template has at least one direct leaf child."""
+def has_sample_required_component(template_name):
+	"""True if `template_name` has a sample-required leaf anywhere
+	beneath it, at any depth - not just among its direct children."""
 	sample_reqd_component_obs, non_sample_reqd_component_obs = get_observation_template_details(template_name)
 	all_components = sample_reqd_component_obs + non_sample_reqd_component_obs
 
@@ -1787,10 +1873,26 @@ def has_direct_leaf_component(template_name):
 			["has_component", "sample_collection_required"],
 			as_dict=True,
 		)
-		if not comp_details.get("has_component") and comp_details.get("sample_collection_required"):
+		if comp_details.get("has_component"):
+			if has_sample_required_component(comp):
+				return True
+		elif comp_details.get("sample_collection_required"):
 			return True
 
 	return False
+
+
+def create_non_sample_observations(template, parent_observation, observation_kwargs):
+	"""Observations for `template`'s non-sample-required children and any
+	sub-panel with no sample-required descendants at all, recursively."""
+	_, non_sample_reqd_component_obs = get_observation_template_details(template)
+	for comp in non_sample_reqd_component_obs:
+		comp_has_component = frappe.db.get_value("Observation Template", comp, "has_component")
+		if comp_has_component and has_sample_required_component(comp):
+			continue
+		observation_name = add_observation(template=comp, parent=parent_observation, **observation_kwargs)
+		if comp_has_component:
+			create_non_sample_observations(comp, observation_name, observation_kwargs)
 
 
 @frappe.whitelist()

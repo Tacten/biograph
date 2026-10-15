@@ -7,7 +7,6 @@ from math import floor
 
 import frappe
 from frappe import _
-from frappe.desk.reportview import get_match_cond
 from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
 from frappe.utils import (
@@ -27,9 +26,12 @@ from erpnext.stock.get_item_details import ItemDetailsCtx, get_item_details
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import get_account
 from healthcare.healthcare.doctype.nursing_task.nursing_task import NursingTask
 from healthcare.healthcare.doctype.patient_insurance_coverage.patient_insurance_coverage import (
-	make_insurance_coverage,
+	make_insurance_coverage as generate_insurance_coverage,
 )
-from healthcare.healthcare.utils import validate_nursing_tasks
+from healthcare.healthcare.utils import (
+	get_appointment_billing_item_and_rate,
+	validate_nursing_tasks,
+)
 
 
 class InpatientRecord(Document):
@@ -96,14 +98,15 @@ class InpatientRecord(Document):
 				)
 
 	def validate_already_scheduled_or_admitted(self):
-		query = """
-			select name, status
-			from `tabInpatient Record`
-			where (status = 'Admitted' or status = 'Admission Scheduled')
-			and name != %(name)s and patient = %(patient)s
-			"""
+		inpatient_record = frappe.qb.DocType("Inpatient Record")
 
-		ip_record = frappe.db.sql(query, {"name": self.name, "patient": self.patient}, as_dict=1)
+		ip_record = (
+			frappe.qb.from_(inpatient_record)
+			.select(inpatient_record.name, inpatient_record.status)
+			.where(inpatient_record.status.isin(["Admitted", "Admission Scheduled"]))
+			.where(inpatient_record.name != self.name)
+			.where(inpatient_record.patient == self.patient)
+		).run(as_dict=True)
 
 		if ip_record:
 			msg = _(
@@ -180,6 +183,8 @@ class InpatientRecord(Document):
 			)[0]
 
 			for inpatient in ip_records:
+				if not inpatient.get("item"):
+					continue
 				item_name, stock_uom = frappe.db.get_value(
 					"Item", inpatient.get("item"), ["item_name", "stock_uom"]
 				)
@@ -197,7 +202,6 @@ class InpatientRecord(Document):
 							"Selling Price List not found. Please configure a valid Price List in the document."
 						)
 					)
-
 				ctx: ItemDetailsCtx = ItemDetailsCtx(
 					{
 						"doctype": "Sales Invoice",
@@ -206,22 +210,27 @@ class InpatientRecord(Document):
 						"customer": frappe.db.get_value("Patient", self.patient, "customer"),
 						"selling_price_list": self.price_list or price_list,
 						"price_list_currency": self.currency or price_list_currency,
+						"currency": self.currency or price_list_currency,
 						"plc_conversion_rate": 1.0,
 						"conversion_rate": 1.0,
+						"qty": 1,
 					}
 				)
 				item_details = get_item_details(ctx)
-
-				if not item_details.get("price_list_rate") or int(item_details.get("price_list_rate")) == 0:
-					frappe.throw(
+				price_list_rate = item_details.get("price_list_rate")
+				if price_list_rate is None or flt(price_list_rate) == 0:
+					frappe.msgprint(
 						_(
-							f"The Item Price for '{get_link_to_form('Item', inpatient.get('item'))}' is missing or set to zero for Price List'{get_link_to_form('Price List', self.price_list or price_list)}'. Please verify the Item Price master."
-						)
+							f"Item Price for '{get_link_to_form('Item', inpatient.get('item'))}' is set to zero. Please verify."
+						),
+						alert=1,
+						indicator="warning",
+						title=_("Warning!"),
 					)
 
 				minimum_billable_qty = inpatient.get("minimum_billable_qty")
 				total_qty = (
-					(inpatient.get("total_hours") / inpatient.get("no_of_hours"))
+					(inpatient.get("total_hours") / (inpatient.get("no_of_hours") or 1))
 					if inpatient.get("total_hours")
 					else 0
 				)
@@ -236,7 +245,7 @@ class InpatientRecord(Document):
 					se_child.stock_uom = stock_uom
 					se_child.uom = inpatient.get("uom")
 					se_child.quantity = quantity
-					se_child.rate = item_details.get("price_list_rate")
+					se_child.rate = price_list_rate
 				else:
 					if item_row.get("invoiced"):
 						# Add new row if invoiced and additional quantity exists
@@ -247,7 +256,7 @@ class InpatientRecord(Document):
 							se_child.stock_uom = stock_uom
 							se_child.uom = inpatient.get("uom")
 							se_child.quantity = quantity - item_row.get("quantity")
-							se_child.rate = item_details.get("price_list_rate")
+							se_child.rate = price_list_rate
 					else:
 						# Update existing non-invoiced item row
 						if quantity != item_row.get("quantity"):
@@ -255,7 +264,7 @@ class InpatientRecord(Document):
 								if item.name == item_row.get("name"):
 									item.uom = inpatient.get("uom")
 									item.quantity = quantity
-									item.rate = item_details.get("price_list_rate")
+									item.rate = price_list_rate
 
 			# Update inpatient occupancy billing time
 			for test in self.inpatient_occupancies:
@@ -306,12 +315,14 @@ class InpatientRecord(Document):
 				frappe.throw(_("Claim already created for all Inpatient Occupancies"))
 
 	def make_insurance_coverage(self, service_unit_type, qty):
-		return make_insurance_coverage(
+		billing_detail = get_appointment_billing_item_and_rate(self)
+		return generate_insurance_coverage(
 			patient=self.patient,
 			policy=self.insurance_policy,
 			company=self.company,
 			template_dt="Healthcare Service Unit Type",
 			template_dn=service_unit_type,
+			item_code=billing_detail.get("service_item"),
 			qty=qty,
 		)
 
@@ -381,69 +392,15 @@ def create_inpatient_record(admission_order):
 	inpatient_record.save(ignore_permissions=True)
 	return inpatient_record.name
 
-def create_inpatient_record(admission_order):
-	if isinstance(admission_order, str):
-		admission_order = json.loads(admission_order)
-
-	if (
-		not admission_order
-		or not admission_order["patient"]
-		or not admission_order["admission_encounter"]
-	):
-		frappe.throw(_("Missing required details, did not create Inpatient Record"))
-
-	inpatient_record = frappe.new_doc("Inpatient Record")
-
-	# Admission order details
-	set_details_from_ip_order(inpatient_record, admission_order)
-
-	# Patient details
-	patient = frappe.get_doc("Patient", admission_order["patient"])
-	inpatient_record.patient = patient.name
-	inpatient_record.patient_name = patient.patient_name
-	inpatient_record.gender = patient.sex
-	inpatient_record.blood_group = patient.blood_group
-	inpatient_record.dob = patient.dob
-	inpatient_record.mobile = patient.mobile
-	inpatient_record.email = patient.email
-	inpatient_record.phone = patient.phone
-	inpatient_record.scheduled_date = today()
-
-	# Set encounter details
-	encounter = frappe.get_doc("Patient Encounter", admission_order["admission_encounter"])
-	if encounter and encounter.symptoms:  # Symptoms
-		set_ip_child_records(inpatient_record, "chief_complaint", encounter.symptoms)
-
-	if encounter and encounter.diagnosis:  # Diagnosis
-		set_ip_child_records(inpatient_record, "diagnosis", encounter.diagnosis)
-
-	if encounter and encounter.drug_prescription:  # Medication
-		set_ip_child_records(inpatient_record, "drug_prescription", encounter.drug_prescription)
-
-	if encounter and encounter.lab_test_prescription:  # Lab Tests
-		set_ip_child_records(inpatient_record, "lab_test_prescription", encounter.lab_test_prescription)
-
-	if encounter and encounter.procedure_prescription:  # Procedure Prescription
-		set_ip_child_records(
-			inpatient_record, "procedure_prescription", encounter.procedure_prescription
-		)
-
-	if encounter and encounter.therapies:  # Therapies
-		inpatient_record.therapy_plan = encounter.therapy_plan
-		set_ip_child_records(inpatient_record, "therapies", encounter.therapies)
-
-	inpatient_record.status = "Admission Scheduled"
-	inpatient_record.save(ignore_permissions=True)
-	return inpatient_record.name
 
 @frappe.whitelist()
-def schedule_discharge(discharge_order):
+def schedule_discharge(discharge_order: str):
 	discharge_order = json.loads(discharge_order)
 	inpatient_record_id = frappe.db.get_value("Patient", discharge_order["patient"], "inpatient_record")
 
 	if inpatient_record_id:
 		inpatient_record = frappe.get_doc("Inpatient Record", inpatient_record_id)
-		check_out_inpatient(inpatient_record)
+
 		set_details_from_ip_order(inpatient_record, discharge_order)
 		inpatient_record.status = "Discharge Scheduled"
 		inpatient_record.save(ignore_permissions=True)
@@ -497,10 +454,28 @@ def discharge_patient(inpatient_record):
 
 	validate_incomplete_service_requests(inpatient_record)
 
+	check_out_inpatient(inpatient_record)
 	inpatient_record.discharge_datetime = now_datetime()
 	inpatient_record.status = "Discharged"
 
 	inpatient_record.save(ignore_permissions=True)
+	close_active_nursing_care_plans(inpatient_record)
+
+
+def close_active_nursing_care_plans(inpatient_record):
+	active_plans = frappe.get_all(
+		"Nursing Care Plan",
+		filters={
+			"inpatient_record": inpatient_record.name,
+			"status": "Active",
+		},
+		pluck="name",
+	)
+
+	for plan_name in active_plans:
+		plan = frappe.get_doc("Nursing Care Plan", plan_name)
+		plan.status = "Closed"
+		plan.save(ignore_permissions=True)
 
 
 def validate_inpatient_invoicing(inpatient_record):
@@ -616,6 +591,7 @@ def get_unbilled_inpatient_docs(doc, inpatient_record):
 	if doc in ["Lab Test", "Clinical Procedure"]:
 		filters.update(
 			{
+				"docstatus": ["<", 2],
 				"service_request": "",
 			}
 		)
@@ -630,7 +606,7 @@ def admit_patient(
 	inpatient_record.admitted_datetime = check_in
 	inpatient_record.status = "Admitted"
 	inpatient_record.expected_discharge = expected_discharge
-	inpatient_record.currency = currency
+	inpatient_record.currency = currency or inpatient_record.currency
 	inpatient_record.price_list = price_list
 
 	inpatient_record.set("inpatient_occupancies", [])
@@ -688,18 +664,27 @@ def patient_leave_service_unit(inpatient_record, check_out, leave_from):
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
-def get_leave_from(doctype, txt, searchfield, start, page_len, filters):
+def get_leave_from(
+	doctype: str | None, txt: str, searchfield: str | None, start: int, page_len: int, filters: dict
+):
 	docname = filters["docname"]
+	frappe.has_permission("Inpatient Record", "read", docname, throw=True)
 
-	query = """select io.service_unit
-		from `tabInpatient Occupancy` io, `tabInpatient Record` ir
-		where io.parent = '{docname}' and io.parentfield = 'inpatient_occupancies'
-		and io.left!=1 and io.parent = ir.name"""
+	io = frappe.qb.DocType("Inpatient Occupancy")
 
-	return frappe.db.sql(
-		query.format(**{"docname": docname, "searchfield": searchfield, "mcond": get_match_cond(doctype)}),
-		{"txt": f"%{txt}%", "_txt": txt.replace("%", ""), "start": start, "page_len": page_len},
+	query = (
+		frappe.qb.from_(io)
+		.select(io.service_unit)
+		.where(io.parent == docname)
+		.where(io.parenttype == "Inpatient Record")
+		.where(io.parentfield == "inpatient_occupancies")
+		.where(io.left != 1)
 	)
+
+	if txt:
+		query = query.where(io.service_unit.like(f"%{txt}%"))
+
+	return query.limit(page_len).offset(start).run()
 
 
 def is_service_unit_billable(service_unit):
@@ -741,7 +726,9 @@ def cancel_amend_treatment_counselling(args, treatment_counselling):
 
 
 @frappe.whitelist()
-def make_discharge_summary(source_name, target_doc=None, ignore_permissions=False):
+def make_discharge_summary(
+	source_name: str, target_doc: Document | None = None, ignore_permissions: bool = False
+) -> Document:
 	doclist = get_mapped_doc(
 		"Inpatient Record",
 		source_name,
@@ -751,7 +738,7 @@ def make_discharge_summary(source_name, target_doc=None, ignore_permissions=Fals
 				"field_map": {
 					"name": "inpatient_record",
 				},
-				"field_no_map": ["status", "chief_complaint", "diagnosis"],
+				"field_no_map": ["naming_series", "status", "chief_complaint", "diagnosis"],
 			},
 		},
 		target_doc,
@@ -812,6 +799,7 @@ def set_item_rate(doc):
 					"price_list_currency": doc.currency or price_list_currency,
 					"plc_conversion_rate": 1.0,
 					"conversion_rate": 1.0,
+					"currency": doc.currency or price_list_currency,
 				}
 			)
 			item_details = get_item_details(ctx)
@@ -843,7 +831,7 @@ def set_total(self):
 
 
 def validate_incomplete_service_requests(inpatient_record):
-	if not frappe.db.get_single_value(
+	if frappe.db.get_single_value(
 		"Healthcare Settings", "allow_discharge_despite_pending_healthcare_services"
 	):
 		return
@@ -852,7 +840,7 @@ def validate_incomplete_service_requests(inpatient_record):
 		"patient": inpatient_record.patient,
 		"inpatient_record": inpatient_record.name,
 		"docstatus": 1,
-		"status": ["not in", ["completed-Request Status"]],
+		"status": ["not in", ["Completed"]],
 	}
 
 	service_requests = frappe.db.get_list("Service Request", filters=filters, pluck="name")

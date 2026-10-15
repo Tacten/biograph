@@ -1,4 +1,45 @@
 frappe.provide("healthcare.ObservationWidget");
+frappe.provide("healthcare.observation");
+
+// The single "result" field's visible control changes to match the
+// Observation Template's Permitted Data Type. Period has no native single
+// control (it needs a from/to pair) so it falls back to a plain Data input
+// here; the Observation form itself renders a proper two-datetime control.
+healthcare.observation.CONTROL_FIELDTYPE_MAP = {
+	Quantity: "Float",
+	Numeric: "Float",
+	// Keep ranges literal: Float evaluates "12-15" as subtraction.
+	Range: "Data",
+	Percent: "Percent",
+	Ratio: "Data",
+	Text: "Text Editor",
+	Select: "Select",
+	Boolean: "Select",
+	DateTime: "Datetime",
+	Time: "Time",
+	Duration: "Duration",
+	Attach: "Attach",
+};
+
+healthcare.observation.get_control_fieldtype = function (permitted_data_type) {
+	return healthcare.observation.CONTROL_FIELDTYPE_MAP[permitted_data_type] || "Data";
+};
+
+// The compact card's "result" column is a fixed width, but a Frappe control's
+// input is `width: 100%` by default, so every type — a short number as much
+// as a paragraph of Text — stretches to fill it identically. Capping max-width
+// per type (rather than the column itself, which would upset the row's flex
+// total, see git history) lets short values sit at their natural size while
+// leaving room, and types that genuinely need it (Text, Attach, Datetime)
+// unconstrained.
+healthcare.observation.RESULT_FIELD_MAX_WIDTH = {
+	Float: "90px",
+	Percent: "90px",
+	Duration: "100px",
+	Time: "90px",
+	Data: "130px",
+	Select: "130px",
+};
 
 healthcare.ObservationWidget = class {
 	constructor(opts) {
@@ -14,20 +55,25 @@ healthcare.ObservationWidget = class {
 		var btn_label = is_approved ? "Reject" : "Approve";
 
 		if (me.data.has_component || me.data.has_component == "true") {
-			if (me.wrapper.find(`.${me.data.observation}`).length!==0) {
+			if (me.wrapper.find(`.${me.data.observation}`).length !== 0) {
 				return;
 			}
-			me.render_parent_observation(me.data, btn_label)
+			me.render_parent_observation(me.data, btn_label);
 
-			let component_wrapper = me.wrapper.find(`.${me.data.observation}`)
-			for(var j=0, k=me.data[me.data.observation].length; j<k; j++) {
+			let component_wrapper = me.wrapper.find(`.${me.data.observation}`);
+			for (var j = 0, k = me.data[me.data.observation].length; j < k; j++) {
 				var obs_data = me.data[me.data.observation][j].observation;
-				var nested_obs = me.data[me.data.observation][j]
-				me.render_component_observations(component_wrapper, obs_data, nested_obs, btn_action)
+				var nested_obs = me.data[me.data.observation][j];
+				me.render_component_observations(
+					component_wrapper,
+					obs_data,
+					nested_obs,
+					btn_action,
+				);
 			}
 		} else {
-			if (me.wrapper.find(`.children-${me.data.observation.name}`).length!==0) {
-				return
+			if (me.wrapper.find(`.children-${me.data.observation.name}`).length !== 0) {
+				return;
 			}
 			me.wrapper.append(
 				`<div class="grouped-obs"
@@ -47,30 +93,37 @@ healthcare.ObservationWidget = class {
 						font-size: 11px;
 						padding-left: 15px;
 						margin-right: 15px;
+						padding-bottom: 14px;
+						margin-bottom: 3px;
 						border-radius: var(--border-radius-md);
 						background-color: var(--fg-color);
 						box-shadow: var(--card-shadow);"
 						value=${me.data.observation.name}>
 					</div>
-				</div>`)
+				</div>`,
+			);
 			if (me.data.observation.name) {
-			var obs_data = me.data.observation
-			me.init_field_group(obs_data, me.wrapper.find(`.observations-${me.data.observation.name}`))
-			me.$widget = me.wrapper.find(`.grouped-obs`)
+				var obs_data = me.data.observation;
+				me.init_field_group(
+					obs_data,
+					me.wrapper.find(`.observations-${me.data.observation.name}`),
+				);
+				me.$widget = me.wrapper.find(`.grouped-obs`);
 			}
 		}
-		me.$widget = me.wrapper.find(`.grouped-obs`)
-		var authbutton = document.getElementById(`authorise-observation-btn-${me.data.observation}`);
+		me.$widget = me.wrapper.find(`.grouped-obs`);
+		var authbutton = document.getElementById(
+			`authorise-observation-btn-${me.data.observation}`,
+		);
 		if (authbutton) {
-			authbutton.addEventListener("click", function() {
-				me.auth_observation(me.data.observation, btn_action)
+			authbutton.addEventListener("click", function () {
+				me.auth_observation(me.data.observation, btn_action);
 			});
 		}
 	}
 
-	render_parent_observation(me_data, btn_label, parent_wrapper=null) {
-		let grouped_html = (
-			`<div class="${me_data.observation} grouped-obs"
+	render_parent_observation(me_data, btn_label, parent_wrapper = null) {
+		let grouped_html = `<div class="${me_data.observation} grouped-obs"
 				style="border: 1px solid var(--border-color);
 				padding-right: 15px;
 				font-size: 11px;
@@ -91,7 +144,7 @@ healthcare.ObservationWidget = class {
 					</button>
 				</div>
 				<div class="children-${me_data.observation}"></div>
-			</div>`)
+			</div>`;
 		if (parent_wrapper) {
 			parent_wrapper.append(grouped_html);
 		} else {
@@ -106,12 +159,19 @@ healthcare.ObservationWidget = class {
 			var btn_action = is_approved ? "Rejected" : "Approved";
 			var btn_label = is_approved ? "Reject" : "Approve";
 
-			me.render_parent_observation(nested_obs, btn_label, component_wrapper)
-			let current_wrapper = component_wrapper.find(`.children-${nested_obs.observation}`);
+			me.render_parent_observation(nested_obs, btn_label, component_wrapper);
+			let current_wrapper = component_wrapper.find(
+				`.children-${nested_obs.observation}`,
+			);
 			for (var j = 0, k = nested_obs[nested_obs.observation].length; j < k; j++) {
 				var child_obs = nested_obs[nested_obs.observation][j].observation;
 				var child_nested_obs = nested_obs[nested_obs.observation][j];
-				this.render_component_observations(current_wrapper, child_obs, child_nested_obs, btn_action);
+				this.render_component_observations(
+					current_wrapper,
+					child_obs,
+					child_nested_obs,
+					btn_action,
+				);
 			}
 		} else {
 			component_wrapper.append(`<div class="observations-${obs_data.name} observs"
@@ -126,326 +186,430 @@ healthcare.ObservationWidget = class {
 			background-color: var(--fg-color);
 			box-shadow: var(--card-shadow);"
 			value=${obs_data.name}>
-			</div>`)
-			me.init_field_group(obs_data, component_wrapper.find(`.observations-${obs_data.name}`))
+			</div>`);
+			me.init_field_group(
+				obs_data,
+				component_wrapper.find(`.observations-${obs_data.name}`),
+			);
 		}
-		var authbutton = document.getElementById(`authorise-observation-btn-${nested_obs.observation}`);
+		var authbutton = document.getElementById(
+			`authorise-observation-btn-${nested_obs.observation}`,
+		);
 		if (authbutton) {
-			authbutton.addEventListener("click", function() {
-				me.auth_observation(nested_obs.observation, btn_action)
+			authbutton.addEventListener("click", function () {
+				me.auth_observation(nested_obs.observation, btn_action);
 			});
 		}
 	}
 
 	init_field_group(obs_data, wrapper) {
 		var me = this;
-		var default_input = ""
-		if( ['Range', 'Ratio', 'Quantity', 'Numeric'].includes(obs_data.permitted_data_type)) {
-			default_input = obs_data.result_data
-
-		} else if (obs_data.permitted_data_type=='Text') {
-			default_input = trim_html(obs_data.result_text)
-
-		}
-		let fieldtype = "Data"
-		let options = ""
-		if (obs_data.permitted_data_type=='Select') {
-			fieldtype = "Select"
-			options = obs_data.options
-			default_input = obs_data.result_select
-		}
+		me._is_rendering_result_field = me._is_rendering_result_field || {};
+		me._is_rendering_result_field[obs_data.name] = true;
+		// This card's "result" column is too narrow (one of six equal-width
+		// columns in the row) for the full Text Editor toolbar. Use a plain
+		// multi-line textarea here instead; the standalone Observation form
+		// still uses the shared map's "Text Editor" where there's room for it.
+		let fieldtype =
+			obs_data.permitted_data_type == "Text"
+				? "Small Text"
+				: healthcare.observation.get_control_fieldtype(
+						obs_data.permitted_data_type,
+				  );
+		let options = ["Select", "Boolean"].includes(obs_data.permitted_data_type)
+			? obs_data.options
+			: "";
+		let default_input =
+			obs_data.permitted_data_type == "Text"
+				? trim_html(obs_data.result)
+				: obs_data.result;
 		me[obs_data.name] = new frappe.ui.FieldGroup({
 			fields: [
 				{
-					fieldtype: 'Section Break',
+					fieldtype: "Section Break",
 				},
 				{
-					fieldname: 'observation',
-					fieldtype: 'HTML',
+					fieldname: "observation",
+					fieldtype: "HTML",
 				},
 				{
-					fieldname: 'note_button',
-					fieldtype: 'HTML',
+					fieldname: "note_button",
+					fieldtype: "HTML",
 				},
 				{
-					'fieldtype': 'Column Break',
+					fieldtype: "Column Break",
 				},
 				{
-					fieldname: 'specimen',
-					fieldtype: 'HTML',
+					fieldname: "specimen",
+					fieldtype: "HTML",
 				},
 				{
-					'fieldtype': 'Column Break',
+					fieldtype: "Column Break",
 				},
 				{
-					fieldname: 'result',
+					fieldname: "result",
 					fieldtype: fieldtype,
 					options: options,
-					read_only: 1 ? (obs_data.status=='Approved') : 0,
-					change: (s) => {
-						me.frm.dirty()
-						me.set_result_n_name(obs_data.name)
+					// The card is too narrow to also fit the timezone hint
+					// Datetime controls normally print below the input.
+					hide_timezone: 1,
+					read_only: 1 ? obs_data.status == "Approved" : 0,
+					change: () => {
+						if (me._is_rendering_result_field[obs_data.name]) {
+							return;
+						}
+						me.frm.dirty();
+						me.set_result_n_name(obs_data.name);
 					},
 					default: default_input,
 					hidden: 1 ? obs_data.observation_category == "Imaging" : 0,
 				},
 				{
-					fieldname: 'result_date',
-					fieldtype: 'HTML',
+					fieldname: "result_date",
+					fieldtype: "HTML",
 					hidden: 1 ? obs_data.observation_category == "Imaging" : 0,
 				},
 				{
-					'fieldtype': 'Column Break',
+					fieldtype: "Column Break",
 				},
 				{
-					fieldname: 'unit',
-					fieldtype: 'HTML',
+					fieldname: "unit",
+					fieldtype: "HTML",
 				},
 				{
-					fieldname: 'method',
-					fieldtype: 'HTML',
+					fieldname: "method",
+					fieldtype: "HTML",
 				},
 				{
-					'fieldtype': 'Column Break',
+					fieldtype: "Column Break",
 				},
 				{
-					fieldname: 'reference',
-					fieldtype: 'HTML',
+					fieldname: "reference",
+					fieldtype: "HTML",
 				},
 				{
-					'fieldtype': 'Column Break',
+					fieldtype: "Column Break",
 				},
 				{
-					fieldname: 'auth_btn',
-					fieldtype: 'HTML',
+					fieldname: "auth_btn",
+					fieldtype: "HTML",
 				},
 				{
-					fieldtype: 'Section Break',
+					fieldtype: "Section Break",
 				},
 				{
-					fieldname: 'note_text',
-					fieldtype: 'Text',
-					read_only: 1,
+					fieldname: "note_text",
+					fieldtype: "HTML",
 				},
 				{
-					fieldtype: 'Section Break',
+					fieldtype: "Section Break",
 					hidden: 1 ? obs_data.observation_category != "Imaging" : 0,
 				},
 				{
 					label: __("Findings"),
-					fieldname: 'findings',
-					fieldtype: 'Button',
+					fieldname: "findings",
+					fieldtype: "Button",
 					click: () => me.add_finding_interpretation(obs_data, "Findings"),
 				},
 				{
-					fieldname: 'findings_text',
-					fieldtype: 'Text',
-					read_only: 1,
+					fieldname: "findings_text",
+					fieldtype: "HTML",
 				},
 				{
-					'fieldtype': 'Column Break',
+					fieldtype: "Column Break",
 				},
 				{
 					label: __("Interpretation"),
-					fieldname: 'interpretation',
-					fieldtype: 'Button',
-					click: () => me.add_finding_interpretation(obs_data, "Interpretation"),
+					fieldname: "interpretation",
+					fieldtype: "Button",
+					click: () =>
+						me.add_finding_interpretation(obs_data, "Interpretation"),
 				},
 				{
-					fieldname: 'result_interpretation',
-					fieldtype: 'Text',
-					read_only: 1,
+					fieldname: "result_interpretation",
+					fieldtype: "HTML",
 				},
-
 			],
-			body: wrapper
-		})
+			body: wrapper,
+		});
 		me[obs_data.name].make();
-		me.set_values(this, obs_data)
+		const max_width = healthcare.observation.RESULT_FIELD_MAX_WIDTH[fieldtype];
+		if (max_width) {
+			const result_field = me[obs_data.name].get_field("result");
+			(result_field.$input || result_field.$wrapper.find(".form-control")).css(
+				"max-width",
+				max_width,
+			);
+		}
+		me.set_values(this, obs_data);
+		setTimeout(() => {
+			me._is_rendering_result_field[obs_data.name] = false;
+		}, 0);
+	}
+
+	get_result_flag_html(flag, color, bg) {
+		if (!flag) return "";
+
+		const label = frappe.utils.escape_html(flag);
+		const dot_color = color || "var(--text-muted)";
+		const tint = bg || "var(--subtle-fg, var(--bg-color))";
+		// A template author can write any length of short interpretation —
+		// step the type scale down as the label grows so it never wraps or
+		// forces the pill wider than the card, but never past a readable floor.
+		const font_size =
+			flag.length > 24
+				? "7.5px"
+				: flag.length > 16
+				  ? "8px"
+				  : flag.length > 10
+				    ? "8.5px"
+				    : "9px";
+
+		return `<span title="${label}" style="display:inline-flex; align-items:center;
+			gap:5px; max-width:100%; box-sizing:border-box; margin-top:4px;
+			padding:2px 8px 2px 7px; border-radius:var(--radius-full, 9999px); background:${tint};">
+			<span style="width:6px; height:6px; border-radius:50%; flex-shrink:0; background:${dot_color};"></span>
+			<span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+				font-size:${font_size}; font-weight:600; letter-spacing:0.1px; line-height:14px;
+				color:${dot_color};">${label}</span>
+		</span>`;
+	}
+
+	render_note_html(html, label = __("Note")) {
+		if (!html) return "";
+		return `<div class="observation-note" style="margin-top:6px; padding:6px 8px;
+			background-color: var(--subtle-fg, var(--bg-color));
+			border-radius: var(--border-radius-sm, 4px);">
+			<div class="text-muted" style="font-size:9px; font-weight:600; text-transform:uppercase;
+				letter-spacing:0.5px; margin-bottom:3px;">${label}</div>
+			<div class="text-muted" style="font-size:11px; line-height:1.5;">${html}</div>
+		</div>`;
 	}
 
 	set_values(th, obs_data) {
 		var me = this;
 		let name_html = `<div class="observation-name obs-field" style="font-size:10px; padding-top:20px;" value="${obs_data.name}">
-			<a href="/app/observation/${obs_data.name }" title="${obs_data.name }">`
+			<a href="/app/observation/${obs_data.name}" title="${obs_data.name}">`;
 		if (obs_data.preferred_display_name) {
-			name_html += obs_data.preferred_display_name
+			name_html += obs_data.preferred_display_name;
 		} else {
-			name_html += obs_data.observation_template
+			name_html += obs_data.observation_template;
 		}
 		name_html += `</a>
-		<div>`
-		me[obs_data.name].get_field('observation').html(name_html);
+		<div>`;
+		me[obs_data.name].get_field("observation").html(name_html);
 
-
-		let specimen_html = `<div class="text-muted" style="font-size:10px; padding-top:20px;">`
+		let specimen_html = `<div class="text-muted" style="font-size:10px; padding-top:20px;">`;
 		if (obs_data.specimen) {
-			specimen_html += `<a href="/app/specimen/${obs_data.specimen}" title="${obs_data.specimen}">`
-			specimen_html += obs_data.specimen + '</a>'
+			specimen_html += `<a href="/app/specimen/${obs_data.specimen}" title="${obs_data.specimen}">`;
+			specimen_html += obs_data.specimen + "</a>";
 		}
 		specimen_html += `</div>
-			<div class="text-muted" style="font-size: 8px;">`
-			if (obs_data.received_time) {
-				specimen_html += frappe.datetime.global_date_format(obs_data.received_time)
-			}
-			specimen_html += `</div>`
-		me[obs_data.name].get_field('specimen').html(specimen_html);
+			<div class="text-muted" style="font-size: 8px;">`;
+		if (obs_data.received_time) {
+			specimen_html += frappe.datetime.global_date_format(obs_data.received_time);
+		}
+		specimen_html += `</div>`;
+		me[obs_data.name].get_field("specimen").html(specimen_html);
 
-		let result_date_html = `<div class="text-muted" style="font-size:8px; margin-top:-12px;">${obs_data.time_of_result ? frappe.datetime.global_date_format(obs_data.time_of_result): ""}</div>`
-		me[obs_data.name].get_field('result_date').html(result_date_html);
+		let result_date_html = `<div class="text-muted" style="font-size:8px; margin-top:-12px;">${
+			obs_data.time_of_result
+				? frappe.datetime.global_date_format(obs_data.time_of_result)
+				: ""
+		}</div>`;
+		me[obs_data.name].get_field("result_date").html(result_date_html);
 
-		let method_html = `<div style="display:flex"><div style="font-size:10px; padding-top:20px; padding-right:45px; width:10%;">${obs_data.permitted_unit?obs_data.permitted_unit:""}</div>`
+		let method_html = `<div style="display:flex"><div style="font-size:10px; padding-top:20px; padding-right:45px; width:10%;">${
+			obs_data.permitted_unit ? obs_data.permitted_unit : ""
+		}</div>`;
 
-
-		method_html+= `<div class="text-muted" style="font-size:10px; padding-top:20px;">`
+		method_html += `<div class="text-muted" style="font-size:10px; padding-top:20px;">`;
 		if (obs_data.method) {
-			method_html += `${obs_data.method }`
+			method_html += `${obs_data.method}`;
 		}
-		method_html += `</div></div>`
-		me[obs_data.name].get_field('unit').html(method_html);
+		method_html += `</div></div>`;
+		me[obs_data.name].get_field("unit").html(method_html);
 
-
-		let reference_html = `<div style="display:flex;"><div class="text-muted" style="font-size:10px; padding-top:20px;">`
+		let reference_html = `<div class="text-muted" style="font-size:10px; padding-top:20px;">`;
 		if (obs_data.reference) {
-			reference_html += `${obs_data.reference }`
+			reference_html += `${obs_data.reference}`;
 		}
-		reference_html += `</div>`
-		me[obs_data.name].get_field('reference').html(reference_html);
+		reference_html += `</div>`;
+		const flag_html = me.get_result_flag_html(
+			obs_data.result_flag,
+			obs_data.result_flag_color,
+			obs_data.result_flag_bg,
+		);
+		if (flag_html) {
+			reference_html += `<div style="margin-top:4px;">${flag_html}</div>`;
+		}
+		me[obs_data.name].get_field("reference").html(reference_html);
 
-		let auth_html = ""
-		if (!['Approved'].includes(obs_data.status)) {
+		let auth_html = "";
+		if (!["Approved"].includes(obs_data.status)) {
 			auth_html += `<div style="float:right;">
 				<button class="btn btn-xs btn-secondary small" id="authorise-observation-btn-${obs_data.name}">
 				<span style="font-size:10px;">Approve</span>
-				</button>`
-			auth_html += `</div></div>`
-			me[obs_data.name].get_field('auth_btn').html(auth_html);
-			var authbutton = document.getElementById(`authorise-observation-btn-${obs_data.name}`);
-			authbutton.addEventListener("click", function() {
-				me.auth_observation(obs_data.name, "Approved")
+				</button>`;
+			auth_html += `</div></div>`;
+			me[obs_data.name].get_field("auth_btn").html(auth_html);
+			var authbutton = document.getElementById(
+				`authorise-observation-btn-${obs_data.name}`,
+			);
+			authbutton.addEventListener("click", function () {
+				me.auth_observation(obs_data.name, "Approved");
 			});
-		} else if (obs_data.status=='Approved') {
+		} else if (obs_data.status == "Approved") {
 			auth_html += `<div style="float:right;">
 				<button class="btn btn-xs btn-del btn-secondary small" id="unauthorise-observation-btn-${obs_data.name}">
 				<span class="btn-observ" style="font-size:10px;">Reject</span>
-				</button>`
-			auth_html += `</div></div>`
-			me[obs_data.name].get_field('auth_btn').html(auth_html);
-			var authbutton = document.getElementById(`unauthorise-observation-btn-${obs_data.name}`);
-			authbutton.addEventListener("click", function() {
-				me.auth_observation(obs_data.name, "Rejected")
+				</button>`;
+			auth_html += `</div></div>`;
+			me[obs_data.name].get_field("auth_btn").html(auth_html);
+			var authbutton = document.getElementById(
+				`unauthorise-observation-btn-${obs_data.name}`,
+			);
+			authbutton.addEventListener("click", function () {
+				me.auth_observation(obs_data.name, "Rejected");
 			});
 		}
 
+		const note_icon_href = document.getElementById("icon-small-message")
+			? "#icon-small-message"
+			: "#icon-message-square";
 		let note_html = `<div><span class="add-note-observation-btn btn btn-link"
 			id="add-note-observation-btn-${obs_data.name}">
-			<svg class="icon icon-sm"><use xlink:href="#icon-small-message"></use></svg>
-			</span>`
-		note_html += `</div>`
-		me[obs_data.name].get_field('note_button').html(note_html);
-		var myButton = document.getElementById(`add-note-observation-btn-${obs_data.name}`);
-		myButton.addEventListener("click", function() {
-			me.add_note(obs_data.name, obs_data.note)
-		  });
+			<svg class="icon icon-sm"><use xlink:href="${note_icon_href}"></use></svg>
+			</span>`;
+		note_html += `</div>`;
+		me[obs_data.name].get_field("note_button").html(note_html);
+		var myButton = document.getElementById(
+			`add-note-observation-btn-${obs_data.name}`,
+		);
+		myButton.addEventListener("click", function () {
+			me.add_note(obs_data);
+		});
 
 		if (obs_data.note) {
-			me[obs_data.name].set_value("note_text", obs_data.note)
+			me[obs_data.name]
+				.get_field("note_text")
+				.html(me.render_note_html(obs_data.note));
 		}
 
 		if (obs_data.observation_category == "Imaging") {
-			me[obs_data.name].set_value("findings_text", obs_data.result_text)
-			me[obs_data.name].set_value("result_interpretation", obs_data.result_interpretation)
+			me[obs_data.name]
+				.get_field("findings_text")
+				.html(me.render_note_html(obs_data.result, __("Findings")));
+			me[obs_data.name]
+				.get_field("result_interpretation")
+				.html(
+					me.render_note_html(
+						obs_data.result_interpretation,
+						__("Interpretation"),
+					),
+				);
 		}
-
 	}
 
 	set_result_n_name(observation) {
 		var me = this;
 		let dialog_values = me[observation].get_values();
-		dialog_values["observation"] =  observation
+		dialog_values["observation"] = observation;
+		// get_values() drops falsy fields entirely (see FieldGroup.get_values),
+		// so a cleared result (e.g. removing an Attach value) would otherwise
+		// vanish from the payload instead of telling the server to clear it.
+		// Read the control directly so "result" is always present — but keep
+		// a real 0 (a valid Float/Int result) instead of `||`-ing it away.
+		const result_value = me[observation].get_field("result").get_value();
+		dialog_values["result"] = result_value == null ? "" : result_value;
 		let valuexists = me.result.some(dict => dict.observation === observation);
 		for (var res of me.result) {
 			if (observation == res.observation) {
-				res["result"] = dialog_values.result
+				res["result"] = dialog_values.result;
 			}
 		}
 		if (!valuexists) {
-			me.result.push(dialog_values)
+			me.result.push(dialog_values);
 		}
 	}
 
-	add_note (observation, note) {
+	add_note(obs_data) {
 		var me = this;
-		let observation_name = observation;
-		let note_text = me[observation].get_value('note_text') || note
-		// let result = note;
-			var d = new frappe.ui.Dialog({
-				title: __('Add Note'),
-				static: true,
-				fields: [
-					{
-						"label": __("Observation"),
-						"fieldname": "observation",
-						"fieldtype": "Link",
-						"options": "Observation",
-						"default": observation_name,
-						"hidden": 1,
-					},
-					{
-						"label": __("Note"),
-						"fieldname": "note",
-						"fieldtype": "Text Editor",
-						"default": note_text,
-					}
-				],
-				primary_action: function() {
-					me.frm.dirty()
-					var data = d.get_values();
-					me[observation].set_value("note_text", data.note)
-					if (me.result.length > 0) {
-						me.result.forEach(function(res) {
-						if (res.observation == observation) {
-							res["note"] =  data.note
-						}
-						});
-					} else {
-						me.result.push({"observation": observation, "note": data.note})
-					}
-					d.hide();
+		let observation = obs_data.name;
+		var d = new frappe.ui.Dialog({
+			title: __("Add Note"),
+			static: true,
+			fields: [
+				{
+					label: __("Observation"),
+					fieldname: "observation",
+					fieldtype: "Link",
+					options: "Observation",
+					default: observation,
+					hidden: 1,
 				},
-				primary_action_label: __("Add Note")
-			});
-			d.show();
-			d.get_close_btn().show();
+				{
+					label: __("Note"),
+					fieldname: "note",
+					fieldtype: "Text Editor",
+					default: obs_data.note,
+				},
+			],
+			primary_action: function () {
+				me.frm.dirty();
+				var data = d.get_values();
+				obs_data.note = data.note;
+				me[observation]
+					.get_field("note_text")
+					.html(me.render_note_html(data.note));
+				let existing = me.result.find(res => res.observation === observation);
+				if (existing) {
+					existing.note = data.note;
+				} else {
+					me.result.push({ observation: observation, note: data.note });
+				}
+				d.hide();
+			},
+			primary_action_label: __("Add Note"),
+		});
+		d.show();
+		d.get_close_btn().show();
 	}
 
-	auth_observation (observation, status) {
+	auth_observation(observation, status) {
 		var me = this;
 		if (status == "Approved") {
-			frappe.confirm(__("Are you sure you want to authorise Observation <b>" + observation +"</b>"), function () {
-				frappe.call({
-					method: 'healthcare.healthcare.doctype.observation.observation.set_observation_status',
-					args: {
-						observation: observation,
-						status: status,
-					},
-					callback: function (r) {
-						me.frm.reload_doc();
-					}
-				});
-			})
+			frappe.confirm(
+				__(
+					"Are you sure you want to authorise Observation <b>" +
+						observation +
+						"</b>",
+				),
+				function () {
+					frappe.call({
+						method: "healthcare.healthcare.doctype.observation.observation.set_observation_status",
+						args: {
+							observation: observation,
+							status: status,
+						},
+						callback: function (r) {
+							me.frm.reload_doc();
+						},
+					});
+				},
+			);
 		} else if (status == "Rejected") {
 			var d = new frappe.ui.Dialog({
-				title: __('Reason For Rejection'),
+				title: __("Reason For Rejection"),
 				fields: [
 					{
-						"label": __("Reason"),
-						"fieldname": "unauthorisation_reason",
-						"fieldtype": "Text",
+						label: __("Reason"),
+						fieldname: "unauthorisation_reason",
+						fieldtype: "Text",
 						reqd: 1,
-					}
+					},
 				],
-				primary_action: function() {
+				primary_action: function () {
 					var data = d.get_values();
 					frappe.call({
 						method: "healthcare.healthcare.doctype.observation.observation.set_observation_status",
@@ -455,117 +619,125 @@ healthcare.ObservationWidget = class {
 							reason: data.unauthorisation_reason,
 						},
 						freeze: true,
-						callback: function(r) {
+						callback: function (r) {
 							if (!r.exc) {
 								me.frm.reload_doc();
 							}
 							d.hide();
-						}
+						},
 					});
 				},
-				primary_action_label: __("Reject")
+				primary_action_label: __("Reject"),
 			});
-			d.show()
+			d.show();
 		}
-
 	}
 
-	add_finding_interpretation (obs_data, type) {
+	add_finding_interpretation(obs_data, type) {
 		var me = this;
-		let template = ""
-		let note = ""
-		if (type=="Findings") {
-			template = obs_data.result_template
-			note = me[obs_data.name].get_value('result_text') || obs_data.result_text
-		} else if (type=="Interpretation") {
-			template = obs_data.interpretation_template
-			note = me[obs_data.name].get_value('result_interpretation') || obs_data.result_interpretation
+		let template = "";
+		let note = "";
+		if (type == "Findings") {
+			template = obs_data.result_template;
+			note = obs_data.result;
+		} else if (type == "Interpretation") {
+			template = obs_data.interpretation_template;
+			note = obs_data.result_interpretation;
 		}
 		var d = new frappe.ui.Dialog({
 			title: __(type),
 			static: true,
+			size: "large",
 			fields: [
 				{
-					"label": "Observation",
-					"fieldname": "observation",
-					"fieldtype": "Link",
-					"options": "Observation",
-					"default": obs_data.name,
-					"hidden": 1,
+					label: "Observation",
+					fieldname: "observation",
+					fieldtype: "Link",
+					options: "Observation",
+					default: obs_data.name,
+					hidden: 1,
 				},
 				{
-					"label": "Template",
-					"fieldname": "template",
-					"fieldtype": "Link",
-					"options": "Terms and Conditions",
-					"default": template,
+					label: "Template",
+					fieldname: "template",
+					fieldtype: "Link",
+					options: "Terms and Conditions",
+					default: template,
 				},
 				{
-					"label": "Note",
-					"fieldname": "note",
-					"fieldtype": "Text Editor",
-					"default" : note,
-				}
+					label: "Note",
+					fieldname: "note",
+					fieldtype: "Text Editor",
+					default: note,
+				},
 			],
-			primary_action: function() {
-				me.frm.dirty()
+			primary_action: function () {
+				me.frm.dirty();
 				var data = d.get_values();
 				let val_dict = {};
 				var values = [];
-				val_dict["observation"] = obs_data.name
-				val_dict["result"] = ""
-				if (type=="Findings") {
-					val_dict["result"] = data.note
-					me[obs_data.name].set_value("findings_text", data.note)
-				} else if (type=="Interpretation") {
-					val_dict["interpretation"] = data.note
-					me[obs_data.name].set_value("result_interpretation", data.note)
+				val_dict["observation"] = obs_data.name;
+				// Only set "result" for Findings — the server now applies
+				// whatever "result" it's sent (including clearing it), so an
+				// Interpretation-only save must leave the key out entirely
+				// rather than send "" and wipe out the Findings text.
+				if (type == "Findings") {
+					val_dict["result"] = data.note;
+					obs_data.result = data.note;
+					me[obs_data.name]
+						.get_field("findings_text")
+						.html(me.render_note_html(data.note, __(type)));
+				} else if (type == "Interpretation") {
+					val_dict["interpretation"] = data.note;
+					obs_data.result_interpretation = data.note;
+					me[obs_data.name]
+						.get_field("result_interpretation")
+						.html(me.render_note_html(data.note, __(type)));
 				}
 				d.hide();
 				values.push(val_dict);
-				me.result.push(val_dict)
+				me.result.push(val_dict);
 			},
-			primary_action_label: __("Add")
-			});
-			if ((!note || note == "") && d.get_values("template")) {
-				set_text_to_dialog(d)
+			primary_action_label: __("Add"),
+		});
+		if ((!note || note == "") && d.get_values("template")) {
+			set_text_to_dialog(d);
+		}
+		d.fields_dict["template"].df.onchange = () => {
+			const regex = /<p>(.*?)<\/p>/;
+			const match = d.get_value("note").match(regex);
+			const result_value = match ? match[1] : null;
+			if (d.get_value("template") && (!result_value || result_value == "<br>")) {
+				set_text_to_dialog(d);
 			}
-			d.fields_dict['template'].df.onchange = () => {
-				const regex = /<p>(.*?)<\/p>/;
-				const match = d.get_value("note").match(regex);
-				const result_value = match ? match[1] : null;
-				if (d.get_value('template') && (!result_value || result_value == "<br>")) {
-					set_text_to_dialog(d)
-				}
-			}
-			d.show();
-			d.get_close_btn().show();
+		};
+		d.show();
+		d.get_close_btn().show();
 	}
+};
 
-}
-
-var trim_html = function(text_result) {
-	if (text_result && text_result.includes('</div>')) {
-		var tempElement = document.createElement('div');
+var trim_html = function (text_result) {
+	if (text_result && text_result.includes("</div>")) {
+		var tempElement = document.createElement("div");
 		tempElement.innerHTML = text_result;
-		var paragraphElement = tempElement.querySelector('p');
-		return paragraphElement.textContent
+		var paragraphElement = tempElement.querySelector("p");
+		return paragraphElement.textContent;
 	} else {
-		return text_result
+		return text_result;
 	}
-}
+};
 
-var set_text_to_dialog = function(d) {
+var set_text_to_dialog = function (d) {
 	if (d.get_value("template")) {
 		frappe.call({
-			method: 'healthcare.healthcare.doctype.observation.observation.get_observation_result_template',
+			method: "healthcare.healthcare.doctype.observation.observation.get_observation_result_template",
 			args: {
 				template_name: d.get_value("template"),
-				observation: d.get_value("observation")
+				observation: d.get_value("observation"),
 			},
 			callback: function (r) {
-				d.set_value('note', r.message)
-			}
+				d.set_value("note", r.message);
+			},
 		});
 	}
-}
+};

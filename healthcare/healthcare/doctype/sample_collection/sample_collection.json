@@ -14,6 +14,8 @@
   "patient_name",
   "patient_age",
   "patient_sex",
+  "emergency_record",
+  "appointment",
   "referring_practitioner",
   "column_break_4",
   "company",
@@ -21,7 +23,7 @@
   "inpatient_record",
   "collection_point",
   "invoiced",
-  "section_break_6",
+  "sample_details_section",
   "sample",
   "sample_uom",
   "sample_qty",
@@ -38,7 +40,6 @@
   "service_request",
   "reference_doc",
   "reference_name",
-  "appointment",
   "amended_from"
  ],
  "fields": [
@@ -50,6 +51,16 @@
    "hide_seconds": 1,
    "label": "Inpatient Record",
    "options": "Inpatient Record",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "patient.emergency_record",
+   "fieldname": "emergency_record",
+   "fieldtype": "Link",
+   "hide_days": 1,
+   "hide_seconds": 1,
+   "label": "Emergency Record",
+   "options": "Emergency Record",
    "read_only": 1
   },
   {
@@ -124,14 +135,6 @@
    "label": "Company",
    "options": "Company",
    "read_only_depends_on": "eval:[\"Partly Collected\", \"Collected\"].includes(doc.status);"
-  },
-  {
-   "depends_on": "!doc.observation_sample_collection",
-   "fieldname": "section_break_6",
-   "fieldtype": "Section Break",
-   "hide_days": 1,
-   "hide_seconds": 1,
-   "label": "Sample Details"
   },
   {
    "fieldname": "sample",
@@ -290,10 +293,11 @@
    "read_only_depends_on": "referring_practitioner"
   },
   {
-   "fieldname": "appointment",
-   "fieldtype": "Link",
-   "label": "Appointment",
-   "options": "Patient Appointment"
+   "fieldname": "sample_details_section",
+   "fieldtype": "Section Break",
+   "hide_days": 1,
+   "hide_seconds": 1,
+   "label": "Sample Details"
   },
   {
    "fieldname": "amended_from",
@@ -302,8 +306,13 @@
    "no_copy": 1,
    "options": "Sample Collection",
    "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
+   "read_only": 1
+  },
+  {
+   "fieldname": "appointment",
+   "fieldtype": "Link",
+   "label": "Appointment",
+   "options": "Patient Appointment"
   }
  ],
  "is_submittable": 1,
@@ -313,7 +322,7 @@
    "link_fieldname": "sample_collection"
   }
  ],
- "modified": "2025-03-26 19:00:19.286785",
+ "modified": "2025-12-25 09:36:29.541878",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Sample Collection",
@@ -348,12 +357,14 @@
   }
  ],
  "restrict_to_domain": "Healthcare",
+ "row_format": "Dynamic",
  "search_fields": "patient, sample",
  "show_name_in_global_search": 1,
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "title_field": "patient",
  "track_changes": 1,
  "track_seen": 1
 }
+

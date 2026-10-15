@@ -1,14 +1,14 @@
 <template>
 	<div class="flex flex-col h-[99%] animate-fade-in">
 		<div class="flex items-center justify-between py-4">
-			<h2 class="text-md font-semibold py-2">Select a Practitioner</h2>
+			<h2 class="text-md font-semibold py-2">{{ __('Select a Practitioner') }}</h2>
 
 			<!-- Pagination -->
 			<div class="flex items-center gap-2">
 				<Button size="sm" :disabled="page === 1" @click="$emit('update:page', page - 1)">
 					<FeatherIcon name="chevron-left" class="size-5 text-ink-white-7" />
 				</Button>
-				<span class="text-sm text-gray-600 flex items-center">Page {{ page }} of {{ totalPages }}</span>
+				<span class="text-sm text-gray-600 flex items-center">{{ __('Page {0} of {1}', [page, totalPages]) }}</span>
 				<Button size="sm" :disabled="page === totalPages" @click="$emit('update:page', page + 1)">
 					<FeatherIcon name="chevron-right" class="size-5 text-ink-white-7" />
 				</Button>
@@ -28,7 +28,7 @@
 					<FeatherIcon name="check" class="w-4 h-4" />
 				</div>
 				<div class="flex flex-col items-center">
-					<img v-if="doc.image" :src="doc.image" class="w-full h-32 object-cover rounded-t-xl bg-gray-100" />
+					<img v-if="doc.image" :src="doc.image" alt="" class="w-full h-32 object-cover rounded-t-xl bg-gray-100" />
 					<div v-else
 						class="w-full h-32 flex items-center justify-center rounded-t-xl text-gray-700 text-3xl font-semibold bg-gray-100">
 						{{ doc.practitioner_name.charAt(0).toUpperCase() }}

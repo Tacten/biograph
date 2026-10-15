@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ boot.lang }}" dir="{{ boot.text_direction }}">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" href="/favicon.png" />
@@ -12,6 +12,10 @@
     <div id="popovers"></div>
 
     <script> window.csrf_token = '{{ csrf_token }}'; </script>
+    <script>
+      window.portal_lang = {{ boot.lang | tojson }};
+      window.translated_messages = {{ boot.translated_messages | tojson }};
+    </script>
     <script type="module" src="/src/patient_portal.js"></script>
   </body>
 </html>

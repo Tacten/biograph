@@ -21,6 +21,8 @@
  ],
  "fields": [
   {
+   "fetch_from": "item.brand",
+   "fetch_if_empty": 1,
    "fieldname": "brand",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -28,6 +30,8 @@
    "options": "Brand"
   },
   {
+   "fetch_from": "item.default_item_manufacturer",
+   "fetch_if_empty": 1,
    "fieldname": "manufacturer",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -51,6 +55,8 @@
    "set_only_once": 1
   },
   {
+   "fetch_from": "item.item_group",
+   "fetch_if_empty": 1,
    "fieldname": "item_group",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -92,6 +98,8 @@
    "label": "Change In Item"
   },
   {
+   "fetch_from": "item.description",
+   "fetch_if_empty": 1,
    "fieldname": "description",
    "fieldtype": "Small Text",
    "label": "Description"

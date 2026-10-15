@@ -32,6 +32,7 @@ class Patient(Document):
 
 	def validate(self):
 		self.set_full_name()
+		self.validate_dob()
 		self.flags.is_new_doc = self.is_new()
 		self.flags.existing_customer = self.is_new() and bool(self.customer)
 		
@@ -96,11 +97,15 @@ class Patient(Document):
 			[name for name in [self.first_name, self.middle_name, self.last_name] if name]
 		)
 
+	def validate_dob(self):
+		if self.dob and getdate(self.dob) > getdate():
+			frappe.throw(_("Date of Birth cannot be greater than today"), title=_("Invalid Date of Birth"))
+
 	def set_missing_customer_details(self):
 		if not self.customer_group:
 			self.customer_group = frappe.db.get_single_value(
 				"Selling Settings", "customer_group"
-			) or get_root_of("Customer Group")
+			) or frappe.db.exists("Customer Group", "Individual")
 		if not self.territory:
 			self.territory = frappe.db.get_single_value("Selling Settings", "territory") or get_root_of(
 				"Territory"
@@ -345,7 +350,8 @@ def create_customer(doc):
 			"doctype": "Customer",
 			"customer_name": doc.patient_name,
 			"customer_group": doc.customer_group
-			or frappe.db.get_single_value("Selling Settings", "customer_group"),
+			or frappe.db.get_single_value("Selling Settings", "customer_group")
+			or frappe.db.exists("Customer Group", "Individual"),
 			"territory": doc.territory or frappe.db.get_single_value("Selling Settings", "territory"),
 			"customer_type": "Individual",
 			"default_currency": doc.default_currency,

@@ -13,8 +13,8 @@
   "medication",
   "medication_item",
   "order_date",
-  "expected_date",
   "order_time",
+  "expected_date",
   "column_break_4",
   "company",
   "status",
@@ -31,6 +31,7 @@
   "patient_mobile",
   "inpatient_record",
   "inpatient_status",
+  "emergency_record",
   "order_source_section",
   "practitioner",
   "practitioner_name",
@@ -40,7 +41,6 @@
   "column_break_10",
   "reason_reference_doctype",
   "reason_reference",
-  "source_doc",
   "order_group",
   "sequence",
   "request_details_section",
@@ -55,6 +55,7 @@
   "dosage",
   "number_of_repeats_allowed",
   "column_break_91",
+  "comment",
   "order_description",
   "period",
   "occurrence_time",
@@ -96,10 +97,10 @@
   },
   {
    "fieldname": "order_group",
-   "fieldtype": "Dynamic Link",
+   "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Order Group (Encounter)",
-   "options": "source_doc"
+   "options": "Patient Encounter"
   },
   {
    "fieldname": "column_break_91",
@@ -414,6 +415,7 @@
    "fieldname": "medication",
    "fieldtype": "Link",
    "label": "Medication",
+   "link_filters": "[[\"Medication\",\"is_orderable\",\"=\",1]]",
    "options": "Medication",
    "search_index": 1
   },
@@ -461,17 +463,23 @@
    "reqd": 1
   },
   {
-   "fieldname": "source_doc",
+   "fieldname": "comment",
+   "fieldtype": "Small Text",
+   "label": "Comment"
+  },
+  {
+   "fetch_from": "patient.emergency_record",
+   "fieldname": "emergency_record",
    "fieldtype": "Link",
-   "label": "Source Doc",
-   "options": "DocType"
+   "label": "Emergency Record",
+   "options": "Emergency Record",
+   "read_only": 1
   }
  ],
- "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-25 11:25:25.460198",
+ "modified": "2026-09-05 22:00:00.000000",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Medication Request",
@@ -526,7 +534,7 @@
  "restrict_to_domain": "Healthcare",
  "row_format": "Dynamic",
  "search_fields": "title,patient,order_group,inpatient_record,practitioner,patient_email,patient_mobile",
- "sort_field": "modified",
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
  "title_field": "title",

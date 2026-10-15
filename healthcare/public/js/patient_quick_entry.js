@@ -21,6 +21,8 @@ frappe.ui.form.PatientQuickEntryForm = class PatientQuickEntryForm extends frapp
 
 		super.render_dialog();
 
+		this.dialog?.fields_dict?.dob?.datepicker?.update({ maxDate: new Date() });
+
 		this.dialog.fields_dict.phone.$wrapper.find('input').on('input', (event) => {
             let inputVal = event.target.value;
             if (/[a-zA-Z]/.test(inputVal)) {

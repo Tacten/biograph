@@ -17,6 +17,8 @@
   "column_break_4",
   "company",
   "practitioner",
+  "practitioner_name",
+  "emergency_record",
   "status",
   "start_date",
   "section_break_3",
@@ -28,6 +30,9 @@
   "total_invoiced_session",
   "column_break_11",
   "total_sessions_completed",
+  "more_information_section",
+  "source_doc",
+  "order_group",
   "section_break_zmve",
   "total_plan_amount",
   "column_break_dryw",
@@ -109,6 +114,28 @@
    "read_only": 1
   },
   {
+   "collapsible": 1,
+   "fieldname": "more_information_section",
+   "fieldtype": "Section Break",
+   "label": "More Information"
+  },
+  {
+   "fieldname": "source_doc",
+   "fieldtype": "Link",
+   "label": "Source Doc",
+   "no_copy": 1,
+   "options": "DocType",
+   "read_only": 1
+  },
+  {
+   "fieldname": "order_group",
+   "fieldtype": "Dynamic Link",
+   "label": "Order Group",
+   "no_copy": 1,
+   "options": "source_doc",
+   "read_only": 1
+  },
+  {
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
@@ -126,8 +153,26 @@
   {
    "fieldname": "practitioner",
    "fieldtype": "Link",
-   "label": "Healthcare Practitioner",
-   "options": "Healthcare Practitioner"
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Ordered By Practitioner",
+   "options": "Healthcare Practitioner",
+   "search_index": 1
+  },
+  {
+   "fetch_from": "practitioner.practitioner_name",
+   "fieldname": "practitioner_name",
+   "fieldtype": "Data",
+   "label": "Ordered By Practitioner Name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "patient.emergency_record",
+   "fieldname": "emergency_record",
+   "fieldtype": "Link",
+   "label": "Emergency Record",
+   "options": "Emergency Record",
+   "read_only": 1
   },
   {
    "fieldname": "therapy_plan_template",
@@ -207,7 +252,7 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2025-09-27 21:14:22.974335",
+ "modified": "2026-10-15 17:00:00.000000",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Therapy Plan",
