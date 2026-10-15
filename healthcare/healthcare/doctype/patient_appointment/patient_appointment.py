@@ -17,9 +17,11 @@ from erpnext.setup.doctype.employee.employee import is_holiday
 
 from healthcare.healthcare.api.patient_portal import update_payment_record
 from healthcare.healthcare.doctype.fee_validity.fee_validity import (
-	check_fee_validity,
-	get_fee_validity,
+	cancel_fee_validity,
+	find_fee_validity,
 	manage_fee_validity,
+	query_fee_validity,
+	validate_fee_validity_cancellation,
 )
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import (
 	get_income_account,
@@ -114,7 +116,7 @@ class PatientAppointment(Document):
 		self.set_payment_details()
 
 		# Handle insurance coverage for normal appointments
-		if self.insurance_policy and self.appointment_type and not check_fee_validity(self):
+		if self.insurance_policy and self.appointment_type and not find_fee_validity(self):
 			if frappe.db.get_single_value("Healthcare Settings", "show_payment_popup"):
 				frappe.msgprint(
 					_(
@@ -1037,12 +1039,12 @@ def invoice_appointment(appointment_name, discount_percentage=0, discount_amount
 	settings = frappe.get_single("Healthcare Settings")
 
 	if settings.enable_free_follow_ups:
-		fee_validity = check_fee_validity(appointment_doc)
+		fee_validity = find_fee_validity(appointment_doc)
 
 		if fee_validity and fee_validity.status != "Active":
 			fee_validity = None
 		elif not fee_validity:
-			if get_fee_validity(appointment_doc.name, appointment_doc.appointment_date):
+			if query_fee_validity(appointment_doc.name, appointment_doc.appointment_date):
 				return
 	else:
 		fee_validity = None
@@ -1169,16 +1171,13 @@ def cancel_appointment(appointment_id):
 			msg = _("Appointment Cancelled. Please review and cancel the invoice {0}").format(
 				sales_invoice.name
 			)
-		if frappe.db.get_single_value("Healthcare Settings", "enable_free_follow_ups"):
-			fee_validity = frappe.db.get_value("Fee Validity", {"patient_appointment": appointment.name})
-			if fee_validity:
-				frappe.db.set_value("Fee Validity", fee_validity, "status", "Cancelled")
+		cancel_fee_validity(appointment)
 
 	else:
-		fee_validity = manage_fee_validity(appointment)
+		fee_validity = cancel_fee_validity(appointment)
 		msg = _("Appointment Cancelled.")
 		if fee_validity:
-			msg += _(" <b>{0}</b> updated.").format(get_link_to_form("Fee Validity",fee_validity.name, "Fee Validity"))
+			msg += _("Fee Validity {0} updated.").format(fee_validity.name)
 
 	if appointment.event:
 		event_doc = frappe.get_doc("Event", appointment.event)
@@ -1251,9 +1250,11 @@ def get_availability_data(
 
 	fee_validity = "Disabled"
 	if frappe.db.get_single_value("Healthcare Settings", "enable_free_follow_ups"):
-		fee_validity = check_fee_validity(appointment, date, practitioner)
+		fee_validity = find_fee_validity(appointment, date, practitioner)
 		if not fee_validity and not appointment.get("__islocal"):
-			fee_validity = get_fee_validity(appointment.get("name"), date) or None
+			validity_details = query_fee_validity(appointment.get("name"), date, ignore_status=True)
+			if validity_details:
+				fee_validity = validity_details[0]
 
 	if appointment.invoiced:
 		fee_validity = "Disabled"
@@ -1446,6 +1447,8 @@ def update_status(appointment_id, status):
 	
 	# Different handling based on appointment type
 	if status == "Cancelled":
+		if appointment_doc.appointment_type != "Unavailable":
+			validate_fee_validity_cancellation(appointment_doc)
 		if appointment_doc.appointment_type == "Unavailable":
 			# For unavailability appointments, we need to bypass validation
 			# Instead of saving the document which tries to modify set_only_once fields,

@@ -14,8 +14,10 @@ from frappe.utils.formatters import format_value
 from erpnext.setup.utils import insert_record
 
 from healthcare.healthcare.doctype.fee_validity.fee_validity import (
-	get_fee_validity,
+	is_free_follow_up_enabled,
 	manage_fee_validity,
+	query_fee_validity,
+	set_sales_invoice_reference,
 )
 from healthcare.healthcare.doctype.healthcare_settings.healthcare_settings import (
 	get_income_account,
@@ -151,17 +153,9 @@ def get_appointments_to_invoice(patient, company):
 				)
 		# Consultation Appointments, should check fee validity
 		else:
-			if appointment.practitioner:
-				pract_enabled = frappe.get_cached_value(
-					"Healthcare Practitioner", appointment.practitioner, "enable_free_follow_ups"
-				)
-				settings_enabled = frappe.db.get_single_value("Healthcare Settings", "enable_free_follow_ups")
-
-				if pract_enabled or settings_enabled:
-					if get_fee_validity(appointment.name, appointment.appointment_date, ignore_status=True):
-						continue  # Skip invoicing, fee validity exists
-					if frappe.db.exists("Fee Validity Reference", {"appointment": appointment.name}):
-						continue  # Skip invoicing, fee validty present
+			if is_free_follow_up_enabled(appointment.practitioner):
+				if query_fee_validity(appointment.name, appointment.appointment_date, ignore_status=True):
+					continue  # Skip invoicing, fee validity exists
 
 			practitioner_charge = 0
 			income_account = None
@@ -262,6 +256,15 @@ def get_encounters_to_invoice(patient, company):
 		for encounter in encounters:
 			encounter = frappe.get_doc("Patient Encounter", encounter)
 			if not encounter.appointment:
+				if is_free_follow_up_enabled(encounter.practitioner, "Patient Encounter"):
+					if query_fee_validity(
+						encounter.name,
+						encounter.encounter_date,
+						ignore_status=True,
+						reference_dt="Patient Encounter",
+					):
+						continue  # Skip invoicing, fee validity exists
+
 				practitioner_charge = 0
 				income_account = None
 				service_item = None
@@ -884,6 +887,10 @@ def manage_invoice_submit_cancel(doc, method):
 
 				if item.reference_dt == "Patient Appointment":
 					manage_fee_validity(frappe.get_doc("Patient Appointment", item.reference_dn))
+				elif item.reference_dt == "Patient Encounter":
+					set_sales_invoice_reference(
+						item.reference_dt, item.reference_dn, doc.name if effective_method == "on_submit" else None
+					)
 
 				# set patient as active if registration invoice
 				if item.get("reference_dt") == "Patient":
@@ -920,12 +927,8 @@ def manage_invoice_submit_cancel(doc, method):
 			and doc.items
 		):
 			for item in doc.items:
-				if item.reference_dt == "Patient Appointment":
-					fee_validity = frappe.db.exists(
-						"Fee Validity", {"patient_appointment": item.reference_dn}
-					)
-					if fee_validity:
-						frappe.db.set_value("Fee Validity", fee_validity, "sales_invoice_ref", doc.name)
+				if item.reference_dt in ("Patient Appointment", "Patient Encounter"):
+					set_sales_invoice_reference(item.reference_dt, item.reference_dn, doc.name)
 	elif effective_method == "on_submit" and is_return:
 		# Cancelling a return invoice should re-apply invoiced coverage.
 		update_insurance_coverage(doc, is_reversal=False)
