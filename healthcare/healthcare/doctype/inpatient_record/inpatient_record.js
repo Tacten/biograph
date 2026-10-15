@@ -135,6 +135,7 @@ frappe.ui.form.on("Inpatient Record", {
 				frm.add_custom_button(__("Discharge"), function () {
 					discharge_patient(frm);
 				});
+				healthcare.inpatient.BedStockSettlement.attach(frm);
 				if (frm.doc.insurance_policy) {
 					frm.add_custom_button(__("Create Insurance Coverage"), function () {
 						create_insurance_coverage(frm);
@@ -202,6 +203,7 @@ let discharge_patient = function (frm) {
 	if (details.length === 0) {
 		intro = `<p>${__("You are about to discharge")} <b>${patient_name}</b>.</p>`;
 	} else if (details.length === 1) {
+		// A single extra detail reads better inline than as a one-row table.
 		let [label, value] = details[0];
 		intro = `<p>${__(
 			"You are about to discharge",
@@ -359,7 +361,6 @@ let admit_patient_dialog = function (frm) {
 			filters: {
 				inpatient_occupancy: 1,
 				allow_appointments: 0,
-				is_ot: 0,
 			},
 		};
 	};
@@ -587,9 +588,7 @@ let transfer_for_procedure_dialog = function (frm) {
 			if (check_in > frappe.datetime.now_datetime()) {
 				frappe.msgprint({
 					title: __("Not Allowed"),
-					message: __(
-						"Check-in time cannot be greater than the current time",
-					),
+					message: __("Check-in time cannot be after current time"),
 					indicator: "red",
 				});
 				return;

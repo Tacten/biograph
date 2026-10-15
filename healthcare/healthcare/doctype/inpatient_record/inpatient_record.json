@@ -82,6 +82,9 @@
   "followup_date",
   "sb_discharge_note",
   "discharge_note",
+  "nursing_tab",
+  "nursing_section",
+  "nursing_snapshot",
   "connections_tab",
   "emergency_record"
  ],
@@ -141,7 +144,6 @@
    "fieldname": "mobile",
    "fieldtype": "Data",
    "label": "Mobile",
-   "options": "Phone",
    "read_only": 1
   },
   {
@@ -157,7 +159,6 @@
    "fieldname": "phone",
    "fieldtype": "Data",
    "label": "Phone",
-   "options": "Phone",
    "read_only": 1
   },
   {
@@ -593,6 +594,20 @@
    "label": "Emergency Record",
    "options": "Emergency Record",
    "read_only": 1
+  },
+  {
+   "fieldname": "nursing_tab",
+   "fieldtype": "Tab Break",
+   "label": "Nursing"
+  },
+  {
+   "fieldname": "nursing_snapshot",
+   "fieldtype": "HTML",
+   "label": "Nursing Snapshot"
+  },
+  {
+   "fieldname": "nursing_section",
+   "fieldtype": "Section Break"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -610,7 +625,7 @@
    "link_fieldname": "inpatient_record"
   }
  ],
- "modified": "2025-12-25 09:36:36.211469",
+ "modified": "2026-08-24 17:03:29.239365",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Inpatient Record",
