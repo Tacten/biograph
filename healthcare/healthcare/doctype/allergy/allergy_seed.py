@@ -2,10 +2,9 @@
 # For license information, please see license.txt
 
 import json
+from importlib.resources import files
 
 import frappe
-
-SEED_FILE = ("healthcare", "healthcare", "doctype", "allergy", "allergy_seed.json")
 
 
 def create_allergies():
@@ -15,9 +14,10 @@ def create_allergies():
 
 
 def read_seed():
-	path = frappe.get_app_path(*SEED_FILE)
-	with open(path, encoding="utf-8") as seed_file:
-		return json.load(seed_file)
+	seed_text = files("healthcare.healthcare.doctype.allergy").joinpath("allergy_seed.json").read_text(
+		encoding="utf-8"
+	)
+	return json.loads(seed_text)
 
 
 def create_allergy(record):
