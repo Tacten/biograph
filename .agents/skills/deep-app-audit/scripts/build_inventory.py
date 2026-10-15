@@ -38,19 +38,102 @@ DEFAULT_SKIP_DIRS = {"node_modules", ".git", "__pycache__", ".runs", "dist", "bu
 SKIP_DIRS = set(DEFAULT_SKIP_DIRS)
 
 SINKS = {
-	"sql": [r"\bfrappe\.db\.sql\b", r"\bfrappe\.db\.multisql\b", r"\bdb\.sql\b", r"\.sql\(", r"\bfrappe\.qb\b"],
-	"get_doc": [r"\bfrappe\.get_doc\b", r"\bfrappe\.get_cached_doc\b", r"\bfrappe\.get_last_doc\b", r"\bfrappe\.new_doc\b", r"\bget_doc\b"],
-	"get_list": [r"\bfrappe\.get_all\b", r"\bfrappe\.get_list\b", r"\bfrappe\.db\.get_all\b", r"\bfrappe\.db\.get_list\b", r"\bfrappe\.db\.get_value\b", r"\bfrappe\.db\.get_values\b", r"\bfrappe\.db\.get_single_value\b", r"\bfrappe\.db\.count\b", r"\bfrappe\.db\.exists\b"],
-	"write": [r"\bfrappe\.db\.set_value\b", r"\bfrappe\.db\.set_single_value\b", r"\.db_set\b", r"\bfrappe\.db\.delete\b", r"\bfrappe\.delete_doc\b", r"\bfrappe\.db\.truncate\b", r"\.insert\(", r"\.save\(", r"\.submit\(", r"\.cancel\(", r"\.delete\("],
+	"sql": [
+		r"\bfrappe\.db\.sql\b",
+		r"\bfrappe\.db\.multisql\b",
+		r"\bdb\.sql\b",
+		r"\.sql\(",
+		r"\bfrappe\.qb\b",
+	],
+	"get_doc": [
+		r"\bfrappe\.get_doc\b",
+		r"\bfrappe\.get_cached_doc\b",
+		r"\bfrappe\.get_last_doc\b",
+		r"\bfrappe\.new_doc\b",
+		r"\bget_doc\b",
+	],
+	"get_list": [
+		r"\bfrappe\.get_all\b",
+		r"\bfrappe\.get_list\b",
+		r"\bfrappe\.db\.get_all\b",
+		r"\bfrappe\.db\.get_list\b",
+		r"\bfrappe\.db\.get_value\b",
+		r"\bfrappe\.db\.get_values\b",
+		r"\bfrappe\.db\.get_single_value\b",
+		r"\bfrappe\.db\.count\b",
+		r"\bfrappe\.db\.exists\b",
+	],
+	"write": [
+		r"\bfrappe\.db\.set_value\b",
+		r"\bfrappe\.db\.set_single_value\b",
+		r"\.db_set\b",
+		r"\bfrappe\.db\.delete\b",
+		r"\bfrappe\.delete_doc\b",
+		r"\bfrappe\.db\.truncate\b",
+		r"\.insert\(",
+		r"\.save\(",
+		r"\.submit\(",
+		r"\.cancel\(",
+		r"\.delete\(",
+	],
 	"sendmail": [r"\bfrappe\.sendmail\b", r"\bsendmail\b", r"\bsend_mail\b"],
 	"enqueue": [r"\bfrappe\.enqueue\b", r"\benqueue_doc\b", r"\benqueue\b"],
-	"file_io": [r"\bopen\(", r"\bos\.remove\b", r"\bos\.unlink\b", r"\bos\.rmdir\b", r"\bshutil\.", r"\bos\.makedirs\b", r"\bos\.path\.join\b", r"\bsend_file\b", r"\bos\.rename\b"],
+	"file_io": [
+		r"\bopen\(",
+		r"\bos\.remove\b",
+		r"\bos\.unlink\b",
+		r"\bos\.rmdir\b",
+		r"\bshutil\.",
+		r"\bos\.makedirs\b",
+		r"\bos\.path\.join\b",
+		r"\bsend_file\b",
+		r"\bos\.rename\b",
+	],
 	"subprocess": [r"\bsubprocess\.", r"\bos\.system\b", r"\bos\.popen\b", r"\bPopen\b", r"\bcheck_output\b"],
-	"eval_exec": [r"\bsafe_exec\b", r"\bsafe_eval\b", r"\bfrappe\.safe_eval\b", r"\beval\(", r"\bexec\(", r"\bcompile\(", r"\b__import__\b", r"\bget_attr\b", r"\bfrappe\.call\b", r"\bpickle\.loads\b", r"\byaml\.load\b"],
-	"render": [r"\bfrappe\.render_template\b", r"\brender_template\b", r"\bfrappe\.render\b", r"\bTemplate\(", r"\bget_jenv\b", r"\bfrappe\.utils\.jinja\b"],
-	"http_out": [r"\brequests\.(get|post|put|delete|patch|request)\b", r"\bmake_get_request\b", r"\bmake_post_request\b", r"\bmake_request\b", r"\burlopen\b", r"\bhttpx\."],
-	"auth": [r"\blogin_manager\b", r"\bfrappe\.local\.login_manager\b", r"\bset_user\b", r"\bupdate_password\b", r"\bfrappe\.set_user\b", r"\bgenerate_hash\b"],
-	"import_module": [r"\bfrappe\.get_attr\b", r"\bget_attr\b", r"\bimportlib\b", r"\bfrappe\.get_module\b", r"\bfrappe\.scrub\b.*import"],
+	"eval_exec": [
+		r"\bsafe_exec\b",
+		r"\bsafe_eval\b",
+		r"\bfrappe\.safe_eval\b",
+		r"\beval\(",
+		r"\bexec\(",
+		r"\bcompile\(",
+		r"\b__import__\b",
+		r"\bget_attr\b",
+		r"\bfrappe\.call\b",
+		r"\bpickle\.loads\b",
+		r"\byaml\.load\b",
+	],
+	"render": [
+		r"\bfrappe\.render_template\b",
+		r"\brender_template\b",
+		r"\bfrappe\.render\b",
+		r"\bTemplate\(",
+		r"\bget_jenv\b",
+		r"\bfrappe\.utils\.jinja\b",
+	],
+	"http_out": [
+		r"\brequests\.(get|post|put|delete|patch|request)\b",
+		r"\bmake_get_request\b",
+		r"\bmake_post_request\b",
+		r"\bmake_request\b",
+		r"\burlopen\b",
+		r"\bhttpx\.",
+	],
+	"auth": [
+		r"\blogin_manager\b",
+		r"\bfrappe\.local\.login_manager\b",
+		r"\bset_user\b",
+		r"\bupdate_password\b",
+		r"\bfrappe\.set_user\b",
+		r"\bgenerate_hash\b",
+	],
+	"import_module": [
+		r"\bfrappe\.get_attr\b",
+		r"\bget_attr\b",
+		r"\bimportlib\b",
+		r"\bfrappe\.get_module\b",
+		r"\bfrappe\.scrub\b.*import",
+	],
 }
 
 # The categories above are coarse: `get_list` mixes the permissioned read with the unpermissioned
@@ -60,31 +143,64 @@ SINKS = {
 REFINED_SINKS = {
 	# reads that apply no permission of their own
 	"read_unpermissioned": [
-		r"\bfrappe\.get_all\b", r"\bfrappe\.db\.get_all\b", r"\bfrappe\.db\.get_list\b",
-		r"\bfrappe\.db\.get_value\b", r"\bfrappe\.db\.get_values\b", r"\bfrappe\.db\.get_single_value\b",
-		r"\bfrappe\.db\.count\b", r"\bfrappe\.db\.exists\b", r"\bfrappe\.db\.sql\b",
-		r"\bfrappe\.db\.multisql\b", r"\bfrappe\.qb\.from_\b", r"\bfrappe\.get_cached_value\b",
+		r"\bfrappe\.get_all\b",
+		r"\bfrappe\.db\.get_all\b",
+		r"\bfrappe\.db\.get_list\b",
+		r"\bfrappe\.db\.get_value\b",
+		r"\bfrappe\.db\.get_values\b",
+		r"\bfrappe\.db\.get_single_value\b",
+		r"\bfrappe\.db\.count\b",
+		r"\bfrappe\.db\.exists\b",
+		r"\bfrappe\.db\.sql\b",
+		r"\bfrappe\.db\.multisql\b",
+		r"\bfrappe\.qb\.from_\b",
+		r"\bfrappe\.get_cached_value\b",
 	],
 	# reads that do apply permissions
-	"read_permissioned": [r"\bfrappe\.get_list\b", r"\bfrappe\.client\.get_list\b", r"\bfrappe\.desk\.reportview\b"],
+	"read_permissioned": [
+		r"\bfrappe\.get_list\b",
+		r"\bfrappe\.client\.get_list\b",
+		r"\bfrappe\.desk\.reportview\b",
+	],
 	# the query builder's permission switch defaults to ignore_permissions=True. A query assembled
 	# from `frappe.qb.DocType(...)` and executed with `.run()` never goes near get_query at all, so
 	# it carries no permission of any kind — match that shape too.
-	"query_builder": [r"\bfrappe\.qb\.get_query\b", r"\bget_query\(", r"\bfrappe\.qb\.DocType\b",
-	                  r"\bqb\.DocType\(", r"\bqb\.Table\(",
-	                  r"\.run\(\s*\)", r"\.run\(\s*(as_dict|as_list|pluck|debug)\b"],
+	"query_builder": [
+		r"\bfrappe\.qb\.get_query\b",
+		r"\bget_query\(",
+		r"\bfrappe\.qb\.DocType\b",
+		r"\bqb\.DocType\(",
+		r"\bqb\.Table\(",
+		r"\.run\(\s*\)",
+		r"\.run\(\s*(as_dict|as_list|pluck|debug)\b",
+	],
 	# writes the document layer checks for you: save/insert/submit/cancel/delete and the mapper
 	# Document methods take no positional arguments, so this skips `list.insert(0, x)` and the like
-	"write_doc_layer": [r"\.(?:insert|save|submit|cancel|delete)\(\s*(?:\)|\w+\s*=)",
-	                    r"\bfrappe\.delete_doc\b", r"\bget_mapped_doc\b"],
+	"write_doc_layer": [
+		r"\.(?:insert|save|submit|cancel|delete)\(\s*(?:\)|\w+\s*=)",
+		r"\bfrappe\.delete_doc\b",
+		r"\bget_mapped_doc\b",
+	],
 	# writes that bypass the document layer entirely — the genuinely unguarded ones
-	"write_db_bypass": [r"\bfrappe\.db\.set_value\b", r"\bfrappe\.db\.set_single_value\b",
-	                    r"\.db_set\b", r"\.db_update\b", r"\bfrappe\.db\.delete\b",
-	                    r"\bfrappe\.db\.truncate\b", r"\bfrappe\.db\.rename_doc\b",
-	                    r"\bfrappe\.db\.bulk_insert\b", r"\bupdate_password\b"],
+	"write_db_bypass": [
+		r"\bfrappe\.db\.set_value\b",
+		r"\bfrappe\.db\.set_single_value\b",
+		r"\.db_set\b",
+		r"\.db_update\b",
+		r"\bfrappe\.db\.delete\b",
+		r"\bfrappe\.db\.truncate\b",
+		r"\bfrappe\.db\.rename_doc\b",
+		r"\bfrappe\.db\.bulk_insert\b",
+		r"\bupdate_password\b",
+	],
 	# a document loaded by name, the input side of most authorization findings
-	"doc_load": [r"\bfrappe\.get_doc\b", r"\bfrappe\.get_cached_doc\b", r"\bfrappe\.get_lazy_doc\b",
-	             r"\bfrappe\.get_last_doc\b", r"\bfrappe\.new_doc\b"],
+	"doc_load": [
+		r"\bfrappe\.get_doc\b",
+		r"\bfrappe\.get_cached_doc\b",
+		r"\bfrappe\.get_lazy_doc\b",
+		r"\bfrappe\.get_last_doc\b",
+		r"\bfrappe\.new_doc\b",
+	],
 }
 SINKS.update(REFINED_SINKS)
 SINKS_RE = {k: [re.compile(p) for p in v] for k, v in SINKS.items()}
@@ -94,7 +210,9 @@ SINKS_RE = {k: [re.compile(p) for p in v] for k, v in SINKS.items()}
 GET_QUERY_PERMISSIONED_RE = re.compile(r"ignore_permissions\s*=\s*False")
 # `@frappe.whitelist()` enforces scalar annotations through pydantic; a container annotation
 # guarantees only the container, and an unannotated parameter is not validated at all (§4).
-CONTAINER_TYPES = re.compile(r"^\s*(dict|list|tuple|set|Any|object|DynamicDict|_dict|frappe\._dict)\b|\bdict\b|\blist\b")
+CONTAINER_TYPES = re.compile(
+	r"^\s*(dict|list|tuple|set|Any|object|DynamicDict|_dict|frappe\._dict)\b|\bdict\b|\blist\b"
+)
 # sinks that turn a caller-supplied name into an authorization decision — the operator-injection
 # shape of §4a
 NAME_TO_AUTH_SINK = re.compile(
@@ -119,7 +237,9 @@ PERM_PATTERNS = {
 }
 PERM_RE = {k: re.compile(v) for k, v in PERM_PATTERNS.items()}
 
-IGNORE_PERM_RE = re.compile(r"ignore_permissions\s*=\s*(True|1)\b|ignore_permissions=True|flags\.ignore_permissions\s*=\s*(True|1)\b")
+IGNORE_PERM_RE = re.compile(
+	r"ignore_permissions\s*=\s*(True|1)\b|ignore_permissions=True|flags\.ignore_permissions\s*=\s*(True|1)\b"
+)
 
 # frappe/permissions.py: AUTOMATIC_ROLES. Nobody grants these — `get_roles()` returns them for
 # every user of the matching type, so a right held by one of them is held by everyone, and a role
@@ -129,8 +249,22 @@ AUTOMATIC_ROLES = {"Guest", "All", "Desk User", "Administrator"}
 # is public to desk users and not to a whitelisted call from a portal user.
 PUBLIC_ROLES = {"All", "Guest"}
 # frappe/permissions.py: std_rights
-RIGHTS = ("select", "read", "write", "create", "delete", "submit", "cancel", "amend",
-          "report", "export", "import", "share", "print", "email")
+RIGHTS = (
+	"select",
+	"read",
+	"write",
+	"create",
+	"delete",
+	"submit",
+	"cancel",
+	"amend",
+	"report",
+	"export",
+	"import",
+	"share",
+	"print",
+	"email",
+)
 
 
 def load_doctypes(root, source):
@@ -168,8 +302,9 @@ def load_doctypes(root, source):
 			level0 = [p for p in perms if not int(p.get("permlevel") or 0)]
 			roles_by_right = {}
 			for right in RIGHTS:
-				roles_by_right[right] = sorted({p.get("role") for p in level0
-				                                if p.get("role") and int(p.get(right) or 0)})
+				roles_by_right[right] = sorted(
+					{p.get("role") for p in level0 if p.get("role") and int(p.get(right) or 0)}
+				)
 			read_roles = set(roles_by_right["read"])
 			select_roles = set(roles_by_right["select"]) | read_roles  # read implies select in practice
 			entry = {
@@ -263,8 +398,22 @@ def literal(node):
 
 
 class FuncInfo:
-	__slots__ = ("qual", "file", "line", "endline", "name", "cls", "module", "decorators", "params",
-	             "src", "calls", "whitelist", "is_method", "string_annotations")
+	__slots__ = (
+		"calls",
+		"cls",
+		"decorators",
+		"endline",
+		"file",
+		"is_method",
+		"line",
+		"module",
+		"name",
+		"params",
+		"qual",
+		"src",
+		"string_annotations",
+		"whitelist",
+	)
 
 
 def collect(path, module):
@@ -275,8 +424,12 @@ def collect(path, module):
 	src_lines = open(path, encoding="utf-8").read().split("\n")
 	# transform_parameter_types skips str annotations, so this import turns off the whitelist's
 	# type validation for every function in the module
-	string_annotations = any(isinstance(n, ast.ImportFrom) and n.module == "__future__"
-	                         and any(a.name == "annotations" for a in n.names) for n in tree.body)
+	string_annotations = any(
+		isinstance(n, ast.ImportFrom)
+		and n.module == "__future__"
+		and any(a.name == "annotations" for a in n.names)
+		for n in tree.body
+	)
 	out = []
 	imports = {}
 	for n in ast.walk(tree):
@@ -299,7 +452,7 @@ def collect(path, module):
 		fi.is_method = bool(cls)
 		fi.string_annotations = string_annotations
 		fi.decorators = [dec_name(d) for d in node.decorator_list]
-		fi.src = "\n".join(src_lines[node.lineno - 1: fi.endline])
+		fi.src = "\n".join(src_lines[node.lineno - 1 : fi.endline])
 		params = []
 		a = node.args
 		allargs = list(a.posonlyargs) + list(a.args) + list(a.kwonlyargs)
@@ -314,13 +467,32 @@ def collect(path, module):
 		for arg in allargs:
 			if arg.arg in ("self", "cls"):
 				continue
-			params.append({"name": arg.arg, "type": ann_str(arg.annotation),
-			               "default": defaults.get(arg.arg) if arg.arg in defaults else None,
-			               "required": arg.arg not in defaults})
+			params.append(
+				{
+					"name": arg.arg,
+					"type": ann_str(arg.annotation),
+					"default": defaults.get(arg.arg) if arg.arg in defaults else None,
+					"required": arg.arg not in defaults,
+				}
+			)
 		if a.vararg:
-			params.append({"name": "*" + a.vararg.arg, "type": ann_str(a.vararg.annotation), "default": None, "required": False})
+			params.append(
+				{
+					"name": "*" + a.vararg.arg,
+					"type": ann_str(a.vararg.annotation),
+					"default": None,
+					"required": False,
+				}
+			)
 		if a.kwarg:
-			params.append({"name": "**" + a.kwarg.arg, "type": ann_str(a.kwarg.annotation), "default": None, "required": False})
+			params.append(
+				{
+					"name": "**" + a.kwarg.arg,
+					"type": ann_str(a.kwarg.annotation),
+					"default": None,
+					"required": False,
+				}
+			)
 		fi.params = params
 		# whitelist decorator
 		fi.whitelist = None
@@ -352,6 +524,7 @@ def collect(path, module):
 				for sub in node.body:
 					if isinstance(sub, ast.FunctionDef | ast.AsyncFunctionDef):
 						pass
+
 	walk_body(tree.body, None)
 	return out, imports
 
@@ -373,8 +546,9 @@ def scan_text(text, regexes):
 
 def git_commit():
 	try:
-		return subprocess.run(["git", "-C", ROOT, "rev-parse", "HEAD"],
-		                      capture_output=True, text=True, check=True).stdout.strip()
+		return subprocess.run(
+			["git", "-C", ROOT, "rev-parse", "HEAD"], capture_output=True, text=True, check=True
+		).stdout.strip()
 	except (subprocess.CalledProcessError, OSError):
 		return None
 
@@ -392,8 +566,10 @@ def detect_app_package(root):
 		return candidates[0]
 	if not candidates:
 		sys.exit(f"No package with hooks.py found under {root}. Pass --module explicitly.")
-	sys.exit(f"Several packages with hooks.py found under {root}: {', '.join(candidates)}. "
-	         "Pass --module to choose one.")
+	sys.exit(
+		f"Several packages with hooks.py found under {root}: {', '.join(candidates)}. "
+		"Pass --module to choose one."
+	)
 
 
 def required_apps(app_dir):
@@ -404,17 +580,23 @@ def required_apps(app_dir):
 	except (OSError, SyntaxError):
 		return []
 	for node in tree.body:
-		if (isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "required_apps" for t in node.targets)
-		    and isinstance(node.value, (ast.List, ast.Tuple))):
-			return [e.value.rstrip("/").split("/")[-1] for e in node.value.elts
-			        if isinstance(e, ast.Constant) and isinstance(e.value, str)]
+		if (
+			isinstance(node, ast.Assign)
+			and any(isinstance(t, ast.Name) and t.id == "required_apps" for t in node.targets)
+			and isinstance(node.value, (ast.List, ast.Tuple))
+		):
+			return [
+				e.value.rstrip("/").split("/")[-1]
+				for e in node.value.elts
+				if isinstance(e, ast.Constant) and isinstance(e.value, str)
+			]
 	return []
 
 
 def discover_dependency_checkouts(root, app_dir):
 	"""frappe and the transitive `required_apps`, found as siblings in `<bench>/apps`."""
 	apps_dir = os.path.dirname(root)
-	found, queue, seen = [], ["frappe"] + required_apps(app_dir), set()
+	found, queue, seen = [], ["frappe", *required_apps(app_dir)], set()
 	while queue:
 		name = queue.pop(0)
 		if name in seen:
@@ -465,8 +647,26 @@ def main():
 			"ignore_permissions": bool(IGNORE_PERM_RE.search(f.src)),
 		}
 
-	GENERIC = {"get", "run", "validate", "execute", "save", "insert", "delete", "update", "load",
-	           "clean", "process", "send", "check", "main", "setup", "reset", "start", "stop"}
+	GENERIC = {
+		"get",
+		"run",
+		"validate",
+		"execute",
+		"save",
+		"insert",
+		"delete",
+		"update",
+		"load",
+		"clean",
+		"process",
+		"send",
+		"check",
+		"main",
+		"setup",
+		"reset",
+		"start",
+		"stop",
+	}
 
 	def resolve(callname, caller):
 		"""Map a call expression to callee FuncInfo objects, using imports for precision."""
@@ -559,10 +759,23 @@ def main():
 			out.add(next(g for g in m.groups() if g))
 		return out
 
-	EXPLICIT_CHECKS = {"only_for", "has_permission", "check_permission", "only_has_select_perm",
-	                   "validate_permission", "has_website_permission"}
-	DATA_SINKS = {"read_unpermissioned", "read_permissioned", "write_doc_layer",
-	              "write_db_bypass", "doc_load", "sql", "query_builder"}
+	EXPLICIT_CHECKS = {
+		"only_for",
+		"has_permission",
+		"check_permission",
+		"only_has_select_perm",
+		"validate_permission",
+		"has_website_permission",
+	}
+	DATA_SINKS = {
+		"read_unpermissioned",
+		"read_permissioned",
+		"write_doc_layer",
+		"write_db_bypass",
+		"doc_load",
+		"sql",
+		"query_builder",
+	}
 
 	def owning_doctype(f):
 		"""The DocType whose controller this file is, if it is one.
@@ -608,15 +821,21 @@ def main():
 		}
 		if explicit:
 			g["class"] = "explicit_check"
-			g["note"] = "an explicit permission call is in the body — read whether it covers this actor and this object"
+			g["note"] = (
+				"an explicit permission call is in the body — read whether it covers this actor and this object"
+			)
 		elif kind == "whitelisted_doctype_method":
 			g["class"] = "run_doc_method_read_gate"
-			g["note"] = ("reachable only through run_doc_method, which loads the document with "
-			             "check_permission=True: gated on read, NOT on write (§2a). The v2 route checks write for POST")
+			g["note"] = (
+				"reachable only through run_doc_method, which loads the document with "
+				"check_permission=True: gated on read, NOT on write (§2a). The v2 route checks write for POST"
+			)
 			if dt_owner and doctypes.get(dt_owner, {}).get("admin_only"):
 				g["class"] = "unreachable_admin_only_doctype"
-				g["note"] = (f"{dt_owner} grants read at permlevel 0 to no role but Administrator, so "
-				             "run_doc_method refuses the document load before this body runs — not a finding")
+				g["note"] = (
+					f"{dt_owner} grants read at permlevel 0 to no role but Administrator, so "
+					"run_doc_method refuses the document load before this body runs — not a finding"
+				)
 		elif ignore_perm:
 			g["class"] = "ignore_permissions"
 			g["note"] = "ignore_permissions is set on the path — trace which call it applies to"
@@ -626,12 +845,16 @@ def main():
 		# an unpermissioned read beside a document-layer write is the §1a shape, so it wins
 		elif unperm_read:
 			g["class"] = "unpermissioned_read"
-			g["note"] = "reads through a call that applies no permission — a candidate if the data is not the caller's"
+			g["note"] = (
+				"reads through a call that applies no permission — a candidate if the data is not the caller's"
+			)
 		elif doc_layer:
 			g["class"] = "doc_layer_only"
-			g["note"] = ("every write goes through save/insert/submit/cancel/delete or get_mapped_doc, "
-			             "which check permissions themselves (§1) — NOT a finding on its own. It is one "
-			             "only if a document it reads is not the document it writes (§1a)")
+			g["note"] = (
+				"every write goes through save/insert/submit/cancel/delete or get_mapped_doc, "
+				"which check permissions themselves (§1) — NOT a finding on its own. It is one "
+				"only if a document it reads is not the document it writes (§1a)"
+			)
 		elif explicit_deep:
 			g["class"] = "check_in_callee"
 			g["note"] = "the only permission call is in a callee — confirm it covers this actor and object"
@@ -641,9 +864,11 @@ def main():
 			# Separate the two cases rather than collapsing them.
 			if sinks & DATA_SINKS:
 				g["class"] = "delegates"
-				g["note"] = ("no sink in the body, but its callees reach "
-				             + ", ".join(sorted(sinks & DATA_SINKS))
-				             + " — read the callee, and read what this wrapper passes it")
+				g["note"] = (
+					"no sink in the body, but its callees reach "
+					+ ", ".join(sorted(sinks & DATA_SINKS))
+					+ " — read the callee, and read what this wrapper passes it"
+				)
 			else:
 				g["class"] = "compute_only"
 				g["note"] = "no read or write sink in the body or its callees — nothing to authorize"
@@ -666,9 +891,18 @@ def main():
 			t = p.get("type")
 			unvalidated = t is None or f.string_annotations or t[:1] in ("'", '"')
 			if unvalidated or CONTAINER_TYPES.search(t) or isinstance(p.get("default"), (dict, list)):
-				out.append({"name": nm, "type": t, "validated": not unvalidated,
-				            "reaches_auth_sink": bool(re.search(
-					            NAME_TO_AUTH_SINK.pattern + r"[^)]{0,120}\b" + re.escape(nm) + r"\b", f.src))})
+				out.append(
+					{
+						"name": nm,
+						"type": t,
+						"validated": not unvalidated,
+						"reaches_auth_sink": bool(
+							re.search(
+								NAME_TO_AUTH_SINK.pattern + r"[^)]{0,120}\b" + re.escape(nm) + r"\b", f.src
+							)
+						),
+					}
+				)
 		return out
 
 	def make_entry(f, kind, extra=None):
@@ -685,25 +919,52 @@ def main():
 			"decorators": f.decorators,
 			"allow_guest": bool(f.whitelist and f.whitelist.get("allow_guest")),
 			"xss_safe": bool(f.whitelist and f.whitelist.get("xss_safe")),
-			"methods": (f.whitelist.get("methods") if f.whitelist else None) or ["GET", "POST", "PUT", "DELETE"],
+			"methods": (f.whitelist.get("methods") if f.whitelist else None)
+			or ["GET", "POST", "PUT", "DELETE"],
 			"force_types": (f.whitelist.get("force_types") if f.whitelist else None),
 			"params": f.params,
 			"permission_checks_direct": sorted(d["perms"]),
 			"permission_checks_transitive": sorted(perms),
-			"has_permission_check": bool(d["perms"] & {"only_for", "has_permission", "check_permission",
-			                                            "only_has_select_perm", "validate_permission",
-			                                            "has_website_permission", "role_check", "guest_check"})
-			or bool(perms & {"only_for", "has_permission", "check_permission", "only_has_select_perm",
-			                 "validate_permission", "has_website_permission"}),
+			"has_permission_check": bool(
+				d["perms"]
+				& {
+					"only_for",
+					"has_permission",
+					"check_permission",
+					"only_has_select_perm",
+					"validate_permission",
+					"has_website_permission",
+					"role_check",
+					"guest_check",
+				}
+			)
+			or bool(
+				perms
+				& {
+					"only_for",
+					"has_permission",
+					"check_permission",
+					"only_has_select_perm",
+					"validate_permission",
+					"has_website_permission",
+				}
+			),
 			"uses_ignore_permissions_direct": d["ignore_permissions"],
 			"uses_ignore_permissions_reachable": ignore_perm,
 			"sinks_direct": sorted(d["sinks"]),
 			"sinks_reachable": sorted(sinks),
 			"doctypes_direct": sorted(doctypes_in(f.src)),
-			"doctypes_reachable": sorted(doctypes_in(f.src) | {dt for q in reached for dt in doctypes_in(by_qual[q].src)})[:60],
+			"doctypes_reachable": sorted(
+				doctypes_in(f.src) | {dt for q in reached for dt in doctypes_in(by_qual[q].src)}
+			)[:60],
 			"callee_sample": sorted(reached)[:25],
 			"is_test": "/tests/" in f.file or os.path.basename(f.file).startswith("test_"),
-			"reads_form_dict": bool(re.search(r"form_dict|frappe\.local\.request|request\.(json|data|files|args|headers)|frappe\.request", f.src)),
+			"reads_form_dict": bool(
+				re.search(
+					r"form_dict|frappe\.local\.request|request\.(json|data|files|args|headers)|frappe\.request",
+					f.src,
+				)
+			),
 			"callee_count": len(reached),
 		}
 		dt_owner = owning_doctype(f)
@@ -719,7 +980,8 @@ def main():
 		e["doctypes_known"] = touched
 		public = "guest_read" if e.get("allow_guest") else "public_read"
 		e["touches_only_public_doctypes"] = bool(touched) and all(
-			doctypes[dt][public] and not doctypes[dt]["istable"] for dt in touched)
+			doctypes[dt][public] and not doctypes[dt]["istable"] for dt in touched
+		)
 		e["touches_admin_only_doctype"] = [dt for dt in touched if doctypes[dt]["admin_only"]]
 		return e
 
@@ -730,7 +992,7 @@ def main():
 
 	# www / portal pages
 	for f in funcs:
-		if f.name in ("get_context", "get_list_context") and "/www/" in f.file or (
+		if (f.name in ("get_context", "get_list_context") and "/www/" in f.file) or (
 			f.name == "get_context" and "/templates/pages/" in f.file
 		):
 			if f.whitelist is not None:
@@ -739,8 +1001,9 @@ def main():
 			route = None
 			if "/www/" in rel:
 				route = "/" + rel.split("/www/")[1][:-3]
-			entries.append(make_entry(f, "web_page", {"route": route, "allow_guest": True,
-			                                          "methods": ["GET", "POST"]}))
+			entries.append(
+				make_entry(f, "web_page", {"route": route, "allow_guest": True, "methods": ["GET", "POST"]})
+			)
 
 	# hooks
 	hook_vals = {}
@@ -769,23 +1032,60 @@ def main():
 			for j in jobs or []:
 				hook_entries.append(hook_entry(j, "scheduled_job", {"schedule": evt}))
 
-	for hookname in ("on_session_creation", "on_login", "on_logout", "before_request", "after_request",
-	                 "before_job", "after_job", "notification_config", "auth_hooks", "before_migrate",
-	                 "after_migrate", "website_context", "update_website_context", "extend_bootinfo",
-	                 "get_website_user_home_page", "standard_queries", "sounds", "jenv"):
+	for hookname in (
+		"on_session_creation",
+		"on_login",
+		"on_logout",
+		"before_request",
+		"after_request",
+		"before_job",
+		"after_job",
+		"notification_config",
+		"auth_hooks",
+		"before_migrate",
+		"after_migrate",
+		"website_context",
+		"update_website_context",
+		"extend_bootinfo",
+		"get_website_user_home_page",
+		"standard_queries",
+		"sounds",
+		"jenv",
+	):
 		v = hook_vals.get(hookname)
 		if not v:
 			continue
 		vals = v if isinstance(v, list) else [v]
 		for item in vals:
 			if isinstance(item, str):
-				hook_entries.append(hook_entry(item, "hook_callback", {"hook": hookname,
-					"allow_guest": hookname in ("before_request", "after_request", "website_context",
-					                            "update_website_context", "auth_hooks", "jenv")}))
+				hook_entries.append(
+					hook_entry(
+						item,
+						"hook_callback",
+						{
+							"hook": hookname,
+							"allow_guest": hookname
+							in (
+								"before_request",
+								"after_request",
+								"website_context",
+								"update_website_context",
+								"auth_hooks",
+								"jenv",
+							),
+						},
+					)
+				)
 
-	for hookname in ("has_permission", "permission_query_conditions", "has_website_permission",
-	                 "override_whitelisted_methods", "doc_events", "override_doctype_class",
-	                 "website_route_rules"):
+	for hookname in (
+		"has_permission",
+		"permission_query_conditions",
+		"has_website_permission",
+		"override_whitelisted_methods",
+		"doc_events",
+		"override_doctype_class",
+		"website_route_rules",
+	):
 		v = hook_vals.get(hookname)
 		if isinstance(v, dict):
 			for k, item in v.items():
@@ -796,8 +1096,11 @@ def main():
 						ms = m if isinstance(m, list) else [m]
 						for mm in ms:
 							if isinstance(mm, str):
-								hook_entries.append(hook_entry(mm, "hook_callback",
-									{"hook": hookname, "target": f"{k}:{evt}"}))
+								hook_entries.append(
+									hook_entry(
+										mm, "hook_callback", {"hook": hookname, "target": f"{k}:{evt}"}
+									)
+								)
 	entries.extend(hook_entries)
 
 	# route rules
@@ -816,7 +1119,9 @@ def main():
 					continue
 				p = os.path.join(dirpath, fn)
 				rel = os.path.relpath(p, ROOT)
-				stem = os.path.splitext(rel.split("/www/")[-1] if "/www/" in rel else rel.split("/pages/")[-1])[0]
+				stem = os.path.splitext(
+					rel.split("/www/")[-1] if "/www/" in rel else rel.split("/pages/")[-1]
+				)[0]
 				r = {"kind": "portal_page", "route": "/" + stem, "file": rel}
 				if fn.endswith(".py"):
 					text = open(p, encoding="utf-8", errors="ignore").read()
@@ -824,8 +1129,9 @@ def main():
 					r["sitemap"] = "sitemap" in text
 					r["base_template_path"] = "base_template_path" in text
 					r["has_get_context"] = "def get_context" in text
-					r["guest_redirect_or_login_check"] = bool(re.search(
-						r"Guest|login_required|frappe\.throw\(.*Permission|redirect_to_login", text))
+					r["guest_redirect_or_login_check"] = bool(
+						re.search(r"Guest|login_required|frappe\.throw\(.*Permission|redirect_to_login", text)
+					)
 					r["sinks"] = scan_text(text, SINKS_RE)
 				routes.append(r)
 
@@ -834,10 +1140,18 @@ def main():
 	for js in find_files((".js", ".ts"), ("realtime", "socketio")):
 		p = os.path.join(ROOT, js)
 		text = open(p, encoding="utf-8", errors="ignore").read()
-		for m in re.finditer(r"socket\.on\(\s*[\"'`]([^\"'`]+)[\"'`]\s*,\s*(?:async\s*)?(?:function\s*)?\(([^)]*)\)", text):
-			socket_handlers.append({"kind": "socketio_handler", "event": m.group(1),
-			                        "params": [a.strip() for a in m.group(2).split(",") if a.strip()],
-			                        "file": js, "line": text[:m.start()].count("\n") + 1})
+		for m in re.finditer(
+			r"socket\.on\(\s*[\"'`]([^\"'`]+)[\"'`]\s*,\s*(?:async\s*)?(?:function\s*)?\(([^)]*)\)", text
+		):
+			socket_handlers.append(
+				{
+					"kind": "socketio_handler",
+					"event": m.group(1),
+					"params": [a.strip() for a in m.group(2).split(",") if a.strip()],
+					"file": js,
+					"line": text[: m.start()].count("\n") + 1,
+				}
+			)
 	# socketio auth middlewares
 	mw = []
 	for dirpath, dirnames, filenames in os.walk(ROOT):
@@ -853,9 +1167,15 @@ def main():
 		if "Rule(" not in text:
 			continue
 		for m in re.finditer(r"Rule\(\s*[\"']([^\"']+)[\"']\s*,([^)]*)\)", text):
-			api_routes.append({"kind": "api_route", "rule": m.group(1),
-			                   "spec": " ".join(m.group(2).split()), "file": fname,
-			                   "line": text[:m.start()].count("\n") + 1})
+			api_routes.append(
+				{
+					"kind": "api_route",
+					"rule": m.group(1),
+					"spec": " ".join(m.group(2).split()),
+					"file": fname,
+					"line": text[: m.start()].count("\n") + 1,
+				}
+			)
 
 	# ---- reference counting: find call sites outside the defining file ----
 	ref_exts = (".py", ".js", ".ts", ".vue", ".html", ".json", ".md")
@@ -866,7 +1186,9 @@ def main():
 			if fn.endswith(ref_exts):
 				p = os.path.join(dirpath, fn)
 				try:
-					corpus.append((os.path.relpath(p, ROOT), open(p, encoding="utf-8", errors="ignore").read()))
+					corpus.append(
+						(os.path.relpath(p, ROOT), open(p, encoding="utf-8", errors="ignore").read())
+					)
 				except OSError:
 					pass
 
@@ -905,72 +1227,145 @@ def main():
 		"app": os.path.basename(APP),
 		"commit": git_commit(),
 		"total_entry_points": len(entries),
-		"by_kind": dict(sorted(((k, sum(1 for e in entries if e.get("kind") == k)) for k in {e.get("kind") for e in entries}))),
+		"by_kind": dict(
+			sorted(
+				(k, sum(1 for e in entries if e.get("kind") == k)) for k in {e.get("kind") for e in entries}
+			)
+		),
 		"guest_allowed": sum(1 for e in entries if e.get("allow_guest")),
-		"no_permission_check": sum(1 for e in entries if not e.get("has_permission_check") and not e.get("is_test")),
+		"no_permission_check": sum(
+			1 for e in entries if not e.get("has_permission_check") and not e.get("is_test")
+		),
 		"whitelisted_total": sum(1 for e in entries if e.get("kind", "").startswith("whitelisted")),
-		"whitelisted_guest": sum(1 for e in entries if e.get("kind", "").startswith("whitelisted") and e.get("allow_guest")),
-		"no_declared_methods": sum(1 for e in entries if e.get("kind", "").startswith("whitelisted") and e.get("methods") == ["GET", "POST", "PUT", "DELETE"]),
+		"whitelisted_guest": sum(
+			1 for e in entries if e.get("kind", "").startswith("whitelisted") and e.get("allow_guest")
+		),
+		"no_declared_methods": sum(
+			1
+			for e in entries
+			if e.get("kind", "").startswith("whitelisted")
+			and e.get("methods") == ["GET", "POST", "PUT", "DELETE"]
+		),
 		"tests_included": sum(1 for e in entries if e.get("is_test")),
 		"unreferenced_whitelisted": sum(1 for e in entries if e.get("unreferenced")),
-		"guest_no_permission_check": sum(1 for e in entries if e.get("allow_guest") and not e.get("has_permission_check")),
+		"guest_no_permission_check": sum(
+			1 for e in entries if e.get("allow_guest") and not e.get("has_permission_check")
+		),
 		"doctype_sources": [os.path.basename(ROOT.rstrip(os.sep))]
-		                   + [os.path.basename(x.rstrip(os.sep)) for x in EXTRA_DOCTYPE_ROOTS],
+		+ [os.path.basename(x.rstrip(os.sep)) for x in EXTRA_DOCTYPE_ROOTS],
 		"doctypes_defined": len(doctypes),
 		"doctypes_admin_only": sum(1 for d in doctypes.values() if d["admin_only"]),
 		"doctypes_public_read": sum(1 for d in doctypes.values() if d["public_read"]),
 		"doctypes_child_tables": sum(1 for d in doctypes.values() if d["istable"]),
-		"by_guard_class": dict(sorted(
-			(k, sum(1 for e in entries if (e.get("guard") or {}).get("class") == k and not e.get("is_test")))
-			for k in {(e.get("guard") or {}).get("class") for e in entries} - {None})),
+		"by_guard_class": dict(
+			sorted(
+				(
+					k,
+					sum(
+						1
+						for e in entries
+						if (e.get("guard") or {}).get("class") == k and not e.get("is_test")
+					),
+				)
+				for k in {(e.get("guard") or {}).get("class") for e in entries} - {None}
+			)
+		),
 	}
 
 	def whitelisted(e):
 		return e.get("kind", "").startswith("whitelisted")
 
 	def ids(pred):
-		return sorted(e["id"] for e in entries
-		              if not e.get("is_test") and e.get("guard") and pred(e))
+		return sorted(e["id"] for e in entries if not e.get("is_test") and e.get("guard") and pred(e))
 
 	views = {
-		"guest_no_permission_check": ids(lambda e: e.get("allow_guest") and not e.get("has_permission_check")),
-		"guest_reaching_sql": ids(lambda e: e.get("allow_guest") and "sql" in (e.get("sinks_reachable") or [])),
-		"guest_reaching_write": ids(lambda e: e.get("allow_guest") and "write" in (e.get("sinks_reachable") or [])),
+		"guest_no_permission_check": ids(
+			lambda e: e.get("allow_guest") and not e.get("has_permission_check")
+		),
+		"guest_reaching_sql": ids(
+			lambda e: e.get("allow_guest") and "sql" in (e.get("sinks_reachable") or [])
+		),
+		"guest_reaching_write": ids(
+			lambda e: e.get("allow_guest") and "write" in (e.get("sinks_reachable") or [])
+		),
 		"reaching_eval_exec": ids(lambda e: "eval_exec" in (e.get("sinks_direct") or [])),
 		"reaching_subprocess": ids(lambda e: "subprocess" in (e.get("sinks_reachable") or [])),
 		"reaching_render_template": ids(lambda e: "render" in (e.get("sinks_direct") or [])),
 		"reaching_http_out": ids(lambda e: "http_out" in (e.get("sinks_direct") or [])),
 		"sql_direct": ids(lambda e: "sql" in (e.get("sinks_direct") or [])),
-		"ignore_permissions_direct": ids(lambda e: e.get("uses_ignore_permissions_direct") and e.get("kind", "").startswith("whitelisted")),
-		"no_declared_methods": ids(lambda e: e.get("kind", "").startswith("whitelisted") and e.get("methods") == ["GET", "POST", "PUT", "DELETE"]),
+		"ignore_permissions_direct": ids(
+			lambda e: e.get("uses_ignore_permissions_direct") and e.get("kind", "").startswith("whitelisted")
+		),
+		"no_declared_methods": ids(
+			lambda e: (
+				e.get("kind", "").startswith("whitelisted")
+				and e.get("methods") == ["GET", "POST", "PUT", "DELETE"]
+			)
+		),
 		"unreferenced_candidates_for_removal": ids(lambda e: e.get("unreferenced")),
-		"untyped_params": ids(lambda e: e.get("kind", "").startswith("whitelisted") and any(p.get("type") is None for p in e.get("params", []))),
-		"reads_form_dict": ids(lambda e: e.get("reads_form_dict") and e.get("kind", "").startswith("whitelisted")),
-
+		"untyped_params": ids(
+			lambda e: (
+				e.get("kind", "").startswith("whitelisted")
+				and any(p.get("type") is None for p in e.get("params", []))
+			)
+		),
+		"reads_form_dict": ids(
+			lambda e: e.get("reads_form_dict") and e.get("kind", "").startswith("whitelisted")
+		),
 		# --- views that narrow to what the framework does NOT guard ----------------------
 		# Start here rather than at `no_permission_check`: these are the shapes that survived
 		# the refutations in `_framework-guards.md`, so their false positive rate is the lowest
 		# in this file.
-		"unguarded_db_bypass_write": ids(lambda e: whitelisted(e) and e["guard"]["class"] == "db_bypass_unguarded"),
-		"unguarded_unpermissioned_read": ids(lambda e: whitelisted(e) and e["guard"]["class"] == "unpermissioned_read"
-		                                     and not e.get("touches_only_public_doctypes")),
-		"guest_unguarded_read_or_write": ids(lambda e: e.get("allow_guest")
-		                                     and e["guard"]["class"] in ("db_bypass_unguarded", "unpermissioned_read", "ignore_permissions")),
+		"unguarded_db_bypass_write": ids(
+			lambda e: whitelisted(e) and e["guard"]["class"] == "db_bypass_unguarded"
+		),
+		"unguarded_unpermissioned_read": ids(
+			lambda e: (
+				whitelisted(e)
+				and e["guard"]["class"] == "unpermissioned_read"
+				and not e.get("touches_only_public_doctypes")
+			)
+		),
+		"guest_unguarded_read_or_write": ids(
+			lambda e: (
+				e.get("allow_guest")
+				and e["guard"]["class"]
+				in ("db_bypass_unguarded", "unpermissioned_read", "ignore_permissions")
+			)
+		),
 		# §2a: run_doc_method gates read, not write. An instance method that writes is the gap.
-		"doc_method_writing_behind_read_gate": ids(lambda e: e.get("kind") == "whitelisted_doctype_method"
-		                                           and e["guard"]["class"] == "run_doc_method_read_gate"
-		                                           and (e["guard"]["writes_bypassing_document_layer"]
-		                                                or e["guard"]["writes_through_document_layer"])),
+		"doc_method_writing_behind_read_gate": ids(
+			lambda e: (
+				e.get("kind") == "whitelisted_doctype_method"
+				and e["guard"]["class"] == "run_doc_method_read_gate"
+				and (
+					e["guard"]["writes_bypassing_document_layer"]
+					or e["guard"]["writes_through_document_layer"]
+				)
+			)
+		),
 		# §4a: a document name arriving through a container parameter and deciding authorization
-		"container_param_reaching_auth_sink": ids(lambda e: whitelisted(e)
-		                                          and any(p["reaches_auth_sink"] for p in e.get("container_params", []))),
+		"container_param_reaching_auth_sink": ids(
+			lambda e: whitelisted(e) and any(p["reaches_auth_sink"] for p in e.get("container_params", []))
+		),
 		# §3: the query builder's permission switch defaults to off
-		"query_builder_unpermissioned": ids(lambda e: whitelisted(e) and e["guard"]["uses_query_builder"]
-		                                    and not e["guard"]["query_builder_permissioned"]),
+		"query_builder_unpermissioned": ids(
+			lambda e: (
+				whitelisted(e)
+				and e["guard"]["uses_query_builder"]
+				and not e["guard"]["query_builder_permissioned"]
+			)
+		),
 		# §3/§6: these authorize on `select`. Compute their role gap on `select`, never on `read`.
-		"select_gated_search_queries": ids(lambda e: e["guard"]["search_input_decorator"]
-		                                   or (e["guard"]["uses_query_builder"] and e["guard"]["query_builder_permissioned"])),
-		"guest_reaching_doc_load": ids(lambda e: e.get("allow_guest") and "doc_load" in (e.get("sinks_direct") or [])),
+		"select_gated_search_queries": ids(
+			lambda e: (
+				e["guard"]["search_input_decorator"]
+				or (e["guard"]["uses_query_builder"] and e["guard"]["query_builder_permissioned"])
+			)
+		),
+		"guest_reaching_doc_load": ids(
+			lambda e: e.get("allow_guest") and "doc_load" in (e.get("sinks_direct") or [])
+		),
 	}
 
 	# --- what the framework already guards ------------------------------------------
@@ -984,17 +1379,39 @@ def main():
 			continue
 		g = e["guard"]
 		if g["class"] == "doc_layer_only":
-			refuted.append({"id": e["id"], "file": f"{e['file']}:{e['line']}", "rung": "guards §1",
-			                "reason": "every write goes through the document layer, which checks permissions itself",
-			                "overridable_when": "a document it reads is not the document it writes (§1a), or a caller sets ignore_permissions"})
+			refuted.append(
+				{
+					"id": e["id"],
+					"file": f"{e['file']}:{e['line']}",
+					"rung": "guards §1",
+					"reason": "every write goes through the document layer, which checks permissions itself",
+					"overridable_when": "a document it reads is not the document it writes (§1a), or a caller sets ignore_permissions",
+				}
+			)
 		elif g["class"] == "unreachable_admin_only_doctype":
-			refuted.append({"id": e["id"], "file": f"{e['file']}:{e['line']}", "rung": "guards §2a",
-			                "reason": f"run_doc_method read-gates {e.get('doctype_owner')}, which no role but Administrator can read",
-			                "overridable_when": "the deployment grants a role read on that doctype — a configuration choice, not a defect"})
-		elif whitelisted(e) and e.get("touches_only_public_doctypes") and g["class"] in ("unpermissioned_read", "compute_only"):
-			refuted.append({"id": e["id"], "file": f"{e['file']}:{e['line']}", "rung": "guards §6",
-			                "reason": "every doctype it reads grants read at permlevel 0 to All or Guest, so every caller of this endpoint is entitled to it by design",
-			                "overridable_when": "the response carries a field at permlevel > 0, or rows the caller's user permissions should have scoped"})
+			refuted.append(
+				{
+					"id": e["id"],
+					"file": f"{e['file']}:{e['line']}",
+					"rung": "guards §2a",
+					"reason": f"run_doc_method read-gates {e.get('doctype_owner')}, which no role but Administrator can read",
+					"overridable_when": "the deployment grants a role read on that doctype — a configuration choice, not a defect",
+				}
+			)
+		elif (
+			whitelisted(e)
+			and e.get("touches_only_public_doctypes")
+			and g["class"] in ("unpermissioned_read", "compute_only")
+		):
+			refuted.append(
+				{
+					"id": e["id"],
+					"file": f"{e['file']}:{e['line']}",
+					"rung": "guards §6",
+					"reason": "every doctype it reads grants read at permlevel 0 to All or Guest, so every caller of this endpoint is entitled to it by design",
+					"overridable_when": "the response carries a field at permlevel > 0, or rows the caller's user permissions should have scoped",
+				}
+			)
 	refuted.sort(key=lambda r: r["id"])
 
 	out = {
@@ -1030,15 +1447,26 @@ def parse_args():
 	p.add_argument("output", help="path to write the inventory JSON to")
 	p.add_argument("--root", default=os.getcwd(), help="app repository checkout (default: current directory)")
 	p.add_argument("--module", help="package inside the checkout holding hooks.py (default: detected)")
-	p.add_argument("--skip-dir", action="append", default=[], metavar="NAME",
-	               help="extra directory name to skip, repeatable")
-	p.add_argument("--doctypes-from", action="append", default=[], metavar="CHECKOUT",
-	               help="another app checkout whose DocType permission rows to load, repeatable. "
-	                    "The bench's frappe checkout and the target's required_apps are found beside "
-	                    "--root automatically; pass this for anything that lives elsewhere: a "
-	                    "doctype this builder has not seen cannot refute a finding about it")
-	p.add_argument("--no-discover", action="store_true",
-	               help="do not look for frappe and required_apps beside --root")
+	p.add_argument(
+		"--skip-dir",
+		action="append",
+		default=[],
+		metavar="NAME",
+		help="extra directory name to skip, repeatable",
+	)
+	p.add_argument(
+		"--doctypes-from",
+		action="append",
+		default=[],
+		metavar="CHECKOUT",
+		help="another app checkout whose DocType permission rows to load, repeatable. "
+		"The bench's frappe checkout and the target's required_apps are found beside "
+		"--root automatically; pass this for anything that lives elsewhere: a "
+		"doctype this builder has not seen cannot refute a finding about it",
+	)
+	p.add_argument(
+		"--no-discover", action="store_true", help="do not look for frappe and required_apps beside --root"
+	)
 	a = p.parse_args()
 	SKIP_DIRS = DEFAULT_SKIP_DIRS | set(a.skip_dir)
 	ROOT = os.path.abspath(a.root)
@@ -1053,7 +1481,9 @@ def parse_args():
 	EXTRA_DOCTYPE_ROOTS = [x for i, x in enumerate(extra) if x not in extra[:i] and x != ROOT]
 	is_framework = os.path.basename(APP.rstrip(os.sep)) == "frappe"
 	if not is_framework and not any(os.path.basename(x) == "frappe" for x in EXTRA_DOCTYPE_ROOTS):
-		print("warning: frappe doctypes not loaded; pass --doctypes-from <bench>/apps/frappe", file=sys.stderr)
+		print(
+			"warning: frappe doctypes not loaded; pass --doctypes-from <bench>/apps/frappe", file=sys.stderr
+		)
 	DEST = os.path.abspath(a.output)
 
 

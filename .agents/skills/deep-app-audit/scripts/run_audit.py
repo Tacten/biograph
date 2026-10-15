@@ -164,7 +164,7 @@ def validate(task, data):
 			problems.append('"coverage" must be a string')
 		candidates = data.get("candidates")
 		if not isinstance(candidates, list):
-			return problems + ['"candidates" must be a list']
+			return [*problems, '"candidates" must be a list']
 		for n, c in enumerate(candidates):
 			if not isinstance(c, dict):
 				problems.append(f"candidate {n} is not an object")
