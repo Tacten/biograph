@@ -32,6 +32,7 @@ class Patient(Document):
 
 	def validate(self):
 		self.set_full_name()
+		self.validate_dob()
 		self.flags.is_new_doc = self.is_new()
 		self.flags.existing_customer = self.is_new() and bool(self.customer)
 		
@@ -95,6 +96,10 @@ class Patient(Document):
 		self.patient_name = " ".join(
 			[name for name in [self.first_name, self.middle_name, self.last_name] if name]
 		)
+
+	def validate_dob(self):
+		if self.dob and getdate(self.dob) > getdate():
+			frappe.throw(_("Date of Birth cannot be greater than today"), title=_("Invalid Date of Birth"))
 
 	def set_missing_customer_details(self):
 		if not self.customer_group:
