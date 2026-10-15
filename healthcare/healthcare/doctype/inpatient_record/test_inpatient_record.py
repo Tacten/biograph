@@ -182,7 +182,7 @@ class TestInpatientRecord(IntegrationTestCase):
 
 		# Admit patient with backdated timestamp (12 hours ago)
 		checkin = add_to_date(now_datetime(), hours=-12)
-		admit_patient(ip_record, service_unit, checkin)
+		admit_patient(ip_record, service_unit, checkin, currency="INR")
 
 		# allow items (like OT) to have 0 as Item Price Rate - disable this check
 		# Remove any existing Item Price to force the error
