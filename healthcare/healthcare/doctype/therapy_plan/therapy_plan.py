@@ -228,12 +228,13 @@ def make_therapy_session(
 	service_request: str | None = None,
 	practitioner: str | None = None,
 ) -> dict:
+	tp_doc = None
 	if not service_request and therapy_plan:
-		order_group = frappe.db.get_value("Therapy Plan", therapy_plan, "order_group")
-		if order_group:
+		tp_doc = frappe.get_cached_doc("Therapy Plan", therapy_plan)
+		if tp_doc.order_group:
 			service_request = frappe.db.exists(
 				"Service Request",
-				{"template_dn": therapy_type, "order_group": order_group},
+				{"template_dn": therapy_type, "order_group": tp_doc.order_group},
 			)
 
 	sr_doc = None
@@ -247,6 +248,15 @@ def make_therapy_session(
 				title=_("Payment Required"),
 			)
 		sr_doc = frappe.get_doc("Service Request", service_request)
+
+	if not tp_doc and therapy_plan:
+		tp_doc = frappe.get_cached_doc("Therapy Plan", therapy_plan)
+
+	practitioner = (
+		practitioner
+		or (sr_doc.practitioner if sr_doc else None)
+		or (tp_doc.practitioner if tp_doc else None)
+	)
 
 	therapy_type = frappe.get_doc("Therapy Type", therapy_type)
 
