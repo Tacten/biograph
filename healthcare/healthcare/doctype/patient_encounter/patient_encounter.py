@@ -11,6 +11,12 @@ from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
 from frappe.utils import add_days, getdate
 
+from healthcare.healthcare.doctype.medication.medication import validate_medication_is_orderable
+from healthcare.healthcare.doctype.medication_alert_log.medication_alert_log import (
+	check_document,
+	get_allergy_flagged,
+	log_document_alerts,
+)
 from healthcare.healthcare.utils import get_medical_codes
 
 
@@ -27,6 +33,8 @@ class PatientEncounter(Document):
 			self.status = "Ordered"
 
 	def on_update(self):
+		log_document_alerts(self)
+
 		if self.appointment:
 			appointment = frappe.get_doc("Patient Appointment", self.appointment)
 			if appointment.status != "Closed":
@@ -159,6 +167,15 @@ class PatientEncounter(Document):
 					if medication:
 						item.medication = medication
 
+			validate_medication_is_orderable(
+				item.medication, _("Row #{0} (Drug Prescription)").format(item.idx)
+			)
+
+		self.validate_medication_safety()
+
+	def validate_medication_safety(self):
+		check_document(self, [row.medication for row in self.drug_prescription])
+
 	def validate_therapies(self):
 		if not self.therapies:
 			return
@@ -226,6 +243,7 @@ class PatientEncounter(Document):
 					if drug.medication:
 						medication = frappe.get_doc("Medication", drug.medication)
 					order = self.get_order_details(medication, drug, True)
+					order.flags.medication_safety_checked = True
 					order.insert(ignore_permissions=True, ignore_mandatory=True)
 					order.submit()
 					drug.medication_request = order.name
@@ -713,14 +731,22 @@ def get_medications_query(doctype, txt, searchfield, start, page_len, filters):
 	linked_items = get_linked_medication_items(txt, start, page_len, filters)
 	warehouse = get_default_warehouse(filters.get("company"))
 	quantities = get_actual_quantities([row.item for row in linked_items], warehouse)
-	return tuple(get_search_columns(row, warehouse, quantities) for row in linked_items)
+	patient = get_permitted_patient(filters)
+	flagged = get_allergy_flagged(patient, {row.parent for row in linked_items})
+
+	return tuple(get_search_columns(row, warehouse, quantities, flagged) for row in linked_items)
+
+
+def get_permitted_patient(filters):
+	patient = filters.get("patient")
+	return patient if patient and frappe.has_permission("Patient", doc=patient) else None
 
 
 def get_linked_medication_items(txt, start, page_len, filters):
 	linked_item = frappe.qb.DocType("Medication Linked Item")
 	item = frappe.qb.DocType("Item")
 	query = (
-		frappe.qb.select(linked_item.item, linked_item.brand, linked_item.manufacturer)
+		frappe.qb.select(linked_item.item, linked_item.brand, linked_item.manufacturer, linked_item.parent)
 		.from_(linked_item)
 		.inner_join(item)
 		.on(item.name == linked_item.item)
@@ -769,7 +795,7 @@ def get_default_warehouse(company=None):
 	return frappe.get_cached_value("Company", company, "default_warehouse")
 
 
-def get_search_columns(row, warehouse, quantities):
+def get_search_columns(row, warehouse, quantities, flagged=None):
 	columns = [row.item]
 	if row.brand:
 		columns.append(row.brand)
@@ -777,6 +803,8 @@ def get_search_columns(row, warehouse, quantities):
 		columns.append(row.manufacturer)
 	if warehouse:
 		columns.append(f"<br>{_('Actual Qty')} : {quantities.get(row.item, 0)}")
+	if row.parent in (flagged or set()):
+		columns.append(f"<br><span class='indicator-pill red'>{_('Allergy recorded')}</span>")
 	return tuple(columns)
 
 
