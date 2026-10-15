@@ -12,6 +12,7 @@ from frappe.utils import add_days, flt, get_time, getdate, now_datetime, nowdate
 from erpnext.accounts.doctype.pos_profile.test_pos_profile import make_pos_profile
 
 from healthcare.healthcare.doctype.patient_appointment.patient_appointment import (
+	check_in_appointment,
 	check_is_new_patient,
 	check_payment_reqd,
 	invoice_appointment,
@@ -44,6 +45,36 @@ class TestPatientAppointment(FrappeTestCase):
 		)
 		encounter.cancel()
 		self.assertEqual(frappe.db.get_value("Patient Appointment", appointment.name, "status"), "Open")
+
+	def test_check_in_appointment(self):
+		patient, practitioner = create_healthcare_docs()
+		frappe.db.set_single_value("Healthcare Settings", "show_payment_popup", 0)
+		appointment = create_appointment(
+			patient, practitioner, nowdate(), appointment_based_on_check_in=True
+		)
+
+		check_in_appointment(appointment.name, practitioner=practitioner)
+		appointment.reload()
+		self.assertEqual(appointment.status, "Checked In")
+		self.assertEqual(appointment.practitioner, practitioner)
+		self.assertEqual(appointment.position_in_queue, 1)
+
+	def test_check_in_past_no_show_appointment(self):
+		patient, practitioner = create_healthcare_docs()
+		frappe.db.set_single_value("Healthcare Settings", "show_payment_popup", 0)
+		appointment = create_appointment(patient, practitioner, add_days(nowdate(), -2))
+		self.assertEqual(appointment.status, "No Show")
+
+		check_in_appointment(appointment.name)
+		appointment.reload()
+		self.assertEqual(appointment.status, "Checked In")
+
+	def test_cannot_check_in_cancelled_appointment(self):
+		patient, practitioner = create_healthcare_docs()
+		frappe.db.set_single_value("Healthcare Settings", "show_payment_popup", 0)
+		appointment = create_appointment(patient, practitioner, nowdate())
+		update_status(appointment.name, "Cancelled")
+		self.assertRaises(frappe.ValidationError, check_in_appointment, appointment.name)
 
 	def test_start_encounter(self):
 		patient, practitioner = create_healthcare_docs()

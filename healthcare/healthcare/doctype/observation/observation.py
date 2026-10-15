@@ -118,16 +118,12 @@ class Observation(Document):
 
 	def render_templates(self):
 		if self.result_template and not self.result_text:
-			terms_and_conditions = frappe.get_doc("Terms and Conditions", self.result_template)
-
-			if terms_and_conditions.terms:
-				self.result_text = frappe.render_template(terms_and_conditions.terms, self.as_dict())
+			self.result_text = get_terms_and_conditions(self.result_template, self.as_dict())
 
 		if self.interpretation_template and not self.result_interpretation:
-			terms_and_conditions = frappe.get_doc("Terms and Conditions", self.interpretation_template)
-
-			if terms_and_conditions.terms:
-				self.result_interpretation = frappe.render_template(terms_and_conditions.terms, self.as_dict())
+			self.result_interpretation = get_terms_and_conditions(
+				self.interpretation_template, self.as_dict()
+			)
 
 
 @frappe.whitelist()

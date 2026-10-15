@@ -479,6 +479,9 @@ class PatientAppointment(Document):
 					self.status = "Confirmed"
 				return
 			return
+		if self.status in ["Checked In", "Checked Out", "Closed", "Cancelled"]:
+			return
+
 		old_doc = self.get_doc_before_save()
 
 		# If appointment is created for today set status as Open else Scheduled
@@ -489,7 +492,13 @@ class PatientAppointment(Document):
 			str(old_doc.appointment_datetime) != str(self.appointment_datetime)):
 			self.status = "Scheduled"
 
-		elif appointment_date < today and self.status not in ["No Show", "Cancelled", "Closed"]:
+		elif appointment_date < today and self.status not in [
+			"No Show",
+			"Cancelled",
+			"Closed",
+			"Checked In",
+			"Checked Out",
+		]:
 			self.status = "No Show"
 
 	def validate_overlaps(self):
@@ -1406,6 +1415,28 @@ def validate_practitioner_schedules(schedule_entry, practitioner):
 			),
 			title=_("Practitioner Schedule Not Found"),
 		)
+
+
+@frappe.whitelist()
+def check_in_appointment(
+	appointment_id: str, practitioner: str | None = None, service_unit: str | None = None
+):
+	appointment = frappe.get_doc("Patient Appointment", appointment_id)
+	if appointment.status in ["Cancelled", "Closed", "Checked Out"]:
+		frappe.throw(
+			_("Cannot check in a {0} appointment").format(frappe.bold(appointment.status)),
+			title=_("Not Allowed"),
+		)
+
+	appointment.status = "Checked In"
+
+	if practitioner:
+		appointment.practitioner = practitioner
+	if service_unit:
+		appointment.service_unit = service_unit
+
+	appointment.save()
+	return appointment
 
 
 @frappe.whitelist()

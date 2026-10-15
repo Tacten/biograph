@@ -166,8 +166,7 @@
    "in_standard_filter": 1,
    "label": "Healthcare Practitioner",
    "options": "Healthcare Practitioner",
-   "search_index": 1,
-   "set_only_once": 1
+   "search_index": 1
   },
   {
    "fetch_from": "practitioner.department",
