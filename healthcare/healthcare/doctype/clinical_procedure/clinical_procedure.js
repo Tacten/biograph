@@ -343,17 +343,13 @@ frappe.ui.form.on("Clinical Procedure", {
 	},
 
 	set_warehouse: function (frm) {
-		if (!frm.doc.warehouse) {
-			frappe.call({
-				method: "frappe.client.get_value",
-				args: {
-					doctype: "Stock Settings",
-					fieldname: "default_warehouse",
-				},
-				callback: function (data) {
-					frm.set_value("warehouse", data.message.default_warehouse);
-				},
-			});
+		if (!frm.doc.warehouse && frm.doc.company) {
+			frappe.db
+				.get_value("Company", frm.doc.company, "default_warehouse")
+				.then(({ message }) => {
+					if (!message) return;
+					frm.set_value("warehouse", message.default_warehouse);
+				});
 		}
 	},
 
@@ -679,11 +675,14 @@ frappe.ui.form.on("Codification Table", {
 
 let set_defaults = function (frm) {
 	if (frm.is_new()) {
-		frappe.db
-			.get_single_value("Stock Settings", "default_warehouse")
-			.then(value => {
-				frm.set_value("warehouse", value);
-			});
+		if (frm.doc.company) {
+			frappe.db
+				.get_value("Company", frm.doc.company, "default_warehouse")
+				.then(({ message }) => {
+					if (!message) return;
+					frm.set_value("warehouse", message.default_warehouse);
+				});
+		}
 
 		frappe.db
 			.get_single_value("Selling Settings", "selling_price_list")

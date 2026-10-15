@@ -134,6 +134,7 @@ def make_clinical_procedure(service_request):
 	doc.start_time = service_request.occurrence_time
 	doc.medical_department = service_request.medical_department
 	doc.invoiced = 1 if service_request.billing_status == "Invoiced" else 0
+	doc.warehouse = frappe.db.get_value("Company", service_request.company, "default_warehouse")
 
 	return doc
 
