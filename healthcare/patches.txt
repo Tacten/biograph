@@ -27,3 +27,4 @@ healthcare.patches.v15_0.add_custom_fields_if_not_exists
 healthcare.patches.v16_0.rebrand_marley_to_biograph
 healthcare.patches.v16_0.populate_appointment_end_fields
 healthcare.patches.v16_0.set_therapy_plan_source
+healthcare.patches.v16_0.create_emergency_masters

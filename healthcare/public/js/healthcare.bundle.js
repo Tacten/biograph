@@ -8,4 +8,6 @@ import "./healthcare_note.html";
 import "./healthcare_orders.html";
 import "./mark_unavailable.js";
 import "./recurring_appointments.js";
-import "./form.js"
+import "./form.js";
+import "./triage_indicator.js";
+import "./send_to_emergency.js";

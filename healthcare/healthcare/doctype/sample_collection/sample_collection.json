@@ -14,6 +14,7 @@
   "patient_name",
   "patient_age",
   "patient_sex",
+  "emergency_record",
   "referring_practitioner",
   "column_break_4",
   "company",
@@ -51,6 +52,16 @@
    "label": "Inpatient Record",
    "options": "Inpatient Record",
    "read_only": 1
+  },
+  {
+   "fetch_from": "patient.emergency_record",
+   "fieldname": "emergency_record",
+   "fieldtype": "Link",
+   "label": "Emergency Record",
+   "options": "Emergency Record",
+   "read_only": 1,
+   "hide_days": 1,
+   "hide_seconds": 1
   },
   {
    "bold": 1,
