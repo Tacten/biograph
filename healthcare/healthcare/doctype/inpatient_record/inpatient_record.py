@@ -449,7 +449,6 @@ def schedule_discharge(discharge_order):
 
 	if inpatient_record_id:
 		inpatient_record = frappe.get_doc("Inpatient Record", inpatient_record_id)
-		check_out_inpatient(inpatient_record)
 		set_details_from_ip_order(inpatient_record, discharge_order)
 		inpatient_record.status = "Discharge Scheduled"
 		inpatient_record.save(ignore_permissions=True)
@@ -503,6 +502,7 @@ def discharge_patient(inpatient_record):
 
 	validate_incomplete_service_requests(inpatient_record)
 
+	check_out_inpatient(inpatient_record)
 	inpatient_record.discharge_datetime = now_datetime()
 	inpatient_record.status = "Discharged"
 
@@ -857,7 +857,7 @@ def set_total(self):
 
 
 def validate_incomplete_service_requests(inpatient_record):
-	if not frappe.db.get_single_value(
+	if frappe.db.get_single_value(
 		"Healthcare Settings", "allow_discharge_despite_pending_healthcare_services"
 	):
 		return

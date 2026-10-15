@@ -831,6 +831,7 @@ def manage_invoice_submit_cancel(doc, method):
 		if (
 			effective_method == "on_submit"
 			and not is_return
+			and not doc.get("return_against")
 			and frappe.db.get_single_value("Healthcare Settings", "create_observation_on_si_submit")
 		):
 			create_sample_collection_and_observation(doc)
