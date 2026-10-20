@@ -239,6 +239,9 @@ frappe.ui.form.on("Service Request", {
 					var indicator = "info";
 					if (r.message[2]) {
 						title = `${r.message[0]} is already created`;
+					} else if (r.message[3]) {
+						title = __("Test added to Diagnostic Report {0}", [r.message[3]]);
+						indicator = "green";
 					} else {
 						title = `${r.message[0]} is created`;
 						indicator = "green";

@@ -14,7 +14,10 @@ from frappe.model.mapper import get_mapped_doc
 from frappe.utils import now_datetime
 
 from healthcare.controllers.service_request_controller import ServiceRequestController
-from healthcare.healthcare.doctype.observation.observation import add_observation
+from healthcare.healthcare.doctype.observation.observation import (
+	add_observation,
+	update_diagnostic_report_status,
+)
 from healthcare.healthcare.doctype.observation_template.observation_template import (
 	get_observation_template_details,
 )
@@ -213,8 +216,10 @@ def make_therapy_session(service_request):
 @frappe.whitelist()
 def make_observation(service_request):
 	if isinstance(service_request, string_types):
-		service_request = json.loads(service_request)
-		service_request = frappe._dict(service_request)
+		if service_request.lstrip().startswith("{"):
+			service_request = frappe._dict(json.loads(service_request))
+		else:
+			service_request = frappe.get_doc("Service Request", service_request)
 
 	if (
 		frappe.db.get_single_value("Healthcare Settings", "process_service_request_only_if_paid")
@@ -228,49 +233,56 @@ def make_observation(service_request):
 	patient = frappe.get_doc("Patient", service_request.patient)
 	template = frappe.get_doc("Observation Template", service_request.template_dn)
 
-	sample_collection = ""
-	name_ref_in_child = check_observation_sample_exist(service_request)
+	# Serialize make_observation per order so a double-click cannot create a
+	# test's records, or the order's Diagnostic Report, twice.
+	lock_order_group(service_request)
 
-	if name_ref_in_child:
-		return name_ref_in_child[0], name_ref_in_child[1], "New"
-	else:
-		exist_sample_collection = frappe.db.exists(
-			"Sample Collection",
-			{
-				"reference_name": service_request.order_group,
-				"docstatus": 0,
-				"patient": service_request.patient,
-			},
-		)
+	existing_record = check_observation_sample_exist(service_request)
+	if existing_record:
+		return existing_record[0], existing_record[1], "New"
 
+	existing_report = get_diagnostic_report(service_request)
+
+	exist_sample_collection = frappe.db.exists(
+		"Sample Collection",
+		{
+			"reference_name": service_request.order_group,
+			"docstatus": 0,
+			"patient": service_request.patient,
+		},
+	)
 	if exist_sample_collection:
 		sample_collection = frappe.get_doc("Sample Collection", exist_sample_collection)
 	else:
 		sample_collection = create_sample_collection(patient, service_request)
+	sample_rows_before = len(sample_collection.get("observation_sample_collection"))
 
 	sample_collection, diag_report_required = insert_observation_and_sample_collection(
 		service_request, patient.name, template, sample_collection
 	)
 
-	if sample_collection and len(sample_collection.get("observation_sample_collection")) > 0:
+	# Only a Sample Collection this test added rows to belongs to it
+	needs_sample = len(sample_collection.get("observation_sample_collection")) > sample_rows_before
+	if needs_sample:
 		sample_collection.save(ignore_permissions=True)
 
+	diagnostic_report = None
 	if diag_report_required:
-		insert_diagnostic_report(service_request, sample_collection.name if sample_collection else None)
+		diagnostic_report = insert_diagnostic_report(
+			service_request, sample_collection.name if needs_sample else None
+		)
+		if diagnostic_report == existing_report:
+			# The order's report may already be Approved; this test is not yet.
+			update_diagnostic_report_status(diagnostic_report)
 
-	diagnostic_report = frappe.db.exists(
-		"Diagnostic Report", {"docname": service_request.order_group}
-	)
-	if sample_collection.name:
-		if diagnostic_report and not frappe.db.get_value(
-			"Diagnostic Report", diagnostic_report, "sample_collection"
-		):
-			frappe.db.set_value(
-				"Diagnostic Report", diagnostic_report, "sample_collection", sample_collection.name
-			)
-		return sample_collection.name, "Sample Collection"
+	if needs_sample:
+		name, doctype = sample_collection.name, "Sample Collection"
 	else:
-		return diagnostic_report, "Diagnostic Report"
+		name, doctype = diagnostic_report, "Diagnostic Report"
+
+	if diagnostic_report and diagnostic_report == existing_report:
+		return name, doctype, None, diagnostic_report
+	return name, doctype
 
 
 def create_sample_collection(patient, service_request, template=None):
@@ -438,7 +450,35 @@ def insert_observation_and_sample_collection(
 	return sample_collection, diag_report_required
 
 
+def lock_order_group(doc):
+	if doc.source_doc and doc.order_group:
+		frappe.db.get_value(doc.source_doc, doc.order_group, "name", for_update=True)
+
+
+def get_diagnostic_report(doc):
+	if not doc.order_group:
+		return None
+	return frappe.db.get_value(
+		"Diagnostic Report",
+		{"ref_doctype": doc.source_doc, "docname": doc.order_group, "docstatus": ["!=", 2]},
+		"name",
+	)
+
+
 def insert_diagnostic_report(doc, sample_collection=None):
+	"""Get or create the one Diagnostic Report of the Service Request's order, and return its name"""
+	lock_order_group(doc)
+
+	diagnostic_report = get_diagnostic_report(doc)
+	if diagnostic_report:
+		if sample_collection and not frappe.db.get_value(
+			"Diagnostic Report", diagnostic_report, "sample_collection"
+		):
+			frappe.db.set_value(
+				"Diagnostic Report", diagnostic_report, "sample_collection", sample_collection
+			)
+		return diagnostic_report
+
 	diagnostic_report = frappe.new_doc("Diagnostic Report")
 	diagnostic_report.company = doc.company
 	diagnostic_report.patient = doc.patient
@@ -447,10 +487,12 @@ def insert_diagnostic_report(doc, sample_collection=None):
 	diagnostic_report.practitioner = doc.practitioner
 	diagnostic_report.sample_collection = sample_collection
 	diagnostic_report.save(ignore_permissions=True)
+	return diagnostic_report.name
 
 
 def check_observation_sample_exist(service_request):
-	name_ref_in_child = frappe.db.get_value(
+	"""The record to open if this Service Request already has its own Observation or sample row"""
+	sample_collection = frappe.db.get_value(
 		"Observation Sample Collection",
 		{
 			"service_request": service_request.name,
@@ -459,29 +501,23 @@ def check_observation_sample_exist(service_request):
 		},
 		"parent",
 	)
-	if name_ref_in_child:
-		return name_ref_in_child, "Sample Collection"
-	else:
-		diagnostic_report = frappe.db.exists(
-			"Diagnostic Report",
-			{
-				"docname": service_request.order_group,
-				"docstatus": ["!=", 2],
-			},
-		)
+	if sample_collection:
+		return sample_collection, "Sample Collection"
+
+	observation = frappe.db.get_value(
+		"Observation",
+		{
+			"service_request": service_request.name,
+			"parent_observation": ["is", "not set"],
+			"docstatus": ["!=", 2],
+		},
+		"name",
+	)
+	if observation:
+		diagnostic_report = get_diagnostic_report(service_request)
 		if diagnostic_report:
 			return diagnostic_report, "Diagnostic Report"
-
-		exist_observation = frappe.db.exists(
-			"Observation",
-			{
-				"service_request": service_request.name,
-				"parent_observation": None,
-				"docstatus": ["!=", 2],
-			},
-		)
-		if exist_observation:
-			return exist_observation, "Observation"
+		return observation, "Observation"
 
 
 @frappe.whitelist()

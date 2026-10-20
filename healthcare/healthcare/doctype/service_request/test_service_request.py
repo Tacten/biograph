@@ -21,6 +21,10 @@ from healthcare.healthcare.doctype.lab_test.test_lab_test import (
 	create_lab_test,
 	create_lab_test_template,
 )
+from healthcare.healthcare.doctype.observation.observation import (
+	get_root_observations,
+	update_diagnostic_report_status,
+)
 from healthcare.healthcare.doctype.observation_template.test_observation_template import (
 	create_observation_template,
 )
@@ -37,7 +41,14 @@ from healthcare.healthcare.doctype.patient_encounter.patient_encounter import (
 from healthcare.healthcare.doctype.service_request.service_request import (
 	make_appointment,
 	make_clinical_procedure,
+	make_observation,
 )
+from healthcare.tests.utils import HealthcareTestSuite
+
+WITH_SAMPLE = "_Test Observation with Sample"
+WITHOUT_SAMPLE = "_Test Observation without Sample"
+OPERAND_2 = "_Test Observation Operand 2"
+RT_PCR = "_Test COVID RT PCR"
 
 
 class TestServiceRequest(unittest.TestCase):
@@ -216,6 +227,125 @@ class TestServiceRequest(unittest.TestCase):
 		self.assertFalse(appointment.source)
 
 
+class TestServiceRequestObservation(HealthcareTestSuite):
+	"""make_observation for several tests ordered in one Patient Encounter"""
+
+	def setUp(self):
+		frappe.db.set_single_value("Healthcare Settings", "process_service_request_only_if_paid", 0)
+		self.patient = frappe.get_list("Patient", pluck="name")[0]
+
+	def test_second_test_of_an_encounter_gets_its_own_observation(self):
+		encounter, service_requests = create_encounter_with_observations(
+			self.patient, [WITHOUT_SAMPLE, RT_PCR]
+		)
+		make_observation(service_requests[WITHOUT_SAMPLE])
+		first_observation = get_root_observation(service_requests[WITHOUT_SAMPLE])
+		frappe.db.set_value("Observation", first_observation, "result", "5")
+		first_before = frappe.db.get_value(
+			"Observation", first_observation, ["name", "result", "status"], as_dict=True
+		)
+
+		response = make_observation(service_requests[RT_PCR])
+
+		self.assertTrue(get_root_observation(service_requests[RT_PCR]))
+		diagnostic_report = get_encounter_report(self, encounter)
+		self.assertEqual(response[0], diagnostic_report)
+		self.assertFalse(response[2])
+		self.assertEqual(response[3], diagnostic_report)
+		self.assertEqual(
+			frappe.db.get_value("Observation", first_observation, ["name", "result", "status"], as_dict=True),
+			first_before,
+		)
+		self.assertEqual(
+			{obs.service_request for obs in get_root_observations(diagnostic_report)},
+			set(service_requests.values()),
+		)
+
+	def test_three_tests_in_reverse_order_share_one_report(self):
+		templates = [WITHOUT_SAMPLE, RT_PCR, OPERAND_2]
+		encounter, service_requests = create_encounter_with_observations(self.patient, templates)
+
+		for template in reversed(templates):
+			make_observation(service_requests[template])
+
+		for service_request in service_requests.values():
+			self.assertEqual(count_root_observations(service_request), 1)
+		diagnostic_report = get_encounter_report(self, encounter)
+		self.assertEqual(len(get_root_observations(diagnostic_report)), 3)
+
+	def test_sample_and_non_sample_tests_share_one_report(self):
+		encounter, service_requests = create_encounter_with_observations(
+			self.patient, [WITHOUT_SAMPLE, WITH_SAMPLE]
+		)
+
+		make_observation(service_requests[WITHOUT_SAMPLE])
+		diagnostic_report = get_encounter_report(self, encounter)
+		self.assertFalse(frappe.db.get_value("Diagnostic Report", diagnostic_report, "sample_collection"))
+
+		sample_collection, doctype = make_observation(service_requests[WITH_SAMPLE])[:2]
+
+		self.assertEqual(doctype, "Sample Collection")
+		self.assertTrue(
+			frappe.db.exists(
+				"Observation Sample Collection",
+				{"parent": sample_collection, "service_request": service_requests[WITH_SAMPLE]},
+			)
+		)
+		self.assertEqual(get_encounter_report(self, encounter), diagnostic_report)
+		self.assertEqual(
+			frappe.db.get_value("Diagnostic Report", diagnostic_report, "sample_collection"),
+			sample_collection,
+		)
+		self.assertEqual(count_root_observations(service_requests[WITHOUT_SAMPLE]), 1)
+
+	def test_repeat_make_observation_is_idempotent(self):
+		encounter, service_requests = create_encounter_with_observations(
+			self.patient, [WITHOUT_SAMPLE, WITH_SAMPLE]
+		)
+		make_observation(service_requests[WITHOUT_SAMPLE])
+		sample_collection = make_observation(service_requests[WITH_SAMPLE])[0]
+		diagnostic_report = get_encounter_report(self, encounter)
+		observation_count = frappe.db.count("Observation", {"reference_docname": encounter.name})
+		sample_row_count = frappe.db.count("Observation Sample Collection", {"parent": sample_collection})
+
+		self.assertEqual(
+			make_observation(service_requests[WITHOUT_SAMPLE]),
+			(diagnostic_report, "Diagnostic Report", "New"),
+		)
+		self.assertEqual(
+			make_observation(service_requests[WITH_SAMPLE]),
+			(sample_collection, "Sample Collection", "New"),
+		)
+
+		self.assertEqual(
+			frappe.db.count("Observation", {"reference_docname": encounter.name}), observation_count
+		)
+		self.assertEqual(
+			frappe.db.count("Observation Sample Collection", {"parent": sample_collection}),
+			sample_row_count,
+		)
+		get_encounter_report(self, encounter)
+
+	def test_approved_report_reopens_when_it_gains_a_test(self):
+		encounter, service_requests = create_encounter_with_observations(
+			self.patient, [WITHOUT_SAMPLE, RT_PCR]
+		)
+		make_observation(service_requests[WITHOUT_SAMPLE])
+		diagnostic_report = get_encounter_report(self, encounter)
+		first_observation = get_root_observation(service_requests[WITHOUT_SAMPLE])
+		frappe.db.set_value(
+			"Observation", first_observation, {"result": "5", "status": "Approved", "docstatus": 1}
+		)
+		update_diagnostic_report_status(diagnostic_report)
+		self.assertEqual(frappe.db.get_value("Diagnostic Report", diagnostic_report, "status"), "Approved")
+
+		make_observation(service_requests[RT_PCR])
+
+		self.assertEqual(
+			frappe.db.get_value("Diagnostic Report", diagnostic_report, "status"), "Partially Approved"
+		)
+
+
 def create_encounter(
 	patient, practitioner, type, template, procedure_template=False, submit=False, obs=False
 ):
@@ -341,3 +471,44 @@ def refer_to_practitioner(encounter, practitioner=None, appointment_type=None):
 	]
 
 	create_patient_referral(encounter.name, references)
+
+
+def create_encounter_with_observations(patient, observation_templates):
+	patient_encounter = frappe.new_doc("Patient Encounter")
+	patient_encounter.patient = patient
+	patient_encounter.company = "_Test Company"
+	patient_encounter.practitioner = frappe.get_list("Healthcare Practitioner", pluck="name")[0]
+	patient_encounter.appointment_type = "_Test Appointment Type"
+	patient_encounter.encounter_date = getdate()
+	patient_encounter.encounter_time = nowtime()
+	for template in observation_templates:
+		patient_encounter.append("lab_test_prescription", {"observation_template": template})
+	patient_encounter.submit()
+
+	service_requests = {
+		template: frappe.db.get_value(
+			"Service Request", {"order_group": patient_encounter.name, "template_dn": template}
+		)
+		for template in observation_templates
+	}
+	return patient_encounter, service_requests
+
+
+def get_root_observation(service_request):
+	return frappe.db.get_value(
+		"Observation", {"service_request": service_request, "parent_observation": ["is", "not set"]}
+	)
+
+
+def count_root_observations(service_request):
+	return frappe.db.count(
+		"Observation", {"service_request": service_request, "parent_observation": ["is", "not set"]}
+	)
+
+
+def get_encounter_report(test_case, encounter):
+	reports = frappe.get_all(
+		"Diagnostic Report", {"docname": encounter.name, "docstatus": ["!=", 2]}, pluck="name"
+	)
+	test_case.assertEqual(len(reports), 1)
+	return reports[0]

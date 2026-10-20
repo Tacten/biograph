@@ -822,22 +822,27 @@ def set_diagnostic_report_status(doc):
 		)
 
 		if diagnostic_report:
-			out_data, obs_length = get_observation_details(diagnostic_report)
-			approved_observations = get_approved_observations(out_data)
+			update_diagnostic_report_status(diagnostic_report)
 
-			workflow_name = get_workflow_name("Diagnostic Report")
-			workflow_state_field = get_workflow_state_field(workflow_name)
-			if obs_length == len(approved_observations):
-				set_status = "Approved"
-			elif len(approved_observations) > 0:
-				set_status = "Partially Approved"
-			else:
-				set_status = "Open"
 
-			set_value_dict = {"status": set_status}
-			if workflow_state_field:
-				set_value_dict[workflow_state_field] = set_status
-			frappe.db.set_value("Diagnostic Report", diagnostic_report, set_value_dict, update_modified=False)
+def update_diagnostic_report_status(diagnostic_report):
+	"""Set a Diagnostic Report's status from how many of its Observations are approved"""
+	out_data, obs_length = get_observation_details(diagnostic_report)
+	approved_observations = get_approved_observations(out_data)
+
+	workflow_name = get_workflow_name("Diagnostic Report")
+	workflow_state_field = get_workflow_state_field(workflow_name)
+	if obs_length == len(approved_observations):
+		set_status = "Approved"
+	elif len(approved_observations) > 0:
+		set_status = "Partially Approved"
+	else:
+		set_status = "Open"
+
+	set_value_dict = {"status": set_status}
+	if workflow_state_field:
+		set_value_dict[workflow_state_field] = set_status
+	frappe.db.set_value("Diagnostic Report", diagnostic_report, set_value_dict, update_modified=False)
 
 
 def get_approved_observations(data):
