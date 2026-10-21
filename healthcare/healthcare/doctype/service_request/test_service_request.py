@@ -21,8 +21,10 @@ from healthcare.healthcare.doctype.lab_test.test_lab_test import (
 	create_lab_test,
 	create_lab_test_template,
 )
+from healthcare.healthcare.api.patient_portal import get_data_from_service_requests
 from healthcare.healthcare.doctype.observation.observation import (
 	get_root_observations,
+	set_diagnostic_report_status,
 	update_diagnostic_report_status,
 )
 from healthcare.healthcare.doctype.observation_template.test_observation_template import (
@@ -48,6 +50,7 @@ from healthcare.tests.utils import HealthcareTestSuite
 WITH_SAMPLE = "_Test Observation with Sample"
 WITHOUT_SAMPLE = "_Test Observation without Sample"
 OPERAND_2 = "_Test Observation Operand 2"
+GROUPED_WITH_SAMPLE = "_Test Observation Grouped with Sample"
 RT_PCR = "_Test COVID RT PCR"
 
 
@@ -346,6 +349,138 @@ class TestServiceRequestObservation(HealthcareTestSuite):
 		)
 
 
+class TestEncounterReportMode(HealthcareTestSuite):
+	"""Patient Encounter.consolidate_diagnostic_report: one combined report, or one per test"""
+
+	def setUp(self):
+		frappe.db.set_single_value("Healthcare Settings", "process_service_request_only_if_paid", 0)
+		self.patient = frappe.get_list("Patient", pluck="name")[0]
+
+	def test_new_encounter_consolidates_by_default(self):
+		self.assertEqual(frappe.new_doc("Patient Encounter").consolidate_diagnostic_report, 1)
+
+	def test_separate_mode_gives_each_test_its_own_report(self):
+		encounter, service_requests = create_encounter_with_observations(
+			self.patient, [WITHOUT_SAMPLE, RT_PCR], consolidate=0
+		)
+
+		for service_request in service_requests.values():
+			response = make_observation(service_request)
+			report = get_test_report(self, service_request)
+			self.assertEqual(response, (report, "Diagnostic Report"))
+			self.assertEqual(
+				[obs.service_request for obs in get_root_observations(report)], [service_request]
+			)
+
+		reports = frappe.get_all(
+			"Diagnostic Report", {"docname": encounter.name, "docstatus": ["!=", 2]}, pluck="name"
+		)
+		self.assertEqual(len(reports), 2)
+
+		# Again for the same test: the same report, nothing new
+		report = get_test_report(self, service_requests[RT_PCR])
+		self.assertEqual(make_observation(service_requests[RT_PCR]), (report, "Diagnostic Report", "New"))
+		self.assertEqual(frappe.db.count("Diagnostic Report", {"docname": encounter.name}), 2)
+		self.assertEqual(count_root_observations(service_requests[RT_PCR]), 1)
+
+	def test_separate_mode_sets_sample_collection_only_for_sample_tests(self):
+		encounter, service_requests = create_encounter_with_observations(
+			self.patient, [WITHOUT_SAMPLE, WITH_SAMPLE], consolidate=0
+		)
+
+		make_observation(service_requests[WITHOUT_SAMPLE])
+		sample_collection, doctype = make_observation(service_requests[WITH_SAMPLE])[:2]
+
+		self.assertEqual(doctype, "Sample Collection")
+		self.assertFalse(
+			frappe.db.get_value(
+				"Diagnostic Report",
+				get_test_report(self, service_requests[WITHOUT_SAMPLE]),
+				"sample_collection",
+			)
+		)
+		self.assertEqual(
+			frappe.db.get_value(
+				"Diagnostic Report", get_test_report(self, service_requests[WITH_SAMPLE]), "sample_collection"
+			),
+			sample_collection,
+		)
+
+	def test_approving_one_test_leaves_other_separate_reports_alone(self):
+		encounter, service_requests = create_encounter_with_observations(
+			self.patient, [WITHOUT_SAMPLE, RT_PCR], consolidate=0
+		)
+		for service_request in service_requests.values():
+			make_observation(service_request)
+		approved_report = get_test_report(self, service_requests[WITHOUT_SAMPLE])
+		other_report = get_test_report(self, service_requests[RT_PCR])
+
+		observation = get_root_observation(service_requests[WITHOUT_SAMPLE])
+		frappe.db.set_value("Observation", observation, {"result": "5", "status": "Approved", "docstatus": 1})
+		set_diagnostic_report_status(frappe.get_doc("Observation", observation))
+
+		self.assertEqual(frappe.db.get_value("Diagnostic Report", approved_report, "status"), "Approved")
+		self.assertEqual(frappe.db.get_value("Diagnostic Report", other_report, "status"), "Open")
+
+	def test_cancelling_sample_collection_deletes_every_linked_report(self):
+		encounter, service_requests = create_encounter_with_observations(
+			self.patient, [WITH_SAMPLE, GROUPED_WITH_SAMPLE], consolidate=0
+		)
+		sample_collection = make_observation(service_requests[WITH_SAMPLE])[0]
+		self.assertEqual(make_observation(service_requests[GROUPED_WITH_SAMPLE])[0], sample_collection)
+		self.assertEqual(frappe.db.count("Diagnostic Report", {"sample_collection": sample_collection}), 2)
+
+		sample_collection_doc = frappe.get_doc("Sample Collection", sample_collection)
+		sample_collection_doc.submit()
+		sample_collection_doc.cancel()
+
+		self.assertEqual(frappe.db.count("Diagnostic Report", {"sample_collection": sample_collection}), 0)
+
+	def test_choice_is_locked_once_a_report_exists(self):
+		encounter, service_requests = create_encounter_with_observations(
+			self.patient, [WITHOUT_SAMPLE, RT_PCR]
+		)
+
+		# No report yet: the submitted encounter can still switch mode
+		encounter.reload()
+		encounter.consolidate_diagnostic_report = 0
+		encounter.save()
+		encounter.reload()
+		encounter.consolidate_diagnostic_report = 1
+		encounter.save()
+
+		make_observation(service_requests[WITHOUT_SAMPLE])
+		encounter.reload()
+		encounter.run_method("onload")
+		self.assertTrue(encounter.get_onload().get("has_diagnostic_report"))
+		encounter.consolidate_diagnostic_report = 0
+		self.assertRaises(frappe.ValidationError, encounter.save)
+		self.assertEqual(
+			frappe.db.get_value("Patient Encounter", encounter.name, "consolidate_diagnostic_report"), 1
+		)
+
+	def test_patient_portal_joins_each_test_to_its_own_report(self):
+		for consolidate in (0, 1):
+			encounter, service_requests = create_encounter_with_observations(
+				self.patient, [WITHOUT_SAMPLE, RT_PCR], consolidate=consolidate
+			)
+			for service_request in service_requests.values():
+				make_observation(service_request)
+
+			rows = [
+				row
+				for row in get_data_from_service_requests([self.patient])
+				if row.order_name == encounter.name
+			]
+			self.assertEqual(sorted(row.service_request for row in rows), sorted(service_requests.values()))
+			for row in rows:
+				if consolidate:
+					expected = get_encounter_report(self, encounter)
+				else:
+					expected = get_test_report(self, row.service_request)
+				self.assertEqual(row.diagnostic_report, expected)
+
+
 def create_encounter(
 	patient, practitioner, type, template, procedure_template=False, submit=False, obs=False
 ):
@@ -473,8 +608,9 @@ def refer_to_practitioner(encounter, practitioner=None, appointment_type=None):
 	create_patient_referral(encounter.name, references)
 
 
-def create_encounter_with_observations(patient, observation_templates):
+def create_encounter_with_observations(patient, observation_templates, consolidate=1):
 	patient_encounter = frappe.new_doc("Patient Encounter")
+	patient_encounter.consolidate_diagnostic_report = consolidate
 	patient_encounter.patient = patient
 	patient_encounter.company = "_Test Company"
 	patient_encounter.practitioner = frappe.get_list("Healthcare Practitioner", pluck="name")[0]
@@ -509,6 +645,16 @@ def count_root_observations(service_request):
 def get_encounter_report(test_case, encounter):
 	reports = frappe.get_all(
 		"Diagnostic Report", {"docname": encounter.name, "docstatus": ["!=", 2]}, pluck="name"
+	)
+	test_case.assertEqual(len(reports), 1)
+	return reports[0]
+
+
+def get_test_report(test_case, service_request):
+	reports = frappe.get_all(
+		"Diagnostic Report",
+		{"service_request": service_request, "docstatus": ["!=", 2]},
+		pluck="name",
 	)
 	test_case.assertEqual(len(reports), 1)
 	return reports[0]

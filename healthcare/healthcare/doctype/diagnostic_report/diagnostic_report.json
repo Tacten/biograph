@@ -25,6 +25,7 @@
   "sales_invoice_status",
   "reference_posting_date",
   "sample_collection",
+  "service_request",
   "section_break_wtn1",
   "observation",
   "amended_from",
@@ -121,6 +122,14 @@
    "search_index": 1
   },
   {
+   "description": "Set only when the encounter gives each test its own report",
+   "fieldname": "service_request",
+   "fieldtype": "Link",
+   "label": "Service Request",
+   "options": "Service Request",
+   "read_only": 1
+  },
+  {
    "fieldname": "amended_from",
    "fieldtype": "Link",
    "label": "Amended From",
@@ -192,7 +201,7 @@
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-02 13:44:04.932831",
+ "modified": "2026-10-21 02:00:00.000000",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Diagnostic Report",

@@ -53,6 +53,7 @@
   "sb_drug_prescription",
   "drug_prescription",
   "sb_test_prescription",
+  "consolidate_diagnostic_report",
   "lab_test_prescription",
   "sb_procedures",
   "procedure_prescription",
@@ -240,6 +241,14 @@
    "fieldname": "sb_test_prescription",
    "fieldtype": "Section Break",
    "label": "Investigations"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "1",
+   "description": "Ticked: all lab tests of this encounter share one Diagnostic Report. Unticked: each test gets its own report. This can't be changed once a report has been created.",
+   "fieldname": "consolidate_diagnostic_report",
+   "fieldtype": "Check",
+   "label": "Consolidate Tests in One Diagnostic Report"
   },
   {
    "fieldname": "lab_test_prescription",
@@ -522,7 +531,7 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2025-09-28 12:18:20.535746",
+ "modified": "2026-10-21 02:00:00.000000",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Patient Encounter",

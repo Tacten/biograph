@@ -475,7 +475,17 @@ def get_data_from_service_requests(patients):
 		.left_join(sample_collection)
 		.on(sample_collection_item.parent == sample_collection.name)
 		.left_join(diagnostic_report)
-		.on(service_request.order_group == diagnostic_report.docname)
+		.on(
+			(service_request.order_group == diagnostic_report.docname)
+			& (diagnostic_report.docstatus != 2)
+			# A test's own report, or the order's shared one. An encounter's report mode
+			# is locked once a report exists, so only one of the two can match.
+			& (
+				(diagnostic_report.service_request == service_request.name)
+				| diagnostic_report.service_request.isnull()
+				| (diagnostic_report.service_request == "")
+			)
+		)
 		.left_join(patient)
 		.on(service_request.patient == patient.name)
 		.select(

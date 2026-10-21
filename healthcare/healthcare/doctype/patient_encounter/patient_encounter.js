@@ -126,6 +126,12 @@ frappe.ui.form.on("Patient Encounter", {
 	refresh: function (frm) {
 		refresh_field("drug_prescription");
 		refresh_field("lab_test_prescription");
+		// The report mode is locked once a Diagnostic Report exists
+		frm.set_df_property(
+			"consolidate_diagnostic_report",
+			"read_only",
+			frm.doc.__onload && frm.doc.__onload.has_diagnostic_report ? 1 : 0
+		);
 
 		if (!frm.doc.__islocal) {
 			if (frm.doc.docstatus === 1) {

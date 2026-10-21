@@ -11,7 +11,7 @@ from six import string_types
 import frappe
 from frappe import _
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils import now_datetime
+from frappe.utils import cint, now_datetime
 
 from healthcare.controllers.service_request_controller import ServiceRequestController
 from healthcare.healthcare.doctype.observation.observation import (
@@ -280,7 +280,7 @@ def make_observation(service_request):
 	else:
 		name, doctype = diagnostic_report, "Diagnostic Report"
 
-	if diagnostic_report and diagnostic_report == existing_report:
+	if diagnostic_report and diagnostic_report == existing_report and is_consolidated(service_request):
 		return name, doctype, None, diagnostic_report
 	return name, doctype
 
@@ -455,18 +455,29 @@ def lock_order_group(doc):
 		frappe.db.get_value(doc.source_doc, doc.order_group, "name", for_update=True)
 
 
+def is_consolidated(doc):
+	"""Whether the Service Request's tests share one Diagnostic Report for the whole order"""
+	if doc.source_doc != "Patient Encounter" or not doc.order_group:
+		return True
+	consolidate = frappe.db.get_value("Patient Encounter", doc.order_group, "consolidate_diagnostic_report")
+	return consolidate is None or cint(consolidate) == 1
+
+
 def get_diagnostic_report(doc):
+	"""The order's shared Diagnostic Report, or this Service Request's own one when the
+	encounter gives each test a separate report"""
 	if not doc.order_group:
 		return None
-	return frappe.db.get_value(
-		"Diagnostic Report",
-		{"ref_doctype": doc.source_doc, "docname": doc.order_group, "docstatus": ["!=", 2]},
-		"name",
-	)
+	filters = {"ref_doctype": doc.source_doc, "docname": doc.order_group, "docstatus": ["!=", 2]}
+	if is_consolidated(doc):
+		filters["service_request"] = ["is", "not set"]
+	else:
+		filters["service_request"] = doc.name
+	return frappe.db.get_value("Diagnostic Report", filters, "name")
 
 
 def insert_diagnostic_report(doc, sample_collection=None):
-	"""Get or create the one Diagnostic Report of the Service Request's order, and return its name"""
+	"""Get or create the Diagnostic Report this Service Request's test belongs to, and return its name"""
 	lock_order_group(doc)
 
 	diagnostic_report = get_diagnostic_report(doc)
@@ -486,6 +497,8 @@ def insert_diagnostic_report(doc, sample_collection=None):
 	diagnostic_report.docname = doc.order_group
 	diagnostic_report.practitioner = doc.practitioner
 	diagnostic_report.sample_collection = sample_collection
+	if not is_consolidated(doc):
+		diagnostic_report.service_request = doc.name
 	diagnostic_report.save(ignore_permissions=True)
 	return diagnostic_report.name
 

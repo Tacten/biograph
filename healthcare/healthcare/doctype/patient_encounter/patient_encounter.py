@@ -31,11 +31,18 @@ class PatientEncounter(Document):
 		self.validate_medications()
 		self.validate_therapies()
 		self.validate_observations()
+		self.validate_consolidate_diagnostic_report()
 		set_codification_table_from_diagnosis(self)
 		if not self.is_new() and self.submit_orders_on_save:
 			self.make_service_request()
 			self.make_medication_request()
 			self.status = "Ordered"
+
+	def onload(self):
+		self.set_onload("has_diagnostic_report", bool(get_encounter_diagnostic_report(self.name)))
+
+	def before_update_after_submit(self):
+		self.validate_consolidate_diagnostic_report()
 
 	def on_update(self):
 		log_document_alerts(self)
@@ -211,6 +218,24 @@ class PatientEncounter(Document):
 						observation.idx
 					)
 				)
+
+	def validate_consolidate_diagnostic_report(self):
+		"""Refuse to switch report mode once this encounter has a Diagnostic Report"""
+		if self.is_new() or not self.has_value_changed("consolidate_diagnostic_report"):
+			return
+		if not get_encounter_diagnostic_report(self.name):
+			return
+
+		if self.get_doc_before_save().consolidate_diagnostic_report:
+			mode = _("one combined report for all tests")
+		else:
+			mode = _("a separate report for each test")
+		frappe.throw(
+			_(
+				"Diagnostic Reports were already created for this encounter as {0}, so this choice can't be changed now. Your other edits are still on the form: set the checkbox back and save, or cancel the existing reports first if the choice must change."
+			).format(mode),
+			title=_("Report choice is locked"),
+		)
 
 	def make_service_request(self):
 		if self.lab_test_prescription:
@@ -601,6 +626,13 @@ class PatientEncounter(Document):
 			# Remove duplicates (in reverse order to not mess up indices)
 			for idx in reversed(items_to_remove):
 				self.get(field).pop(idx)
+
+
+def get_encounter_diagnostic_report(encounter):
+	return frappe.db.exists(
+		"Diagnostic Report",
+		{"ref_doctype": "Patient Encounter", "docname": encounter, "docstatus": ["!=", 2]},
+	)
 
 
 @frappe.whitelist()

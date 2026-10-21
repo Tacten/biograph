@@ -80,12 +80,11 @@ class SampleCollection(Document):
 						"Service Request", obs.get("service_request"), "status", "active-Request Status"
 					)
 
-		exist_diagnostic_report = frappe.db.exists(
-			"Diagnostic Report",
-			{"sample_collection": self.name},
-		)
-		if exist_diagnostic_report:
-			frappe.delete_doc("Diagnostic Report", exist_diagnostic_report)
+		# Separate per-test reports can share one Sample Collection
+		for diagnostic_report in frappe.get_all(
+			"Diagnostic Report", {"sample_collection": self.name}, pluck="name"
+		):
+			frappe.delete_doc("Diagnostic Report", diagnostic_report)
 
 
 @frappe.whitelist()

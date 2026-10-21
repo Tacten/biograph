@@ -154,7 +154,9 @@ def get_observation_details(docname: str) -> tuple[list[dict], int]:
 
 def get_root_observations(docname):
 	"""Observations of a Diagnostic Report that are not components of another Observation"""
-	reference = frappe.get_value("Diagnostic Report", docname, ["docname", "ref_doctype"], as_dict=True)
+	reference = frappe.get_value(
+		"Diagnostic Report", docname, ["docname", "ref_doctype", "service_request"], as_dict=True
+	)
 	observation = []
 
 	if reference.get("ref_doctype") == "Sales Invoice":
@@ -170,14 +172,18 @@ def get_root_observations(docname):
 			order_by="creation",
 		)
 	elif reference.get("ref_doctype") == "Patient Encounter":
+		filters = {
+			"source_doc": reference.get("ref_doctype"),
+			"order_group": reference.get("docname"),
+			"status": ["!=", "revoked-Request Status"],
+			"docstatus": ["!=", 2],
+		}
+		if reference.get("service_request"):
+			# A separate report shows only its own test
+			filters["name"] = reference.get("service_request")
 		service_requests = frappe.get_all(
 			"Service Request",
-			filters={
-				"source_doc": reference.get("ref_doctype"),
-				"order_group": reference.get("docname"),
-				"status": ["!=", "revoked-Request Status"],
-				"docstatus": ["!=", 2],
-			},
+			filters=filters,
 			order_by="creation",
 			pluck="name",
 		)
@@ -817,9 +823,17 @@ def set_diagnostic_report_status(doc):
 				"Sample Collection", doc.reference_docname, ["reference_doc", "reference_name"]
 			)
 
-		diagnostic_report = frappe.db.get_value(
-			"Diagnostic Report", {"ref_doctype": ref_doctype, "docname": ref_docname}, "name"
-		)
+		report_filters = {"ref_doctype": ref_doctype, "docname": ref_docname, "docstatus": ["!=", 2]}
+		diagnostic_report = None
+		if doc.service_request:
+			# The test's own report when its encounter gives each test one
+			diagnostic_report = frappe.db.get_value(
+				"Diagnostic Report", {**report_filters, "service_request": doc.service_request}, "name"
+			)
+		if not diagnostic_report:
+			diagnostic_report = frappe.db.get_value(
+				"Diagnostic Report", {**report_filters, "service_request": ["is", "not set"]}, "name"
+			)
 
 		if diagnostic_report:
 			update_diagnostic_report_status(diagnostic_report)
