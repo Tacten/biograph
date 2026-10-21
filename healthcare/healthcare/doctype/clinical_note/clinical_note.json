@@ -19,6 +19,10 @@
   "user",
   "note_section",
   "note",
+  "fdar_focus",
+  "fdar_data",
+  "fdar_action",
+  "fdar_response",
   "reference_section",
   "reference_doc",
   "reference_name",
@@ -54,6 +58,26 @@
    "fieldname": "note",
    "fieldtype": "Text Editor",
    "label": "Note"
+  },
+  {
+   "fieldname": "fdar_focus",
+   "fieldtype": "Data",
+   "label": "Focus"
+  },
+  {
+   "fieldname": "fdar_data",
+   "fieldtype": "Small Text",
+   "label": "Data"
+  },
+  {
+   "fieldname": "fdar_action",
+   "fieldtype": "Small Text",
+   "label": "Action"
+  },
+  {
+   "fieldname": "fdar_response",
+   "fieldtype": "Small Text",
+   "label": "Response"
   },
   {
    "fieldname": "reference_section",
