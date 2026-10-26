@@ -9,6 +9,7 @@ from healthcare.healthcare.api.nursing_common import ChartAccess
 
 FDAR_PARTS = ("fdar_focus", "fdar_data", "fdar_action", "fdar_response")
 RECENT_NOTES = 10
+CLINICAL_NOTE_FDAR_COLUMN = "fdar_focus"
 
 
 class ClinicalNoteRecorder:
@@ -82,6 +83,14 @@ def is_fdar_type(note_type):
 	return bool(frappe.db.get_value("Clinical Note Type", note_type, "is_fdar"))
 
 
+def clinical_note_list_fields(*fields):
+	"""Clinical Note columns that exist on this site (F-DAR parts need a migrate)."""
+	selected = list(fields)
+	if frappe.db.has_column("Clinical Note", CLINICAL_NOTE_FDAR_COLUMN):
+		selected.extend(FDAR_PARTS)
+	return selected
+
+
 @frappe.whitelist()
 def get_recent_notes(
 	patient: str, limit: int = RECENT_NOTES, note_types: list | str | None = None
@@ -94,14 +103,13 @@ def get_recent_notes(
 	return frappe.get_all(
 		"Clinical Note",
 		filters=filters,
-		fields=[
+		fields=clinical_note_list_fields(
 			"name",
 			"clinical_note_type",
 			"posting_date",
 			"user",
 			"note",
-			*FDAR_PARTS,
-		],
+		),
 		order_by="posting_date desc, creation desc",
 		limit=limit,
 	)

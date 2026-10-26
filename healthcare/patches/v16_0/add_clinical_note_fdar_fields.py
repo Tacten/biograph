@@ -6,3 +6,5 @@ import frappe
 
 def execute():
 	frappe.reload_doc("healthcare", "doctype", "clinical_note")
+	if not frappe.db.has_column("Clinical Note", "fdar_focus"):
+		frappe.db.updatedb("Clinical Note")

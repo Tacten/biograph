@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 
+from healthcare.healthcare.api.clinical_notes import clinical_note_list_fields
 from healthcare.healthcare.api.nursing_common import ChartAccess, WardScope, admitted_patients, has_value
 from healthcare.healthcare.api.nursing_tasks import OPEN_TASK_STATUSES
 from healthcare.healthcare.api.vitals import vital_sign_templates
@@ -97,17 +98,13 @@ class PatientSnapshot:
 			"Clinical Note",
 			filters={"patient": self.patient, "docstatus": ["<", 2]},
 			# an F-DAR entry leaves `note` empty, so its parts come back too
-			fields=[
+			fields=clinical_note_list_fields(
 				"name",
 				"note",
 				"clinical_note_type",
 				"posting_date",
 				"practitioner",
-				"fdar_focus",
-				"fdar_data",
-				"fdar_action",
-				"fdar_response",
-			],
+			),
 			order_by="posting_date desc, creation desc",
 			limit=1,
 		)
