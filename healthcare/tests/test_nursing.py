@@ -112,6 +112,18 @@ class TestNursing(HealthcareTestSuite):
 		self.assertIn("next_tasks", snapshot)
 		self.assertIn("last_note", snapshot)
 
+	def test_snapshot_last_note_loads_without_fdar_db_columns(self):
+		from unittest.mock import patch
+
+		from healthcare.healthcare.api.clinical_notes import FDAR_PARTS
+
+		with patch.object(frappe.db, "has_column", return_value=False):
+			snapshot = get_snapshot(self.patient)
+
+		last_note = snapshot.get("last_note") or {}
+		for fieldname in FDAR_PARTS:
+			self.assertNotIn(fieldname, last_note)
+
 
 class TestNursingIntakeOutput(HealthcareTestSuite):
 	def setUp(self):
@@ -372,6 +384,12 @@ class TestClinicalNotes(HealthcareTestSuite):
 
 		focuses = [note.fdar_focus for note in get_recent_notes(self.patient)]
 		self.assertIn("Later", focuses)
+
+	def test_snapshot_last_note_includes_fdar_parts(self):
+		self.record(fdar_focus="Stable vitals")
+
+		last_note = get_snapshot(self.patient)["last_note"]
+		self.assertEqual(last_note["fdar_focus"], "Stable vitals")
 
 	def test_a_disabled_type_is_not_offered(self):
 		from healthcare.healthcare.api.clinical_notes import get_note_types
