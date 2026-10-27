@@ -893,4 +893,4 @@ frappe.ui.form.on('Therapy Plan Detail', {
             frm.refresh_field("therapies")	
 		}
     }
-}) 
+});
