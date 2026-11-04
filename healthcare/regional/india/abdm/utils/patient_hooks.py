@@ -37,9 +37,16 @@ def cleanup_abdm_data_before_patient_delete(doc, method=None):
 
 	# ABDM Consent (frappe_abdm) — recorded at the Create ABHA consent step,
 	# independent of whether enrolment ever completed.
-	if frappe.db.table_exists("ABDM Consent"):
+	# Check the DocType, not just the table: uninstalling frappe_abdm leaves `tabABDM Consent` behind without its
+	# DocType, and frappe.get_all would then raise "DocType ABDM Consent not found" and block every patient delete.
+	if frappe.db.exists("DocType", "ABDM Consent") and frappe.db.table_exists("ABDM Consent"):
 		for name in frappe.get_all("ABDM Consent", filters={"patient": patient}, pluck="name"):
 			frappe.delete_doc("ABDM Consent", name, ignore_permissions=True, force=True)
+
+	# Document-based creation records (driving licence): their held photographs and details go with the patient.
+	if frappe.db.exists("DocType", "ABHA Document Enrolment"):
+		for name in frappe.get_all("ABHA Document Enrolment", filters={"patient": patient}, pluck="name"):
+			frappe.delete_doc("ABHA Document Enrolment", name, ignore_permissions=True, force=True)
 
 	# FHIR Patient Cache — pure cache, safe to drop regardless of the above.
 	cache_name = frappe.db.get_value("FHIR Patient Cache", {"patient": patient}, "name")

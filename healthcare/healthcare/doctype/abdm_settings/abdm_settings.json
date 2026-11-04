@@ -19,7 +19,10 @@
   "abdm_gateway_ip_allowlist",
   "callback_secret",
   "rsa_public_key_cache",
-  "rsa_key_cached_at"
+  "rsa_key_cached_at",
+  "section_break_creation_routes",
+  "benefit_name",
+  "enable_biometric_enrolment"
  ],
  "fields": [
   {
@@ -29,7 +32,7 @@
    "options": "sandbox\nproduction",
    "default": "sandbox",
    "reqd": 1,
-   "description": "sandbox → abhasbx.abdm.gov.in | production → abha.abdm.gov.in"
+   "description": "sandbox \u2192 abhasbx.abdm.gov.in | production \u2192 abha.abdm.gov.in"
   },
   {
    "fieldname": "column_break_env",
@@ -48,7 +51,7 @@
    "fieldtype": "Data",
    "label": "PHR Base URL",
    "default": "https://abhasbx.abdm.gov.in/abha/api",
-   "description": "SBX: https://abhasbx.abdm.gov.in/abha/api | PROD: https://abha.abdm.gov.in/abha/api — used for ABHA address verification (SOP §14). Falls back to ABHA Base URL when blank."
+   "description": "SBX: https://abhasbx.abdm.gov.in/abha/api | PROD: https://abha.abdm.gov.in/abha/api \u2014 used for ABHA address verification (SOP \u00a714). Falls back to ABHA Base URL when blank."
   },
   {
    "fieldname": "section_break_credentials",
@@ -67,7 +70,7 @@
    "fieldtype": "Password",
    "label": "Client Secret",
    "reqd": 1,
-   "description": "ABDM client_secret — stored encrypted, never logged"
+   "description": "ABDM client_secret \u2014 stored encrypted, never logged"
   },
   {
    "fieldname": "section_break_urls",
@@ -79,14 +82,14 @@
    "fieldtype": "Data",
    "label": "Wrapper Base URL",
    "default": "http://localhost:8082",
-   "description": "NHA ABDM wrapper — localhost:8082 for M2/M3 gateway flows"
+   "description": "NHA ABDM wrapper \u2014 localhost:8082 for M2/M3 gateway flows"
   },
   {
    "fieldname": "fhir_base_url",
    "fieldtype": "Data",
    "label": "FHIR Base URL",
    "default": "https://nrces.in/ndhm/fhir/R4",
-   "description": "FHIR R4 profile base — used for all Bundle resource profile references"
+   "description": "FHIR R4 profile base \u2014 used for all Bundle resource profile references"
   },
   {
    "fieldname": "section_break_security",
@@ -112,13 +115,31 @@
    "fieldtype": "Long Text",
    "label": "RSA Public Key Cache",
    "read_only": 1,
-   "description": "Cached ABHA V3 RSA public key — auto-refreshed by M1-T58 with TTL"
+   "description": "Cached ABHA V3 RSA public key \u2014 auto-refreshed by M1-T58 with TTL"
   },
   {
    "fieldname": "rsa_key_cached_at",
    "fieldtype": "Datetime",
    "label": "RSA Key Cached At",
    "read_only": 1
+  },
+  {
+   "fieldname": "section_break_creation_routes",
+   "fieldtype": "Section Break",
+   "label": "ABHA creation routes"
+  },
+  {
+   "fieldname": "benefit_name",
+   "fieldtype": "Data",
+   "label": "Benefit name",
+   "description": "Given to integrators by ABDM. Sent as the BENEFIT-NAME header on the Benefit APIs, including creation by Aadhaar biometric."
+  },
+  {
+   "fieldname": "enable_biometric_enrolment",
+   "fieldtype": "Check",
+   "label": "Enable Aadhaar biometric creation",
+   "default": "0",
+   "description": "Shows the biometric route in the ABHA app. Needs a Benefit name and a registered fingerprint device on the desk PC."
   }
  ],
  "issingle": 1,
