@@ -1,0 +1,66 @@
+/* Palette from the 1a design: near-black shell (#141413), terracotta accent (#D97757). Neutrals lean warm so the
+   accent reads as part of the page. Filled buttons use a deeper terracotta so white text keeps 4.5:1 contrast. */
+:root {
+  --font: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --surface-2: #faf9f6;
+  --line: #e5e2da;
+  --line-strong: #cfcbc0;
+  --text: #141413;
+  --text-2: #43413c;
+  --muted: #6a675f;
+
+  --accent: #d97757;
+  --accent-btn: #b3512d;
+  --accent-btn-hover: #9c4423;
+  --accent-ink: #ffffff;
+  --accent-soft: #fbede6;
+
+  --nav-bg: #141413;
+  --nav-text: #e4e1d8;
+  --nav-muted: #94918a;
+  --nav-active: #262624;
+
+  --ok: #2f7d4f;
+  --ok-soft: #e6f3ea;
+  --warn: #8a5d0f;
+  --warn-soft: #fbf1dc;
+  --bad: #b4372a;
+  --bad-soft: #fbe9e6;
+
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 1px 2px rgba(20, 20, 19, 0.06), 0 4px 16px rgba(20, 20, 19, 0.06);
+  --focus: 0 0 0 3px rgba(217, 119, 87, 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161615;
+    --surface: #1e1e1c;
+    --surface-2: #242422;
+    --line: #33322f;
+    --line-strong: #47453f;
+    --text: #efede7;
+    --text-2: #cfccc3;
+    --muted: #a09d93;
+
+    --accent-btn: #c25d38;
+    --accent-btn-hover: #d36d48;
+    --accent-soft: #33241d;
+
+    --nav-bg: #0d0d0c;
+    --nav-active: #1c1c1a;
+
+    --ok: #6cc08b;
+    --ok-soft: #1b2c22;
+    --warn: #e0b45a;
+    --warn-soft: #2e2514;
+    --bad: #ec8a7d;
+    --bad-soft: #331e1b;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.35);
+  }
+}

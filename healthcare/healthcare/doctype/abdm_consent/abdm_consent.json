@@ -1,0 +1,210 @@
+{
+ "actions": [],
+ "creation": "2026-10-30 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "engine": "InnoDB",
+ "field_order": [
+  "patient",
+  "column_break_1",
+  "consent_type",
+  "section_break_status",
+  "consent_status",
+  "column_break_status",
+  "consent_version",
+  "section_break_meta",
+  "consent_datetime",
+  "column_break_meta",
+  "captured_by",
+  "section_break_source",
+  "facility",
+  "column_break_source",
+  "source",
+  "section_break_text",
+  "consent_text",
+  "section_break_audit",
+  "txn_id",
+  "column_break_audit",
+  "auth_method",
+  "ip_address"
+ ],
+ "fields": [
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "label": "Patient",
+   "options": "Patient",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "consent_type",
+   "fieldtype": "Select",
+   "label": "Consent Type",
+   "options": "ABHA Creation\nScan & Share\nHealth Records Access",
+   "reqd": 1,
+   "default": "ABHA Creation",
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "section_break_status",
+   "fieldtype": "Section Break",
+   "label": "Status"
+  },
+  {
+   "fieldname": "consent_status",
+   "fieldtype": "Select",
+   "label": "Consent Status",
+   "options": "Granted\nWithdrawn",
+   "reqd": 1,
+   "default": "Granted",
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "column_break_status",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "consent_version",
+   "fieldtype": "Data",
+   "label": "Consent Version",
+   "default": "1.0",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_meta",
+   "fieldtype": "Section Break",
+   "label": "Captured"
+  },
+  {
+   "fieldname": "consent_datetime",
+   "fieldtype": "Datetime",
+   "label": "Consent Date & Time",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_meta",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "captured_by",
+   "fieldtype": "Link",
+   "label": "Captured By",
+   "options": "User",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_source",
+   "fieldtype": "Section Break",
+   "label": "Source"
+  },
+  {
+   "fieldname": "facility",
+   "fieldtype": "Data",
+   "label": "Facility",
+   "description": "Healthcare service unit or branch where consent was collected"
+  },
+  {
+   "fieldname": "column_break_source",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "source",
+   "fieldtype": "Select",
+   "label": "Source",
+   "options": "\nRegistration Desk\nPatient Portal\nKiosk\nMobile App",
+   "default": "Registration Desk"
+  },
+  {
+   "fieldname": "section_break_text",
+   "fieldtype": "Section Break",
+   "label": "Consent Text (Verbatim)"
+  },
+  {
+   "fieldname": "consent_text",
+   "fieldtype": "Long Text",
+   "label": "Consent Text",
+   "reqd": 1,
+   "read_only": 1,
+   "description": "Full text of consent as presented to the patient \u2014 stored verbatim for audit"
+  },
+  {
+   "fieldname": "section_break_audit",
+   "fieldtype": "Section Break",
+   "label": "Audit"
+  },
+  {
+   "fieldname": "txn_id",
+   "fieldtype": "Data",
+   "label": "Transaction ID",
+   "read_only": 1,
+   "description": "ABDM txnId from the OTP request \u2014 set after OTP is issued"
+  },
+  {
+   "fieldname": "column_break_audit",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "auth_method",
+   "fieldtype": "Select",
+   "label": "Authentication Method",
+   "options": "\nAadhaar OTP\nMobile OTP\nDriving Licence\nAadhaar Biometric",
+   "read_only": 1,
+   "in_list_view": 1,
+   "description": "Authentication method chosen by the patient"
+  },
+  {
+   "fieldname": "ip_address",
+   "fieldtype": "Data",
+   "label": "IP Address",
+   "read_only": 1
+  }
+ ],
+ "issingle": 0,
+ "links": [],
+ "modified": "2026-10-30 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Healthcare",
+ "name": "ABDM Consent",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Healthcare User",
+   "write": 0,
+   "delete": 0
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "read": 1,
+   "report": 1,
+   "role": "Healthcare Administrator",
+   "write": 1
+  }
+ ],
+ "sort_field": "consent_datetime",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "patient",
+ "track_changes": 0
+}

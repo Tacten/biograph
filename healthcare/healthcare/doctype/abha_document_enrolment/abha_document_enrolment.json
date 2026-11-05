@@ -1,0 +1,202 @@
+{
+ "actions": [],
+ "autoname": "ABHA-DOC-.#####",
+ "creation": "2026-10-30 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "patient",
+  "patient_name",
+  "status",
+  "document_type",
+  "cb1",
+  "requested_by",
+  "requested_at",
+  "decided_by",
+  "decided_at",
+  "sb_decision",
+  "decision_note",
+  "sb_result",
+  "enrolment_number",
+  "enrolment_state",
+  "result_message",
+  "sb_held",
+  "txn_id",
+  "details",
+  "front_photo",
+  "back_photo"
+ ],
+ "fields": [
+  {
+   "fieldname": "patient",
+   "fieldtype": "Link",
+   "label": "Patient",
+   "options": "Patient",
+   "reqd": 1,
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "patient_name",
+   "fieldtype": "Data",
+   "label": "Patient name",
+   "fetch_from": "patient.patient_name",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Awaiting approval\nApproved\nRejected\nSubmitted\nFailed",
+   "default": "Awaiting approval",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "document_type",
+   "fieldtype": "Data",
+   "label": "Document type",
+   "default": "DRIVING_LICENCE",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cb1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "requested_by",
+   "fieldtype": "Link",
+   "label": "Collected by",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "requested_at",
+   "fieldtype": "Datetime",
+   "label": "Collected at",
+   "read_only": 1
+  },
+  {
+   "fieldname": "decided_by",
+   "fieldtype": "Link",
+   "label": "Decided by",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "decided_at",
+   "fieldtype": "Datetime",
+   "label": "Decided at",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sb_decision",
+   "fieldtype": "Section Break",
+   "label": "Decision"
+  },
+  {
+   "fieldname": "decision_note",
+   "fieldtype": "Small Text",
+   "label": "Note",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sb_result",
+   "fieldtype": "Section Break",
+   "label": "Result from ABDM"
+  },
+  {
+   "fieldname": "enrolment_number",
+   "fieldtype": "Data",
+   "label": "Enrolment number",
+   "read_only": 1,
+   "description": "An enrolment number is not an ABHA. ABDM turns it into one after the document check."
+  },
+  {
+   "fieldname": "enrolment_state",
+   "fieldtype": "Data",
+   "label": "Enrolment state",
+   "read_only": 1
+  },
+  {
+   "fieldname": "result_message",
+   "fieldtype": "Small Text",
+   "label": "Message",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sb_held",
+   "fieldtype": "Section Break",
+   "label": "Held only until the decision (encrypted or private, deleted afterwards)"
+  },
+  {
+   "fieldname": "txn_id",
+   "fieldtype": "Password",
+   "label": "ABDM transaction",
+   "read_only": 1
+  },
+  {
+   "fieldname": "details",
+   "fieldtype": "Password",
+   "label": "Document details",
+   "read_only": 1
+  },
+  {
+   "fieldname": "front_photo",
+   "fieldtype": "Attach",
+   "label": "Front of the document",
+   "read_only": 1
+  },
+  {
+   "fieldname": "back_photo",
+   "fieldtype": "Attach",
+   "label": "Back of the document",
+   "read_only": 1
+  }
+ ],
+ "in_create": 1,
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-30 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Healthcare",
+ "name": "ABHA Document Enrolment",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "Nursing User",
+   "read": 1,
+   "report": 1,
+   "export": 0
+  },
+  {
+   "role": "Physician",
+   "read": 1,
+   "report": 1,
+   "export": 0
+  },
+  {
+   "role": "Healthcare Administrator",
+   "read": 1,
+   "report": 1,
+   "export": 0
+  },
+  {
+   "role": "System Manager",
+   "read": 1,
+   "report": 1,
+   "export": 0
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "patient_name",
+ "track_changes": 0,
+ "allow_copy": 0,
+ "allow_import": 0,
+ "allow_rename": 0
+}
