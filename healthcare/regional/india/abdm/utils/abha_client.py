@@ -89,6 +89,7 @@ class AbhaClient:
 		use_txn_id: bool = False,
 		use_phr_base: bool = False,
 		max_retries: int | None = None,
+		extra_headers: dict | None = None,
 	) -> dict:
 		"""
 		Make an authenticated ABHA V3 API call.
@@ -105,6 +106,7 @@ class AbhaClient:
 		:param use_phr_base: Use phr_base_url instead of abha_base_url
 		:param max_retries: Override MAX_RETRIES for this call. Use 1 for non-idempotent
 		    OTP endpoints so a slow ABDM response doesn't trigger duplicate sends.
+		:param extra_headers: Added to the standard headers (for example BENEFIT-NAME on the Benefit APIs)
 		"""
 		if patient:
 			self._assert_patient_permission(patient)
@@ -114,12 +116,15 @@ class AbhaClient:
 		abdm_log("info", f"call_abha → {method} {url} | use_x_token={use_x_token} | use_txn_id={use_txn_id}")
 
 		def _header_factory():
-			return self._build_headers(
+			headers = self._build_headers(
 				patient,
 				use_x_token=use_x_token,
 				use_t_token=use_t_token,
 				use_txn_id=use_txn_id,
 			)
+			if extra_headers:
+				headers.update(extra_headers)
+			return headers
 
 		return self._request_with_retry(method, url, _header_factory, payload, max_retries=max_retries)
 
@@ -406,18 +411,14 @@ class AbhaClient:
 				else:
 					mobile_val = str(error_body.get("mobile", "")).lower()
 					if "invalid" in mobile_val:
-						# ABDM returns {"mobile": "Invalid Mobile Number"} both for a
-						# genuinely malformed number AND — observed repeatedly against
-						# the live sandbox — when this Aadhaar already has an ABHA
-						# account registered under a different mobile. We can't tell
-						# the two apart from this response alone, so point the user
-						# at the one action that resolves either case.
+						# ABDM's enrol/byAadhaar spec: a 400 names the refused field. An Aadhaar that
+						# already has an ABHA is NOT refused; it returns 200 with isNew=false. So this
+						# branch means the mobile field itself was rejected. The raw body is in the
+						# Error Log entry written above.
 						msg = (
-							"ABDM rejected this mobile number for the given Aadhaar. "
-							"If the number is correct, this Aadhaar may already have an "
-							"ABHA account linked to a different mobile — use ABDM → "
-							"Verify ABHA to check for an existing account before "
-							"creating a new one."
+							"ABDM rejected the mobile number sent with this Aadhaar OTP (Invalid Mobile Number). "
+							"Check it is the 10-digit mobile for ABHA communication and try again. "
+							"If it still fails, see the ABDM API Error Log entry for this request."
 						)
 			# Write to Error Log (visible in Frappe UI at /app/error-log) so admins can diagnose
 			frappe.log_error(
@@ -511,10 +512,10 @@ class AbhaClient:
 			"txnId":    txn_id,
 			"otpValue": encrypted_otp,
 		}
-		# Mobile must be RSA-encrypted here — this goes into UIDAI auth data
-		# (different from OTP-request endpoints where mobile is plain text).
+		# Mobile goes in plain text: the sandbox returns 400 "Invalid Mobile Number"
+		# for an RSA-encrypted value here and accepts the plain number (confirmed live).
 		if mobile:
-			otp_block["mobile"] = encrypt_field(mobile)
+			otp_block["mobile"] = mobile
 		payload = {
 			"authData": {
 				"authMethods": ["otp"],
@@ -529,6 +530,42 @@ class AbhaClient:
 			"/v3/enrollment/enrol/byAadhaar",
 			payload=payload,
 			patient=patient,
+		)
+
+	def enrol_by_biometric(self, patient: str, pid: str, aadhaar: str, mobile: str = "") -> dict:
+		"""
+		SOP §11.2 (Benefit API): POST /v3/enrollment/enrol/byAadhaar with authMethods ["bio"].
+
+		`pid` is the PID block returned by the registered device's RD Service. It is already encrypted by the device,
+		so it is sent as it is (it is far too long for RSA). The BENEFIT-NAME header is mandatory for this call.
+
+		UNVERIFIED against ABDM: the SOP's example has no Aadhaar number and no earlier transaction, but a PID does not
+		say whose Aadhaar it is, so the RSA-encrypted Aadhaar number is sent in the bio block. Confirm with ABDM and
+		the sandbox before relying on it. Neither the PID nor the Aadhaar number is logged.
+		"""
+		benefit = (getattr(self.settings, "benefit_name", None) or "").strip()
+		if not benefit:
+			frappe.throw(
+				frappe._("Biometric enrolment needs a Benefit name in ABDM Settings (given to integrators by ABDM)."),
+				frappe.ValidationError,
+			)
+		bio_block: dict = {
+			"timeStamp": _abdm_iso_timestamp(),
+			"aadhaar": encrypt_field(aadhaar),
+			"fingerPrintAuthPid": pid,
+		}
+		if mobile:
+			bio_block["mobile"] = mobile
+		payload = {
+			"authData": {"authMethods": ["bio"], "bio": bio_block},
+			"consent": {"code": "abha-enrollment", "version": "1.4"},
+		}
+		return self.call_abha(
+			"/v3/enrollment/enrol/byAadhaar",
+			payload=payload,
+			patient=patient,
+			max_retries=1,  # a biometric capture is not safe to replay automatically
+			extra_headers={"BENEFIT-NAME": benefit},
 		)
 
 	def send_mobile_otp_post_enrol(self, patient: str, txn_id: str, mobile: str = "") -> dict:

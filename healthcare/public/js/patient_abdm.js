@@ -569,22 +569,8 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 			</div>
 			<div id="abdm-a1-error" class="text-danger" style="display:none;margin-top:8px;margin-bottom:8px;"></div>
 			<div id="abdm-consent-wrap" style="padding:4px 0;">
-				<div style="background:#f8f9fa;border-left:4px solid #2490ef;border-radius:4px;padding:16px 20px;margin-bottom:16px;color:#000;">
-					<p style="margin:0 0 12px;font-weight:600;color:#000;">
-						${__("ABDM Consent for ABHA Creation")}
-					</p>
-					<p style="margin:0 0 10px;color:#000;">
-						${__("I voluntarily consent to collecting and using my identity and demographic information for the purpose of creating, verifying, or retrieving my Ayushman Bharat Health Account (ABHA) under the Ayushman Bharat Digital Mission (ABDM).")}
-					</p>
-					<p style="margin:0 0 6px;font-weight:500;color:#000;">${__("I understand that:")}</p>
-					<ul style="margin:0 0 10px;padding-left:20px;line-height:1.8;color:#000;">
-						<li>${__("My identity will be authenticated using an approved method such as Aadhaar OTP, Mobile OTP, or Driving Licence, as applicable.")}</li>
-						<li>${__("My ABHA Number and/or ABHA Address may be created or verified and linked to my hospital registration.")}</li>
-						<li>${__("My information will be used only for providing healthcare services and ABDM-related functions in accordance with applicable laws and ABDM guidelines.")}</li>
-						<li>${__("Creation of an ABHA is voluntary.")}</li>
-						<li>${__("Sharing of my health records with other healthcare providers will require my separate consent through the ABDM Consent Manager whenever applicable.")}</li>
-						<li>${__("I may withdraw my participation in accordance with ABDM policies.")}</li>
-					</ul>
+				<div id="abdm-consent-text" style="background:#f8f9fa;border-left:4px solid #2490ef;border-radius:4px;padding:16px 20px;margin-bottom:16px;color:#000;">
+					<p style="margin:0;color:#000;">${__("Loading the consent terms...")}</p>
 				</div>
 				<div class="form-check" style="margin-bottom:14px;">
 					<input type="checkbox" id="abdm-consent-chk" class="form-check-input" style="margin-top:4px;">
@@ -598,6 +584,33 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 		// Send OTP stays disabled until the patient ticks consent — prevents
 		// a click-then-error round trip and makes the requirement obvious upfront.
 		this.dialog.get_primary_btn().prop("disabled", true);
+
+		// Show the ABDM terms exactly as the server will record them (version and wording come from the server).
+		const $terms = this._content().find("#abdm-consent-text");
+		const $chk = this._content().find("#abdm-consent-chk");
+		const termsFailed = (msg) => {
+			$terms.html(`<p class="text-danger" style="margin:0;">${frappe.utils.escape_html(msg)}</p>`);
+			$chk.prop("disabled", true);
+		};
+		$chk.prop("disabled", true);
+		frappe.call({
+			method: "healthcare.regional.india.abdm.api.consent.get_consent_text",
+			callback: (r) => {
+				const t = r.message;
+				if (!t || !t.text) return termsFailed(__("Could not load the consent terms. Please try again."));
+				$terms.html(
+					`<p style="margin:0 0 10px;font-weight:600;color:#000;">${frappe.utils.escape_html(t.title)}</p>` +
+					`<p style="margin:0;line-height:1.6;color:#000;">${frappe.utils.escape_html(t.text)}</p>`
+				);
+				if (t.available) $chk.prop("disabled", false);
+				else {
+					$terms.append(`<p class="text-danger" style="margin:10px 0 0;">${frappe.utils.escape_html(__("Consent cannot be recorded yet: the ABDM Consent doctype is not on this site. Run bench migrate."))}</p>`);
+					$chk.prop("disabled", true);
+				}
+			},
+			error: () => termsFailed(__("Could not load the consent terms. Please try again.")),
+		});
+
 		this._content().find("#abdm-consent-chk").on("change", (e) => {
 			this.dialog.get_primary_btn().prop("disabled", !e.target.checked);
 			if (e.target.checked) this._content().find("#abdm-consent-error").hide();
@@ -617,7 +630,7 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 			}
 			this._setLoading(true, __("Recording consent…"));
 			frappe.call({
-				method: "frappe_abdm.abha.api.consent.record_consent",
+				method: "healthcare.regional.india.abdm.api.consent.record_consent",
 				args: {
 					patient: this.patient,
 					consent_type: "ABHA Creation",
@@ -1114,7 +1127,7 @@ healthcare.regional.india.abdm.AbhaCreationDialog = class AbhaCreationDialog {
 		// frappe.call() returns a jQuery jqXHR (not a Promise) in Frappe v16,
 		// so .catch() throws TypeError and kills the caller's execution.
 		frappe.call({
-			method: "frappe_abdm.abha.api.consent.update_consent",
+			method: "healthcare.regional.india.abdm.api.consent.update_consent",
 			args: {
 				consent_name: this._consentName,
 				txn_id: this.txnId || "",
@@ -1337,8 +1350,8 @@ healthcare.regional.india.abdm.AbhaDlDialog = class AbhaDlDialog {
 				this._setLoading(false);
 				if (r.exc) { this._err("dl-s3-error", r); return; }
 				if (!r.message) { this._err("dl-s3-error", null, __("ABHA creation failed. Please try again.")); return; }
-				this.abhaNumber  = r.message.abha_number;
-				this.abhaAddress = r.message.abha_address;
+				// A document enrolment returns an enrolment number, not an ABHA: ABDM issues the ABHA after the document check.
+				this.enrolmentNumber = r.message.enrolment_number;
 				this._renderStep(4);
 			},
 			error: (r) => { this._setLoading(false); this._err("dl-s3-error", r); },
@@ -1366,16 +1379,11 @@ healthcare.regional.india.abdm.AbhaDlDialog = class AbhaDlDialog {
 		this.dialog.$body.append(`
 			<div class="text-center" style="padding:24px 0;">
 				<div style="font-size:48px;color:#28a745;">✓</div>
-				<h4 style="margin:12px 0 4px;">${__("ABHA Created!")}</h4>
-				<p class="text-muted">${__("Your ABHA was created using your Driving Licence.")}</p>
-				<div style="background:#f8f9fa;border-radius:8px;padding:16px;margin:16px 0;text-align:left;">
-					${this.abhaNumber  ? `<div style="margin-bottom:8px;">
-						<span class="text-muted" style="font-size:11px;">${__("ABHA Number")}</span><br>
-						<strong>${frappe.utils.escape_html(this.abhaNumber)}</strong></div>` : ""}
-					${this.abhaAddress ? `<div>
-						<span class="text-muted" style="font-size:11px;">${__("ABHA Address")}</span><br>
-						<strong style="color:#2490ef;">${frappe.utils.escape_html(this.abhaAddress)}</strong></div>` : ""}
-				</div>
+				<h4 style="margin:12px 0 4px;">${__("Enrolment submitted")}</h4>
+				<p class="text-muted">${__("ABDM issued an enrolment number. It is not an ABHA yet: ABDM creates the ABHA after the driving licence is checked.")}</p>
+				${this.enrolmentNumber ? `<div style="background:#f8f9fa;border-radius:8px;padding:16px;margin:16px 0;text-align:left;">
+					<span class="text-muted" style="font-size:11px;">${__("Enrolment number")}</span><br>
+					<strong>${frappe.utils.escape_html(this.enrolmentNumber)}</strong></div>` : ""}
 			</div>
 		`);
 		this.dialog.set_primary_action(__("Done"), () => {
@@ -1402,7 +1410,7 @@ healthcare.regional.india.abdm.AbhaDlDialog = class AbhaDlDialog {
 	_patchConsent(authMethod) {
 		if (!this._consentName) return;
 		frappe.call({
-			method: "frappe_abdm.abha.api.consent.update_consent",
+			method: "healthcare.regional.india.abdm.api.consent.update_consent",
 			args: {
 				consent_name: this._consentName,
 				txn_id: this.txnId || "",
@@ -2052,6 +2060,12 @@ frappe.ui.form.on("Patient", {
 		if (frappe.boot.sysdefaults.country !== "India") return;
 
 		const hasAbha = !!(frm.doc.abha_number || frm.doc.abha_address);
+
+		// The guided ABHA page (/abha, a React app), opened in a new tab so an unsaved form is not lost.
+		frm.add_custom_button(__("ABHA app"), () => {
+			const route = hasAbha ? "#/profile" : "#/create";
+			window.open("/abha?patient=" + encodeURIComponent(frm.doc.name) + route, "_blank", "noopener");
+		}, __("ABDM"));
 
 		if (!hasAbha) {
 			frm.add_custom_button(__("Create ABHA"), () => {
