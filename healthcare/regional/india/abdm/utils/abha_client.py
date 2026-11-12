@@ -411,18 +411,14 @@ class AbhaClient:
 				else:
 					mobile_val = str(error_body.get("mobile", "")).lower()
 					if "invalid" in mobile_val:
-						# ABDM returns {"mobile": "Invalid Mobile Number"} both for a
-						# genuinely malformed number AND — observed repeatedly against
-						# the live sandbox — when this Aadhaar already has an ABHA
-						# account registered under a different mobile. We can't tell
-						# the two apart from this response alone, so point the user
-						# at the one action that resolves either case.
+						# ABDM's enrol/byAadhaar spec: a 400 names the refused field. An Aadhaar that
+						# already has an ABHA is NOT refused; it returns 200 with isNew=false. So this
+						# branch means the mobile field itself was rejected. The raw body is in the
+						# Error Log entry written above.
 						msg = (
-							"ABDM rejected this mobile number for the given Aadhaar. "
-							"If the number is correct, this Aadhaar may already have an "
-							"ABHA account linked to a different mobile — use ABDM → "
-							"Verify ABHA to check for an existing account before "
-							"creating a new one."
+							"ABDM rejected the mobile number sent with this Aadhaar OTP (Invalid Mobile Number). "
+							"Check it is the 10-digit mobile for ABHA communication and try again. "
+							"If it still fails, see the ABDM API Error Log entry for this request."
 						)
 			# Write to Error Log (visible in Frappe UI at /app/error-log) so admins can diagnose
 			frappe.log_error(
@@ -516,10 +512,10 @@ class AbhaClient:
 			"txnId":    txn_id,
 			"otpValue": encrypted_otp,
 		}
-		# Mobile must be RSA-encrypted here — this goes into UIDAI auth data
-		# (different from OTP-request endpoints where mobile is plain text).
+		# Mobile goes in plain text: the sandbox returns 400 "Invalid Mobile Number"
+		# for an RSA-encrypted value here and accepts the plain number (confirmed live).
 		if mobile:
-			otp_block["mobile"] = encrypt_field(mobile)
+			otp_block["mobile"] = mobile
 		payload = {
 			"authData": {
 				"authMethods": ["otp"],

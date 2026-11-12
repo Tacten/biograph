@@ -226,14 +226,19 @@ def enrol_by_aadhaar(patient: str, txn_id: str, otp: str, mobile: str = "") -> d
             from healthcare.healthcare.doctype.abdm_token_registry.abdm_token_registry import store_x_token
             store_x_token(patient, _x)
 
-    abdm_log("info", f"ABHA enrolled | patient={patient} | mobile_linked={mobile_linked}")
+    # ABDM returns 200 with isNew=false when this Aadhaar already has an ABHA;
+    # that account is linked to the patient, not newly created.
+    is_new = response.get("isNew") is not False
+
+    abdm_log("info", f"ABHA enrolled | patient={patient} | is_new={is_new} | mobile_linked={mobile_linked}")
     audit_log("ABHA_CREATE", patient=patient, result="SUCCESS")
     return {
-        "message": "ABHA created successfully",
+        "message": "ABHA created successfully" if is_new else "An existing ABHA for this Aadhaar was linked to the patient",
         "abha_number": abha_record.abha_number,
         "abha_address": abha_record.abha_address,
         "status": abha_record.status,
         "mobile_linked": mobile_linked,
+        "is_new": is_new,
         "txnId": enrol_txn_id,
     }
 
