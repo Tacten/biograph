@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="/favicon.png" />
+    <title>{{ title }}</title>
+    {% if css_url %}<link rel="stylesheet" href="{{ css_url }}" />{% endif %}
+  </head>
+  <body>
+    <div id="abha-root"></div>
+    {% if build_missing %}
+    <p style="font-family:system-ui,sans-serif;max-width:40rem;margin:4rem auto;padding:0 1rem;">
+      The ABHA app has not been built yet. In <code>apps/healthcare/frontend/abha-ui</code> run
+      <code>npm ci &amp;&amp; npm run build</code>, then reload this page.
+    </p>
+    {% else %}
+    <script type="application/json" id="abha-boot">{{ boot_json | safe }}</script>
+    <script type="module" src="{{ js_url }}"></script>
+    {% endif %}
+  </body>
+</html>

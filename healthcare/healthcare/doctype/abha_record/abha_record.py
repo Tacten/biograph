@@ -2,6 +2,9 @@
 ABHA Record DocType controller — M1-T2
 FHIR R4 Patient.identifier[] compatible.
 """
+
+from typing import ClassVar
+
 import frappe
 from frappe.model.document import Document
 from frappe.utils import now_datetime
@@ -26,10 +29,14 @@ def unlink_abha_from_patient(patient: str) -> None:
 	# Clear the denormalised convenience copy on Patient (set by
 	# api/enrol.py::_sync_abha_fields_to_patient on creation).
 	try:
-		frappe.db.set_value("Patient", patient, {
-			"abha_number": None,
-			"abha_address": None,
-		})
+		frappe.db.set_value(
+			"Patient",
+			patient,
+			{
+				"abha_number": None,
+				"abha_address": None,
+			},
+		)
 	except Exception:
 		pass  # fields may not exist outside India regional setup
 
@@ -42,6 +49,7 @@ def unlink_abha_from_patient(patient: str) -> None:
 	# Re-sync FHIR cache so it reflects the ABHA removal too.
 	try:
 		from healthcare.regional.india.abdm.patient_builder import build_patient_fhir
+
 		build_patient_fhir(patient)
 	except Exception as e:
 		frappe.log_error(f"FHIR cache sync failed for patient={patient}: {type(e).__name__}", "ABDM FHIR")
@@ -49,7 +57,7 @@ def unlink_abha_from_patient(patient: str) -> None:
 
 class ABHARecord(Document):
 	# Whitelist: server-set fields that must never come from client input (M1-T7 mass assignment)
-	SERVER_ONLY_FIELDS = {"abha_number", "patient", "status", "created_at", "verified_at"}
+	SERVER_ONLY_FIELDS: ClassVar[set[str]] = {"abha_number", "patient", "status", "created_at", "verified_at"}
 
 	def before_insert(self):
 		# Always set created_at server-side
@@ -97,7 +105,9 @@ class ABHARecord(Document):
 
 		unlink_abha_from_patient(self.patient)
 
-		audit_log("ABHA_DELETE", patient=self.patient, result="SUCCESS")
+		# commit=False: the link check runs after on_trash, so committing here would
+		# persist the audit row for a delete that is then rejected.
+		audit_log("ABHA_DELETE", patient=self.patient, result="SUCCESS", commit=False)
 
 	def _validate_abha_number_format(self):
 		"""ABHA numbers are exactly 14 digits."""

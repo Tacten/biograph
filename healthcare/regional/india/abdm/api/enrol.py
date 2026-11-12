@@ -226,14 +226,19 @@ def enrol_by_aadhaar(patient: str, txn_id: str, otp: str, mobile: str = "") -> d
             from healthcare.healthcare.doctype.abdm_token_registry.abdm_token_registry import store_x_token
             store_x_token(patient, _x)
 
-    abdm_log("info", f"ABHA enrolled | patient={patient} | mobile_linked={mobile_linked}")
+    # ABDM returns 200 with isNew=false when this Aadhaar already has an ABHA;
+    # that account is linked to the patient, not newly created.
+    is_new = response.get("isNew") is not False
+
+    abdm_log("info", f"ABHA enrolled | patient={patient} | is_new={is_new} | mobile_linked={mobile_linked}")
     audit_log("ABHA_CREATE", patient=patient, result="SUCCESS")
     return {
-        "message": "ABHA created successfully",
+        "message": "ABHA created successfully" if is_new else "An existing ABHA for this Aadhaar was linked to the patient",
         "abha_number": abha_record.abha_number,
         "abha_address": abha_record.abha_address,
         "status": abha_record.status,
         "mobile_linked": mobile_linked,
+        "is_new": is_new,
         "txnId": enrol_txn_id,
     }
 
@@ -573,25 +578,18 @@ def enrol_by_dl(patient: str, txn_id: str, dl_data: str) -> dict:
     client = AbhaClient()
     response = client.enrol_by_dl(patient, txn_id, safe_dl)
 
-    # Create ABHA Record from DL enrolment response
+    # A document enrolment answers with an ENROLMENT NUMBER, not an ABHA: ABDM issues the ABHA only after the document is
+    # checked. So no ABHA Record is created and no ABHA number is written to the Patient here (they used to be, with the
+    # enrolment number stored as if it were an ABHA number). The ABHA app's driving-licence route also holds the
+    # documents for a second person's approval before this call; this direct call (used by the Desk dialog) does not.
     enrol_profile = response.get("EnrolProfile", {})
-    abha_number = enrol_profile.get("enrolmentNumber", "").replace("-", "")
-    phr_list = enrol_profile.get("phrAddress", [])
-    abha_address = phr_list[0] if phr_list else ""
-
-    if abha_number:
-        _create_abha_record_from_enrolment(patient, {
-            "ABHANumber": abha_number,
-            "preferredAbhaAddress": abha_address,
-        })
+    enrolment_number = enrol_profile.get("enrolmentNumber", "")
     mark_txn_consumed(txn_id)  # M1-T50
 
-    _sync_fhir_cache(patient)
-    abdm_log("info", f"DL ABHA enrolment complete | patient={patient}")
+    abdm_log("info", f"DL enrolment submitted | patient={patient}")
     audit_log("ABHA_CREATE", patient=patient, result="SUCCESS")
     return {
-        "message": "ABHA created via Driving Licence",
-        "abha_number": abha_number,
-        "abha_address": abha_address,
-        "status": enrol_profile.get("abhaStatus", "ACTIVE"),
+        "message": "Enrolment number issued. It becomes an ABHA after ABDM checks the document.",
+        "enrolment_number": enrolment_number,
+        "enrolment_state": enrol_profile.get("enrolmentState", ""),
     }
