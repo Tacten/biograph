@@ -5,9 +5,12 @@ FrappeForm.prototype.savesubmit = function (btn, callback, on_error) {
     return new Promise((resolve) => {
         this.validate_form_action("Submit");
         confirmation_message = __("Permanently Submit {0}?", [this.docname])
-        if(this.doc.doctype == "Patient Encounter"){
-            confirmation_message = __(`Permanently Submit ${this.docname}?<br><br><b>${this.doc.title}</b>`)
+        if (["Sales Invoice", "Patient Encounter", "Therapy Session", "Vital Signs"].includes(this.doc.doctype)) {
+            confirmation_message = __(`Permanently Submit ${this.docname}?<br><br><b>${this.doc.title}</b>`);
         }
+        if (["Therapy Session", "Patient Assessment", "Medication Request", "Service Request"].includes(this.doc.doctype)) {
+            confirmation_message = __(`Permanently Submit ${this.docname}?<br><br><b>${this.doc.patient_name}</b>`);
+        }        
         frappe.confirm(
             __(confirmation_message),
             function () {

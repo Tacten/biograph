@@ -189,7 +189,7 @@
   }
  ],
  "links": [
-    {
+  {
    "link_doctype": "Clinical Note",
    "link_fieldname": "reference_name"
   }
@@ -237,6 +237,7 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "search_fields": "patient",
  "sort_field": "modified",
  "sort_order": "DESC",

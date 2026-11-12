@@ -312,10 +312,14 @@ frappe.ui.form.on('Patient Encounter', {
 	},
 	
 	doctor_advice_template: function(frm){
-		if (frm.doc.doctor_advice_template){
-			frm.add_fetch("doctor_advice_template", "doctor_advice", "doctor_advice");
-			frm.refresh_field("doctor_advice_template")
+		frm.add_fetch("doctor_advice_template", "doctor_advice", "doctor_advice");
+		frm.refresh_field("doctor_advice")
+		if(frm.doc.doctor_advice_template && !frm.doc.doctor_advice){
+			frappe.model.get_value("Doctor Advice Template", frm.doc.doctor_advice_template, "doctor_advice", r=>{
+				frm.set_value("doctor_advice", r.doctor_advice)
+			})
 		}
+		
 	},
 
 	set_patient_info: async function(frm) {

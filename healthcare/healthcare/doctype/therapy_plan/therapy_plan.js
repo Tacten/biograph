@@ -255,6 +255,7 @@ frappe.ui.form.on('Therapy Plan', {
 			},
 			callback :(r)=>{
 				if (r.message){
+					frm.dashboard.refresh()
 					let not_invoiced = frm.doc.total_plan_amount - frm.doc.invoiced_amount
 					frm.dashboard.add_indicator(`<b>Total Plan Amount :&nbsp;</b> ₹ ${frm.doc.total_plan_amount || 0}`, "blue");
 					frm.dashboard.add_indicator(`<b>Plan Paid Amount :&nbsp;</b> ₹ ${r.message.paid_amount || 0}`, "green");
@@ -263,6 +264,7 @@ frappe.ui.form.on('Therapy Plan', {
 						el.classList.remove('col-sm-3');
 						el.classList.add('col-4', 'mb-4');
 					});
+					frm.trigger('show_progress_for_therapies');
 				}
 			}
 		})

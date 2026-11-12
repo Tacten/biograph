@@ -111,3 +111,55 @@ let change_template_code = function(doc) {
 		'item_code': doc.item_code
 	});
 };
+
+
+frappe.ui.form.on('Clinical Procedure Item', {
+	qty: function (frm, cdt, cdn) {
+		let d = locals[cdt][cdn];
+		frappe.model.set_value(cdt, cdn, 'transfer_qty', d.qty * d.conversion_factor);
+		console.log(d.qty, d.conversion_factor, d.transfer_qty);
+	},
+
+	uom: function (doc, cdt, cdn) {
+		let d = locals[cdt][cdn];
+		if (d.uom && d.item_code) {
+			return frappe.call({
+				method: 'erpnext.stock.doctype.stock_entry.stock_entry.get_uom_details',
+				args: {
+					item_code: d.item_code,
+					uom: d.uom,
+					qty: d.qty
+				},
+				callback: function (r) {
+					if (r.message) {
+						frappe.model.set_value(cdt, cdn, r.message);
+					}
+				}
+			});
+		}
+	},
+
+	item_code: function (frm, cdt, cdn) {
+		let d = locals[cdt][cdn];
+		if (d.item_code) {
+			let args = {
+				'item_code': d.item_code,
+				'transfer_qty': d.transfer_qty,
+				'quantity': d.qty
+			};
+			return frappe.call({
+				method: 'healthcare.healthcare.doctype.therapy_type.therapy_type.get_item_details',
+				args: { args: args },
+				callback: function (r) {
+					if (r.message) {
+						let d = locals[cdt][cdn];
+						$.each(r.message, function (k, v) {
+							d[k] = v;
+						});
+						refresh_field('items');
+					}
+				}
+			});
+		}
+	}
+});

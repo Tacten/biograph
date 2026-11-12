@@ -11,7 +11,8 @@ frappe.ui.form.on('Service Request', {
 				"Clinical Procedure Template",
 				"Appointment Type",
 				"Observation Template",
-				"Healthcare Activity"];
+				"Healthcare Activity",
+				"Healthcare Practitioner"];
 			return {
 				filters: {
 					name: ['in', order_template_doctypes]

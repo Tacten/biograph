@@ -94,7 +94,7 @@ class TherapyPlan(Document):
 				GROUP BY si.name
 			""", as_dict=1)
 
-		print(invoices)
+
 		paid_amount = 0
 		for row in invoices:
 			paid_amount += row.therapy_amount
